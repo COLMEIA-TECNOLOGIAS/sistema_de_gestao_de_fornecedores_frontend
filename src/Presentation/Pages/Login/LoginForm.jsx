@@ -12,16 +12,15 @@ export default function LoginForm({ onSubmit }) {
   }
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-4">
+    <form onSubmit={handleSubmit} className="space-y-6">
       <Input
         label="Nome de usuário"
         name="username"
         value={username}
         onChange={(e) => setUsername(e.target.value)}
         placeholder="Digite o seu nome"
-        
       />
-
+      
       <Input
         label="Senha"
         type="password"
@@ -30,14 +29,14 @@ export default function LoginForm({ onSubmit }) {
         onChange={(e) => setPassword(e.target.value)}
         placeholder="Digite a sua senha"
       />
-
-      <div className="flex justify-between text-lg text-gray-600">
+      
+      <div className="flex justify-between items-center text-base">
         <span className="text-blue-500 italic">Empty text</span>
         <a href="#" className="text-blue-600 hover:underline">
           Esqueci minha senha
         </a>
       </div>
-
+      
       <Button type="submit">Fazer Login</Button>
     </form>
   )

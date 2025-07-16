@@ -1,12 +1,12 @@
 import { useState } from "react"
-import { Eye, EyeOff } from "lucide-react" // ícones minimalistas
+import { Eye, EyeOff } from "lucide-react"
 
 export default function Input({
   label,
   type = "text",
   value,
   onChange,
-  placeholder,  
+  placeholder,
   name,
 }) {
   const [show, setShow] = useState(false)
@@ -18,7 +18,7 @@ export default function Input({
       {label && (
         <label
           htmlFor={name}
-          className="block text-2xl font-medium text-gray-700 mb-1"
+          className="block text-lg font-medium text-gray-700 mb-2"
         >
           {label}
         </label>
@@ -31,7 +31,7 @@ export default function Input({
           value={value}
           onChange={onChange}
           placeholder={placeholder}
-          className="w-full  px-4 py-3 pr-10 border border-gray-300 rounded-lg text-2xl text-gray-700 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-400"
+          className="w-full px-4 py-4 pr-10 border border-gray-300 rounded-lg text-lg text-gray-700 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
         />
         {isPassword && (
           <button
@@ -39,7 +39,7 @@ export default function Input({
             onClick={() => setShow(!show)}
             className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600"
           >
-            {show ? <EyeOff size={18} /> : <Eye size={18} />}
+            {show ? <EyeOff size={20} /> : <Eye size={20} />}
           </button>
         )}
       </div>
