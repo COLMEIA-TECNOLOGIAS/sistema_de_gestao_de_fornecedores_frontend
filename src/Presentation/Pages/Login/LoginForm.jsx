@@ -30,14 +30,14 @@ export default function LoginForm({ onSubmit }) {
         placeholder="Digite a sua senha"
       />
       
-      <div className="flex justify-between items-center text-base">
-        <span className="text-blue-500 italic">Empty text</span>
-        <a href="#" className="text-blue-600 hover:underline">
+      <div className="flex justify-between items-center mt-4 text-base">
+              <Button type="submit">Fazer Login</Button>
+
+        <a href="#" className="text-green-400 hover:underline">
           Esqueci minha senha
         </a>
       </div>
       
-      <Button type="submit">Fazer Login</Button>
     </form>
   )
 }

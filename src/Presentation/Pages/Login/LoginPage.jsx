@@ -53,7 +53,7 @@ export default function LoginPage() {
           {/* Footer com indicadores */}
           <div className="flex justify-center pb-8">
             <div className="flex space-x-2">
-              <div className="w-8 h-2 bg-blue-500 rounded-full"></div>
+              <div className="w-8 h-2 bg-green-500 rounded-full"></div>
               <div className="w-2 h-2 bg-white bg-opacity-40 rounded-full"></div>
               <div className="w-2 h-2 bg-white bg-opacity-40 rounded-full"></div>
             </div>
@@ -80,7 +80,7 @@ export default function LoginPage() {
             </h1>
             <p className="text-gray-600 text-lg mb-12 leading-relaxed">
               Entre com a sua conta para continuar<br className="hidden sm:block" />
-              <span className="text-blue-600 font-medium">com as suas atividades</span>
+              <span className="text-green-600 font-medium">com as suas atividades</span>
             </p>
           </div>
           
