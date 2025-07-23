@@ -7,8 +7,7 @@ export default function LoginPage() {
     <div className="min-h-screen grid grid-cols-1 md:grid-cols-2">
       {/* Esquerda - Imagem com texto */}
       <div className="hidden md:flex items-center justify-center bg-gradient-to-br from-gray-900 via-gray-800 to-black relative overflow-hidden">
-        {/* Background pattern overlay */}
-       {/* Background image */}
+       
 <img 
  src="/hero.jpg" 
  alt="Background" 
@@ -22,7 +21,7 @@ export default function LoginPage() {
           <div className="flex justify-between items-start p-6">
             <div className="flex items-center space-x-3">
               
-              <img src="/public/login1.svg" className="w-24 h-24 " alt="" />
+              <img src="/login1.svg" className="w-24 h-24 " alt="" />
             </div>
             
             <div className="flex items-center mt-4 space-x-2 text-white">
