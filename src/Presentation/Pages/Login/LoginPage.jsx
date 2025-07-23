@@ -19,15 +19,12 @@ export default function LoginPage() {
 
         {/* Layout com flexbox */}
         <div className="relative z-10 w-full h-full flex flex-col">
-          {/* Header com logo e ajuda */}
           <div className="flex justify-between items-start p-6">
-            {/* Logo */}
             <div className="flex items-center space-x-3">
               
               <img src="/public/login1.svg" className="w-24 h-24 " alt="" />
             </div>
             
-            {/* Ajuda */}
             <div className="flex items-center mt-4 space-x-2 text-white">
               
                <button className=" flex items-center  gap-1  bg-green-500/15 text-white px-10 py-4 rounded-xl shadow-md text-lg">
@@ -37,7 +34,6 @@ export default function LoginPage() {
             </div>
           </div>
 
-          {/* Conteúdo principal centralizado */}
           <div className="flex-1 flex items-center justify-center px-6">
             <div className="text-center text-white max-w-lg">
               <h2 className="text-4xl md:text-5xl font-bold mb-6 leading-tight">
@@ -50,7 +46,6 @@ export default function LoginPage() {
             </div>
           </div>
 
-          {/* Footer com indicadores */}
           <div className="flex justify-center pb-8">
             <div className="flex space-x-2">
               <div className="w-8 h-2 bg-green-500 rounded-full"></div>
@@ -61,10 +56,8 @@ export default function LoginPage() {
         </div>
       </div>
 
-      {/* Direita - Formulário */}
       <div className="flex items-center justify-center px-8 py-12 bg-gradient-to-br from-gray-50 to-white">
         <div className="w-full max-w-md">
-          {/* Logo mobile */}
           <div className="md:hidden flex items-center justify-center mb-8">
             <div className="flex items-center space-x-3">
               <div className="w-10 h-10 bg-gradient-to-br from-yellow-400 to-orange-500 rounded-lg flex items-center justify-center shadow-lg">

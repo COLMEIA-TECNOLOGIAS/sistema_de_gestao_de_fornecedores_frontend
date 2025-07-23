@@ -16,13 +16,11 @@ export default function LoginForm({ onSubmit }) {
 
   const handleForgotPasswordSubmit = (data) => {
     console.log("Email para recuperação:", data.email);
-    // Adicione aqui a lógica de API para enviar o link
-    setShowForgotPassword(false); // Fecha o modal após enviar
+    setShowForgotPassword(false); 
   };
 
   return (
     <div className="relative">
-      {/* Formulário de Login */}
       <form onSubmit={handleSubmit} className="space-y-6">
         <Input
           label="Nome de usuário"
@@ -53,7 +51,6 @@ export default function LoginForm({ onSubmit }) {
         </div>
       </form>
 
-      {/* Modal de Recuperação de Senha */}
       {showForgotPassword && (
         <ForgotPasswordModal
           onClose={() => setShowForgotPassword(false)}

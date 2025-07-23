@@ -71,7 +71,7 @@ export default function ForgetPasswordModal({ onClose }) {
                       "Enviar "
                     )}
                   </Button>
-                  
+
                     <Button
                     type="button"
                     onClick={onClose}
@@ -92,7 +92,7 @@ export default function ForgetPasswordModal({ onClose }) {
         <SuccessModal 
           onClose={() => {
             setShowSuccess(false);
-            onClose(); // Fecha ambos os modais
+            onClose(); 
           }} 
           email={email}
         />

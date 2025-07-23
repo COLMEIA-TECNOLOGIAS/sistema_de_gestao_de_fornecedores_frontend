@@ -1,6 +1,14 @@
 import Button from "./Components/Button";
+import { useNavigate } from "react-router-dom";
 
 export default function SuccessModal({ onClose, email }) {
+  const navigate = useNavigate();
+
+  const handleCompletion = () => {
+    onClose(); 
+    navigate('./register'); 
+  };
+
   return (
     <div 
       className="fixed inset-0 z-50 flex items-center justify-center p-4"
@@ -8,17 +16,14 @@ export default function SuccessModal({ onClose, email }) {
       aria-modal="true"
       aria-labelledby="success-modal-title"
     >
-      {/* Fundo escuro com desfoque */}
       <div 
         className="absolute inset-0 bg-black/70 backdrop-blur-sm transition-opacity"
         onClick={onClose}
         aria-hidden="true"
       />
       
-      {/* Container do modal */}
       <div className="relative w-full max-w-md bg-white rounded-2xl shadow-2xl overflow-hidden transform transition-all">
         <div className="p-8 text-center">
-          {/* Ícone animado */}
           <div className="mx-auto flex items-center justify-center h-16 w-16 rounded-full bg-green-50 mb-5 animate-pulse">
             <svg
               className="h-8 w-8 text-green-600"
@@ -57,11 +62,11 @@ export default function SuccessModal({ onClose, email }) {
 
           <div className="border-t border-gray-100 pt-6">
             <Button
-              onClick={onClose}
+              onClick={handleCompletion}
               className="w-full bg-green-600 hover:bg-green-700 text-white py-3 px-4 text-lg"
-              aria-label="Fechar mensagem de confirmação"
+              aria-label="Ir para redefinição de senha"
             >
-              Entendido
+              Concluído
             </Button>
           </div>
         </div>
