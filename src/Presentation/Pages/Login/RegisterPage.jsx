@@ -30,7 +30,7 @@ export default function RegisterPage() {
       {/* Seção da Imagem (50%) */}
       <div className="w-1/2 h-full bg-gray-100 overflow-hidden">
         <img 
-          src="/public/Register.jpg" 
+          src="/Register.jpg" 
           alt="Imagem decorativa de segurança"
           className="w-full h-full object-cover object-center"
         />

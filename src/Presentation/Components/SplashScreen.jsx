@@ -12,7 +12,7 @@ export default function SplashScreen({ onFinish }) {
 
   return (
     <div className="h-screen w-screen flex items-center justify-center bg-white">
-      <img src= "/public/logo.svg" alt="Logo" className="w-60 h-60" />
+      <img src= "/logo.svg" alt="Logo" className="w-60 h-60" />
     </div>
   );
 }
