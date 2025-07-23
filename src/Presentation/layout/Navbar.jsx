@@ -5,7 +5,7 @@ export default function Navbar() {
   const [isOpen, setIsOpen] = useState(false);
 
   return (
-    <div className="fixed top-0 left-64 right-0 h-20 bg-white border-b border-gray-200 flex items-center justify-between px-8 z-40">
+    <div className="fixed top-0 left-72 right-0 h-20 bg-white border-b border-gray-200 flex items-center justify-between px-8 z-40">
       {/* Barra de Pesquisa */}
       <div className="relative flex-1 max-w-2xl">
         <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
@@ -28,7 +28,7 @@ export default function Navbar() {
           <HelpCircle className="h-5 w-5" />
         </button>
         
-        <button className="p-2 rounded-full text-gray-500 hover:text-gray-700 hover:bg-gray-100 relative">
+        <button className="p-1 rounded-full text-gray-500 hover:text-gray-700 hover:bg-gray-100 relative">
           <Bell className="h-5 w-5" />
           <span className="absolute top-0 right-0 h-2 w-2 rounded-full bg-red-500"></span>
         </button>
@@ -40,11 +40,11 @@ export default function Navbar() {
             className="flex items-center space-x-2 focus:outline-none"
           >
             <div className="h-10 w-10 rounded-full bg-blue-500 flex items-center justify-center text-white">
-              <User className="h-5 w-5" />
+              <User className="h-40 w-14" />
             </div>
             <div className="text-left">
-              <p className="text-sm font-medium text-gray-900">António Miranda</p>
-              <p className="text-xs text-gray-500">Super Admin</p>
+              <p className="text-lg font-medium text-gray-900">Kelvin Domingos</p>
+              <p className="text-md text-gray-500">Super Admin</p>
             </div>
             <ChevronDown className={`h-4 w-4 text-gray-500 transition-transform ${isOpen ? 'transform rotate-180' : ''}`} />
           </button>
