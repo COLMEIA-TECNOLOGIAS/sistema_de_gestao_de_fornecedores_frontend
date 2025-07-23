@@ -1,5 +1,6 @@
 import Sidebar from "../layout/sidebar";
 import Navbar from "../layout/Navbar";
+import SuppliersSection from "../layout/SuppliersSection";
 
 export default function Home() {
   return (
@@ -11,6 +12,8 @@ export default function Home() {
         <Navbar />
         <div className="p-8 mt-20"> 
         </div>
+        <SuppliersSection />
+
       </main>
     </div>
   );
