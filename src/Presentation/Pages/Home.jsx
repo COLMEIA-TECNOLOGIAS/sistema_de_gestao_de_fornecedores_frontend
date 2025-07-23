@@ -5,7 +5,6 @@ export default function Home() {
     <div className="flex">
       <Sidebar />
       
-      {/* Conteúdo principal */}
       <main className="flex-1 ml-64 p-8">
         {/* Seu conteúdo da página aqui */}
         <h1 className="text-2xl font-bold">Bem-vindo ao Dashboard</h1>

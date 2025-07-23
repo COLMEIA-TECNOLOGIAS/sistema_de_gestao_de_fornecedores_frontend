@@ -6,7 +6,7 @@ export default function Sidebar() {
     <div className="w-64 h-screen bg-gray-900 text-white fixed left-0 top-0 p-4">
       {/* Logo */}
       <div className="flex items-center justify-center mb-8 p-2">
-        <h1 className="text-2xl font-bold">MOSAP3</h1>
+        <img src="/login1.svg" className='w-24 h-24' alt="" />
       </div>
 
       {/* Menu Items */}
