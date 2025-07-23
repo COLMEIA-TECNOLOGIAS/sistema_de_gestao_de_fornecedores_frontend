@@ -10,7 +10,7 @@ export default function LoginPage() {
         {/* Background pattern overlay */}
        {/* Background image */}
 <img 
- src="/public/hero.jpg" 
+ src="/hero.jpg" 
  alt="Background" 
  className="absolute inset-0 w-full h-full object-cover opacity-40"
 />
