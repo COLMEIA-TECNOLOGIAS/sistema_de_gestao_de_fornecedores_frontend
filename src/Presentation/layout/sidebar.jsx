@@ -13,7 +13,6 @@ import { NavLink } from 'react-router-dom';
 export default function Sidebar() {
   return (
     <div className="w-72 h-screen bg-white text-gray-800 fixed left-0 top-0 p-6 border-r border-gray-200">
-      {/* Logo com linha separadora */}
       <div className="mb-6">
         <div className="flex items-center justify-between">
           <div className="flex items-center">

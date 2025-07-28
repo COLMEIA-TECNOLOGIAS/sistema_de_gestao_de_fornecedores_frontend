@@ -48,7 +48,6 @@ export default function FornecedoresCard() {
        <img src="/public/fornecedor.jpg" className=' h-32 w-3xl bg-cover rounded-2xl' alt="" />
       </div>
 
-      {/* Controls Section */}
       <div className="px-4 sm:px-6 lg:px-8 pb-4">
         <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-4">
           {/* Search Bar */}
