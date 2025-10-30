@@ -1,20 +1,24 @@
-import Sidebar from "../layout/sidebar";
+import { useState } from "react";
 import Navbar from "../layout/Navbar";
-import SuppliersSection from "../layout/SuppliersSection";
+import Sidebar from "../layout/sidebar";
+import MainContent from "../layout/Mainlayout";
 
-export default function Home() {
+function DashboardLayout() {
+  const [activeItem, setActiveItem] = useState("dashboard");
+
   return (
-    <div className="flex">
-      <Sidebar />
-      
-      {/* Conteúdo principal */}
-      <main className="flex-1 ml-64">
-        <Navbar />
-        <div className="p-8 mt-20"> 
-        </div>
-        <SuppliersSection />
-
-      </main>
+    <div className="min-h-screen bg-gray-50">
+      <Navbar 
+        userName="Adão Magalhães" 
+        userRole="Super Admin" 
+        userAvatar="/public/tea.png"
+      />
+      <div className="flex">
+        <Sidebar activeItem={activeItem} onItemClick={setActiveItem} />
+        <MainContent activeItem={activeItem} />
+      </div>
     </div>
   );
 }
+
+export default DashboardLayout;

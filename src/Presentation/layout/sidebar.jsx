@@ -1,74 +1,39 @@
-import { 
-  LayoutDashboard, 
-  Truck,
-  ListChecks, 
-  FileText,
-  BellRing, 
-  Settings, 
-  HelpCircle,
-  Home
-} from 'lucide-react';
-import { NavLink } from 'react-router-dom';
+import { LayoutDashboard, Users, UserCircle, BarChart3, Settings } from "lucide-react";
 
-export default function Sidebar() {
+function Sidebar({ activeItem, onItemClick }) {
+  const menuItems = [
+    { id: "dashboard", label: "Dashboard", icon: LayoutDashboard },
+    { id: "fornecedores", label: "Fornecedores / Cotações", icon: Users },
+    { id: "usuarios", label: "Usuários", icon: UserCircle },
+    { id: "relatorios", label: "Relatórios", icon: BarChart3 },
+    { id: "configuracoes", label: "Configurações", icon: Settings },
+  ];
+
   return (
-    <div className="w-72 h-screen bg-white text-gray-800 fixed left-0 top-0 p-6 border-r border-gray-200">
-      <div className="mb-6">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center">
-            <img src="/logo.svg" className='w-28 h-28 ' alt="" />
-          </div>
-        </div>
-        <div className="border-t border-gray-200 my-4"></div>
-      </div>
-
-      {/* Menu Items com texto maior */}
-      <nav className="space-y-2">
-        <NavItem icon={<LayoutDashboard size={22} />} text="Dashboard" to="/" />
-        <NavItem icon={<Truck size={22} />} text="Fornecedores" to="/fornecedores" />
-        <NavItem icon={<ListChecks size={22} />} text="Categorias e Requisitos" to="/categorias" />
-        <NavItem icon={<FileText size={22} />} text="Relatórios" to="/relatorios" />
-        <NavItem icon={<BellRing size={22} />} text="Notificações e Alertas" to="/notificacoes" />
-        <NavItem icon={<Settings size={22} />} text="Configurações" to="/configuracoes" />
+    <aside className="w-64 bg-white border-r border-gray-200 min-h-[calc(100vh-65px)] mt-[65px]">
+      <nav className="p-4 space-y-1">
+        {menuItems.map((item) => {
+          const Icon = item.icon;
+          const isActive = activeItem === item.id;
+          
+          return (
+            <button
+              key={item.id}
+              onClick={() => onItemClick(item.id)}
+              className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-colors ${
+                isActive
+                  ? "bg-[#44B16F]/10 text-[#44B16F]"
+                  : "text-gray-700 hover:bg-gray-100"
+              }`}
+            >
+              <Icon size={20} />
+              <span className="text-sm font-medium">{item.label}</span>
+            </button>
+          );
+        })}
       </nav>
-
-      {/* Seção de Ajuda */}
-      <div className="absolute bottom-6 left-6 right-6 bg-gray-50 p-4 rounded-lg">
-        <div className="flex items-center mb-2">
-          <HelpCircle size={20} className="text-gray-600 mr-2" />
-          <span className="font-medium text-gray-700">Ajuda</span>
-        </div>
-        <p className="text-sm text-gray-600 mb-3 leading-snug">
-          Se tem alguma dificuldade ou precisa de ajuda, estamos aqui para apoiar.
-        </p>
-        <button className="w-full bg-white border border-gray-300 rounded-md py-2 px-3 text-sm text-gray-700 hover:bg-gray-100 transition-colors">
-          Write a message
-        </button>
-      </div>
-    </div>
+    </aside>
   );
 }
 
-// Componente auxiliar corrigido
-function NavItem({ icon, text, to }) {
-  return (
-    <NavLink
-      to={to}
-      end  // Adicionado para correspondência exata
-      className={({ isActive }) =>
-        isActive 
-          ? 'flex items-center space-x-4 p-3 rounded-lg bg-blue-50 text-blue-600 font-medium text-base'
-          : 'flex items-center space-x-4 p-3 rounded-lg hover:bg-gray-100 text-gray-700 text-base'
-      }
-    >
-      {({ isActive }) => (
-        <>
-          <span className={isActive ? 'text-blue-500' : 'text-gray-500'}>
-            {icon}
-          </span>
-          <span>{text}</span>
-        </>
-      )}
-    </NavLink>
-  );
-}
+export default Sidebar;
