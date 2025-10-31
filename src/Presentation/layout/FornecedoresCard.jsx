@@ -1,4 +1,7 @@
 function Fornecedores() {
+
+
+  
   const fornecedores = [
     { id: 1, nome: "Empresa 01", avatars: ["👤", "👤", "👤", "👤"], itens: 34, progresso: 45, cor: "text-red-500" },
     { id: 2, nome: "Empresa 02", avatars: ["👤", "👤", "👤"], itens: 24, progresso: 100, cor: "text-green-500" },

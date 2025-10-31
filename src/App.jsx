@@ -5,6 +5,7 @@ import LoginPage from './Presentation/Pages/Login/LoginPage.jsx'
 import RegisterPage from './Presentation/Pages/Login/RegisterPage.jsx'
 import SuccessPasswordReset from './Presentation/Pages/Login/SuccessPasswordReset..jsx'
 import Home from './Presentation/Pages/Home.jsx'
+import DashboardLayout from './ DashboardLayout.jsx'
 function App() {
   const [showSplash, setShowSplash] = useState(true)
 
@@ -26,6 +27,8 @@ function App() {
        <Route path="/register" element={<RegisterPage />} /> 
        <Route path="/success-reset" element={<SuccessPasswordReset />} /> 
        <Route path="/home" element={ <Home />} /> 
+       <Route path="/dashboard" element={ <DashboardLayout />} /> 
+
 
 
 
