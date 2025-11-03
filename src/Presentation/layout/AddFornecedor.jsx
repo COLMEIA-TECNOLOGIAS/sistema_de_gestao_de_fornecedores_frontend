@@ -1,11 +1,30 @@
 import { ArrowLeft } from "lucide-react";
+import { useNavigate } from "react-router-dom";
 
 export default function AddFornecedorPage() {
+  const navigate = useNavigate();
+
+  const handleVoltar = () => {
+    navigate('/'); 
+    
+  };
+
+  const handleComecar = () => {
+    navigate('/FornecedorFormStep1');
+  };
+
+  const handleCancelar = () => {
+    navigate(-1); // ou navigate('/fornecedores');
+  };
+
   return (
     <div className="min-h-screen bg-gray-50 flex flex-col">
       {/* Header com botão voltar */}
       <div className="p-8">
-        <button className="flex items-center gap-2 text-gray-600 hover:text-gray-900 transition-colors">
+        <button 
+          onClick={handleVoltar}
+          className="flex items-center gap-2 text-gray-600 hover:text-gray-900 transition-colors"
+        >
           <ArrowLeft size={20} />
           <span className="text-sm font-medium">Add fornecedor</span>
         </button>
@@ -56,10 +75,16 @@ export default function AddFornecedorPage() {
 
           {/* Botões */}
           <div className="flex items-center justify-center gap-4">
-            <button className="px-8 py-3 border-2 border-[#44B16F] text-[#44B16F] rounded-lg font-medium hover:bg-[#44B16F]/5 transition-colors">
+            <button 
+              onClick={handleCancelar}
+              className="px-8 py-3 border-2 border-[#44B16F] text-[#44B16F] rounded-lg font-medium hover:bg-[#44B16F]/5 transition-colors"
+            >
               Cancelar
             </button>
-            <button className="px-8 py-3 bg-[#44B16F] text-white rounded-lg font-medium hover:bg-[#3a9d5f] transition-colors shadow-md">
+            <button 
+              onClick={handleComecar}
+              className="px-8 py-3 bg-[#44B16F] text-white rounded-lg font-medium hover:bg-[#3a9d5f] transition-colors shadow-md"
+            >
               Começar
             </button>
           </div>
