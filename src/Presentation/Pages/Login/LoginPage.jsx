@@ -37,7 +37,7 @@ export default function LoginPage() {
                 Plataforma de gestão
               </h2>
               <h2 className="text-5xl font-bold">
-                de fornecedores.
+                de Procurement.
               </h2>
             </div>
           </div>
@@ -70,7 +70,7 @@ export default function LoginPage() {
               </label>
               <input
                 type="text"
-                placeholder="Crisvan Van-dunem"
+                placeholder="Seu nome"
                 value={formData.username}
                 onChange={(e) => setFormData({ ...formData, username: e.target.value })}
                 className="w-full px-4 py-3 border border-[#DDE5E9] rounded-lg focus:outline-none focus:ring-2 focus:ring-[#44B16F]/20 focus:border-[#44B16F] transition-all"
