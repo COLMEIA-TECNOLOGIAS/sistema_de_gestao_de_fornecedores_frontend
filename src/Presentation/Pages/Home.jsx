@@ -1,7 +1,8 @@
 import { useState } from "react";
 import Navbar from "../layout/Navbar";
 import Sidebar from "../layout/sidebar";
-import MainContent from "../layout/Mainlayout";
+import ListUsuarios from '../layout/ListUsuarios';
+
 
 function DashboardLayout() {
   const [activeItem, setActiveItem] = useState("dashboard");
@@ -15,7 +16,7 @@ function DashboardLayout() {
       />
       <div className="flex">
         <Sidebar activeItem={activeItem} onItemClick={setActiveItem} />
-        <MainContent activeItem={activeItem} />
+        <ListUsuarios></ListUsuarios>
       </div>
     </div>
   );
