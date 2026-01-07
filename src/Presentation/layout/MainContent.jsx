@@ -1,8 +1,7 @@
-import DashboardPage from "../pages/DashboardPage";
-import FornecedoresPage from "../pages/FornecedoresPage";
-import UsuariosPage from "../pages/UsuariosPage";
-import RelatoriosPage from "../pages/RelatoriosPage";
-import ConfiguracoesPage from "../pages/ConfiguracoesPage";
+import DashboardPage from "./DashboardPage";
+import FornecedoresPage from "./FornecedoresPage";
+import UsuariosPage from "./UsuariosPage";
+import RelatoriosPage from "./RelatoriosPage";
 
 export default function MainContent({ activeItem }) {
   const renderPage = () => {
@@ -12,8 +11,11 @@ export default function MainContent({ activeItem }) {
       case "fornecedores":
         return <FornecedoresPage />;
       case "usuarios":
-        return <UsuariosPage />
-      
+        return <UsuariosPage />;
+      case "relatorios":
+        return <RelatoriosPage />;
+      case "configuracoes":
+        return <div className="text-center text-gray-600 mt-20">Página de Configurações em desenvolvimento...</div>;
       default:
         return <DashboardPage />;
     }

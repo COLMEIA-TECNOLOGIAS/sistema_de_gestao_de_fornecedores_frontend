@@ -32,13 +32,7 @@ function App() {
        <Route path="/dashboard" element={ <DashboardLayout />} /> 
        <Route path="/AddFornecedorPage" element={ <AddFornecedorPage />} /> 
        <Route path="/FornecedorFormStep1" element={ <FornecedorFormStep1 />} /> 
-
-
-
-
-
-
-
+      
 
     </Routes>
   )
