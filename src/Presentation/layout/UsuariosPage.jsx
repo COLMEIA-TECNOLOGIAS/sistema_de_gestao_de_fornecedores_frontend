@@ -1,6 +1,10 @@
+import { useState } from "react";
 import { Eye, Edit, Trash2 } from "lucide-react";
+import ModalNovoUsuario from "../Components/ModalNovoUsuario";
 
 export default function UsuariosPage() {
+  const [isModalOpen, setIsModalOpen] = useState(false);
+
   const usuarios = [
     { id: 1, nome: "Alyvia Kelley", estado: "Activo", email: "a.kelley@gmail.com", dataCriacao: "06/18/1978", statusColor: "green" },
     { id: 2, nome: "Jaiden Nixon", estado: "Activo", email: "jaiden.n@gmail.com", dataCriacao: "09/30/1963", statusColor: "green" },
@@ -15,26 +19,33 @@ export default function UsuariosPage() {
   ];
 
   return (
-    <div className="space-y-6">
-      {/* Header with background image */}
-      <div className="relative bg-white rounded-2xl overflow-hidden shadow-sm">
-        <div className="absolute inset-0">
-          <img
-            src="https://images.unsplash.com/photo-1522071820081-009f0129c71c?w=1200&h=200&fit=crop"
-            alt="Background"
-            className="w-full h-full object-cover opacity-90"
-          />
-          <div className="absolute inset-0 bg-gradient-to-r from-black/60 to-black/40"></div>
+    <div className="space-y-8">
+      {/* Welcome Section - Same style as Dashboard */}
+      <div className="bg-white rounded-2xl p-8 shadow-sm flex items-center justify-between">
+        <div>
+          <h1 className="text-4xl font-bold text-gray-900 mb-2">
+            Usuários
+          </h1>
+          <h2 className="text-2xl font-semibold text-gray-900 mb-2">
+            Gestão de Usuários
+          </h2>
+          <p className="text-gray-600">Gerencie os usuários cadastrados no sistema</p>
         </div>
-        <div className="relative p-8">
-          <h1 className="text-3xl font-bold text-white mb-1">Usuários</h1>
-          <p className="text-white/90">Gerencie os usuários cadastrados</p>
+        <div className="hidden lg:block">
+          <img
+            src="https://images.unsplash.com/photo-1522071820081-009f0129c71c?w=400&h=200&fit=crop"
+            alt="Team collaboration"
+            className="w-96 h-32 object-cover rounded-xl"
+          />
         </div>
       </div>
 
       {/* Actions Bar */}
       <div className="flex items-center justify-between">
-        <button className="flex items-center gap-2 px-6 py-3 text-[#44B16F] border border-[#44B16F] rounded-lg hover:bg-[#44B16F]/5 transition-colors font-medium">
+        <button
+          onClick={() => setIsModalOpen(true)}
+          className="flex items-center gap-2 px-6 py-3 text-[#44B16F] border border-[#44B16F] rounded-lg hover:bg-[#44B16F]/5 transition-colors font-medium"
+        >
           <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
           </svg>
@@ -147,6 +158,9 @@ export default function UsuariosPage() {
           </button>
         </div>
       </div>
+
+      {/* Modal Novo Usuário */}
+      <ModalNovoUsuario isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} />
     </div>
   );
 }

@@ -60,20 +60,24 @@ export default function FornecedoresPage() {
   ];
 
   return (
-    <div className="space-y-6">
-      {/* Header with background image */}
-      <div className="relative bg-white rounded-2xl overflow-hidden shadow-sm">
-        <div className="absolute inset-0">
-          <img
-            src="https://images.unsplash.com/photo-1497366754035-f200968a6e72?w=1200&h=200&fit=crop"
-            alt="Background"
-            className="w-full h-full object-cover opacity-90"
-          />
-          <div className="absolute inset-0 bg-gradient-to-r from-black/60 to-black/40"></div>
+    <div className="space-y-8">
+      {/* Welcome Section - Same style as Dashboard */}
+      <div className="bg-white rounded-2xl p-8 shadow-sm flex items-center justify-between">
+        <div>
+          <h1 className="text-4xl font-bold text-gray-900 mb-2">
+            Fornecedores
+          </h1>
+          <h2 className="text-2xl font-semibold text-gray-900 mb-2">
+            Gestão de Fornecedores
+          </h2>
+          <p className="text-gray-600">Gerencie os fornecedores cadastrados no sistema</p>
         </div>
-        <div className="relative p-8">
-          <h1 className="text-3xl font-bold text-white mb-1">Fornecedores</h1>
-          <p className="text-white/90">Gerencie os fornecedores cadastrados</p>
+        <div className="hidden lg:block">
+          <img
+            src="https://images.unsplash.com/photo-1497366754035-f200968a6e72?w=400&h=200&fit=crop"
+            alt="Office"
+            className="w-96 h-32 object-cover rounded-xl"
+          />
         </div>
       </div>
 
