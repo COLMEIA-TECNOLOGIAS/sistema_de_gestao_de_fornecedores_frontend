@@ -1,52 +1,46 @@
 import { Plus, Search, Eye, Edit2, Trash2, ChevronLeft, ChevronRight, X, Calendar } from "lucide-react";
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import api from "../../services/api";
+import ModalNovoUsuario from "../Components/ModalNovoUsuario";
 
 export default function UsuariosManagementPage() {
   const [searchQuery, setSearchQuery] = useState("");
   const [showModal, setShowModal] = useState(false);
-  const [formData, setFormData] = useState({
-    nome: "",
-    dataNascimento: "",
-    genero: "",
-    numeroIdentificacao: "",
-    tipoUsuario: "",
-    statusConta: "Ativo"
-  });
+  const [usuarios, setUsuarios] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
 
-  const usuarios = [
-    { id: 1, nome: "Alyvia Kelley", status: "Activo", statusColor: "green", email: "a.kelley@gmail.com", data: "06/18/1978" },
-    { id: 2, nome: "Jaiden Nixon", status: "Activo", statusColor: "green", email: "jaiden.n@gmail.com", data: "09/30/1963" },
-    { id: 3, nome: "Ace Foley", status: "Activo", statusColor: "red", email: "ace.fo@yahoo.com", data: "12/09/1985" },
-    { id: 4, nome: "Nikolai Schmidt", status: "Inactivo", statusColor: "red", email: "nikolai.schmidt1964@outlook.com", data: "03/22/1956" },
-    { id: 5, nome: "Clayton Charles", status: "Activo", statusColor: "green", email: "me@clayton.com", data: "10/14/1971" },
-    { id: 6, nome: "Prince Chen", status: "Activo", statusColor: "green", email: "prince.chen1997@gmail.com", data: "07/05/1992" },
-    { id: 7, nome: "Reece Duran", status: "Activo", statusColor: "green", email: "reece@yahoo.com", data: "05/26/1980" },
-    { id: 8, nome: "Anastasia Mcdaniel", status: "Inactivo", statusColor: "red", email: "anastasia.spring@mcdaniel12.com", data: "02/11/1968" },
-    { id: 9, nome: "Melvin Boyle", status: "Inativo", statusColor: "red", email: "Me.boyle@gmail.com", data: "08/03/1974" },
-    { id: 10, nome: "Kailee Thomas", status: "Inativo", statusColor: "red", email: "Kailee.thomas@gmail.com", data: "11/28/1954" },
-  ];
+  useEffect(() => {
+    fetchUsuarios();
+  }, []);
 
-  const handleInputChange = (e) => {
-    const { name, value } = e.target;
-    setFormData(prev => ({ ...prev, [name]: value }));
+  const fetchUsuarios = async () => {
+    try {
+      setLoading(true);
+      const response = await api.get("/users");
+      const data = response.data;
+      // Mapeia os dados da API para o formato esperado pelo componente
+      const usuariosFormatados = (Array.isArray(data) ? data : data.data || []).map((user, index) => ({
+        id: user.id || index + 1,
+        nome: user.nome || user.name || "",
+        status: user.status || (user.ativo ? "Activo" : "Inactivo"),
+        statusColor: user.status === "Activo" || user.ativo ? "green" : "red",
+        email: user.email || "",
+        data: user.dataCriacao || user.createdAt || user.created_at || ""
+      }));
+      setUsuarios(usuariosFormatados);
+      setError(null);
+    } catch (err) {
+      setError(err.response?.data?.message || err.message || "Erro ao buscar usuários");
+      console.error("Erro ao buscar usuários:", err);
+    } finally {
+      setLoading(false);
+    }
   };
 
-  const handleSubmit = () => {
-    console.log("Dados do formulário:", formData);
+  const handleUserCreated = () => {
     setShowModal(false);
-    // Aqui você adicionaria a lógica para salvar o usuário
-  };
-
-  const handleCancel = () => {
-    setShowModal(false);
-    setFormData({
-      nome: "",
-      dataNascimento: "",
-      genero: "",
-      numeroIdentificacao: "",
-      tipoUsuario: "",
-      statusConta: "Ativo"
-    });
+    fetchUsuarios(); // Recarrega a lista de usuários
   };
 
   return (
@@ -65,7 +59,7 @@ export default function UsuariosManagementPage() {
 
         {/* Barra de ações */}
         <div className="flex items-center justify-between mb-6">
-          <button 
+          <button
             onClick={() => setShowModal(true)}
             className="flex items-center gap-2 px-5 py-2.5 bg-white border-2 border-[#44B16F] text-[#44B16F] rounded-lg font-medium hover:bg-[#44B16F]/5 transition-colors"
           >
@@ -131,7 +125,34 @@ export default function UsuariosManagementPage() {
               </tr>
             </thead>
             <tbody>
-              {usuarios.map((usuario) => (
+              {loading ? (
+                <tr>
+                  <td colSpan="6" className="px-6 py-12 text-center">
+                    <div className="flex items-center justify-center gap-3">
+                      <div className="w-6 h-6 border-2 border-[#44B16F] border-t-transparent rounded-full animate-spin"></div>
+                      <span className="text-gray-500">Carregando usuários...</span>
+                    </div>
+                  </td>
+                </tr>
+              ) : error ? (
+                <tr>
+                  <td colSpan="6" className="px-6 py-12 text-center">
+                    <div className="text-red-500">{error}</div>
+                    <button
+                      onClick={fetchUsuarios}
+                      className="mt-3 px-4 py-2 bg-[#44B16F] text-white rounded-lg hover:bg-[#3a9d5f] transition-colors"
+                    >
+                      Tentar novamente
+                    </button>
+                  </td>
+                </tr>
+              ) : usuarios.length === 0 ? (
+                <tr>
+                  <td colSpan="6" className="px-6 py-12 text-center text-gray-500">
+                    Nenhum usuário encontrado
+                  </td>
+                </tr>
+              ) : usuarios.map((usuario) => (
                 <tr key={usuario.id} className="border-b border-gray-100 hover:bg-gray-50 transition-colors">
                   <td className="px-6 py-4 text-sm text-gray-900">{usuario.id}</td>
                   <td className="px-6 py-4 text-sm text-gray-900 font-medium">{usuario.nome}</td>
@@ -189,7 +210,7 @@ export default function UsuariosManagementPage() {
                 <option>50</option>
               </select>
               <span className="text-sm text-gray-600">/Páginas</span>
-              
+
               <button className="p-2 hover:bg-gray-100 rounded-lg transition-colors">
                 <ChevronRight size={20} className="text-gray-600" />
               </button>
@@ -198,155 +219,11 @@ export default function UsuariosManagementPage() {
         </div>
 
         {/* Modal de Adicionar Usuário */}
-        {showModal && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-            {/* Backdrop com blur */}
-            <div 
-              className="absolute inset-0 bg-black/30 backdrop-blur-sm"
-              onClick={handleCancel}
-            ></div>
-
-            {/* Modal */}
-            <div className="relative bg-white rounded-3xl shadow-2xl w-full max-w-3xl max-h-[90vh] overflow-y-auto">
-              {/* Header */}
-              <div className="sticky top-0 bg-white border-b border-gray-200 px-8 py-6 rounded-t-3xl">
-                <button 
-                  onClick={handleCancel}
-                  className="absolute left-8 top-6 flex items-center gap-2 text-gray-700 hover:text-gray-900 transition-colors"
-                >
-                  <span className="text-lg">←</span>
-                  <span className="font-medium">Voltar</span>
-                </button>
-                
-                <div className="text-center">
-                  <h2 className="text-2xl font-bold text-gray-900">Adicionar um novo usuário</h2>
-                  <p className="text-gray-500 mt-1">crie o perfil do novo usuário</p>
-                </div>
-              </div>
-
-              {/* Form */}
-              <div className="px-8 py-8">
-                <div className="grid grid-cols-2 gap-6">
-                  {/* Nome completo */}
-                  <div className="col-span-1">
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Nome completo
-                    </label>
-                    <input
-                      type="text"
-                      name="nome"
-                      value={formData.nome}
-                      onChange={handleInputChange}
-                      placeholder="Ex. Lavadeira de roupas"
-                      className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#44B16F] focus:border-transparent"
-                    />
-                  </div>
-
-                  {/* Data de nascimento */}
-                  <div className="col-span-1">
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Data de nascimento
-                    </label>
-                    <div className="relative">
-                      <input
-                        type="date"
-                        name="dataNascimento"
-                        value={formData.dataNascimento}
-                        onChange={handleInputChange}
-                        className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#44B16F] focus:border-transparent"
-                      />
-                    </div>
-                  </div>
-
-                  {/* Gênero */}
-                  <div className="col-span-1">
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Gênero
-                    </label>
-                    <select
-                      name="genero"
-                      value={formData.genero}
-                      onChange={handleInputChange}
-                      className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#44B16F] focus:border-transparent appearance-none bg-white"
-                    >
-                      <option value="">Selecione um gênero</option>
-                      <option value="masculino">Masculino</option>
-                      <option value="feminino">Feminino</option>
-                      <option value="outro">Outro</option>
-                    </select>
-                  </div>
-
-                  {/* Tipo de usuário */}
-                  <div className="col-span-1">
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Tipo de usuário
-                    </label>
-                    <select
-                      name="tipoUsuario"
-                      value={formData.tipoUsuario}
-                      onChange={handleInputChange}
-                      className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#44B16F] focus:border-transparent appearance-none bg-white"
-                    >
-                      <option value="">Selecione um tipo</option>
-                      <option value="admin">Administrador</option>
-                      <option value="user">Usuário</option>
-                      <option value="moderator">Moderador</option>
-                    </select>
-                  </div>
-
-                  {/* Número de identificação */}
-                  <div className="col-span-1">
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Número de identificação (BI/CC)
-                    </label>
-                    <input
-                      type="text"
-                      name="numeroIdentificacao"
-                      value={formData.numeroIdentificacao}
-                      onChange={handleInputChange}
-                      placeholder="234365PT46667"
-                      className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#44B16F] focus:border-transparent"
-                    />
-                  </div>
-
-                  {/* Status da conta */}
-                  <div className="col-span-1">
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Status da conta
-                    </label>
-                    <select
-                      name="statusConta"
-                      value={formData.statusConta}
-                      onChange={handleInputChange}
-                      className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#44B16F] focus:border-transparent appearance-none bg-white"
-                    >
-                      <option value="Ativo">Ativo</option>
-                      <option value="Inativo">Inativo</option>
-                    </select>
-                  </div>
-                </div>
-
-                {/* Botões */}
-                <div className="flex items-center justify-center gap-4 mt-8">
-                  <button
-                    type="button"
-                    onClick={handleCancel}
-                    className="px-8 py-3 border border-gray-300 text-gray-700 rounded-lg font-medium hover:bg-gray-50 transition-colors"
-                  >
-                    Cancelar
-                  </button>
-                  <button
-                    type="button"
-                    onClick={handleSubmit}
-                    className="px-8 py-3 bg-[#44B16F] text-white rounded-lg font-medium hover:bg-[#3a9d5f] transition-colors"
-                  >
-                    Salvar
-                  </button>
-                </div>
-              </div>
-            </div>
-          </div>
-        )}
+        <ModalNovoUsuario
+          isOpen={showModal}
+          onClose={() => setShowModal(false)}
+          onSuccess={handleUserCreated}
+        />
       </div>
     </main>
   );

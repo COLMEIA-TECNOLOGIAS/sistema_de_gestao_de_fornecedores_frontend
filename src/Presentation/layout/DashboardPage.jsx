@@ -1,4 +1,9 @@
+import { useAuth } from "../../context/AuthContext";
+
 export default function DashboardPage() {
+    const { user } = useAuth();
+    const userName = user?.nome || user?.name || "Usuário";
+
     const fornecedores = [
         {
             id: 1,
@@ -56,7 +61,7 @@ export default function DashboardPage() {
             <div className="bg-white rounded-2xl p-8 shadow-sm flex items-center justify-between">
                 <div>
                     <h1 className="text-4xl font-bold text-gray-900 mb-2">
-                        Olá Antônio,
+                        Olá {userName},
                     </h1>
                     <h2 className="text-2xl font-semibold text-gray-900 mb-2">
                         Bem vindo de volta!
