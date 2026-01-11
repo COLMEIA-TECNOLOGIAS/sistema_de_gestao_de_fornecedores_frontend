@@ -1,8 +1,11 @@
 import { useAuth } from "../../context/AuthContext";
+import { useState } from "react";
+import DashboardTableSkeleton from "../Components/DashboardTableSkeleton";
 
 export default function DashboardPage() {
     const { user } = useAuth();
     const userName = user?.nome || user?.name || "Usuário";
+    const [isLoading, setIsLoading] = useState(false); // Para demonstração
 
     const fornecedores = [
         {
@@ -94,46 +97,50 @@ export default function DashboardPage() {
                             </tr>
                         </thead>
                         <tbody>
-                            {fornecedores.map((fornecedor) => (
-                                <tr key={fornecedor.id} className="border-b border-gray-100 hover:bg-gray-50 transition-colors">
-                                    <td className="py-4 px-4">
-                                        <span className="font-semibold text-gray-900">{fornecedor.empresa}</span>
-                                    </td>
-                                    <td className="py-4 px-4">
-                                        <div className="flex -space-x-2">
-                                            {fornecedor.usuarios.map((user, idx) => (
-                                                <img
-                                                    key={idx}
-                                                    src={user.avatar}
-                                                    alt="User"
-                                                    className="w-8 h-8 rounded-full border-2 border-white"
-                                                />
-                                            ))}
-                                        </div>
-                                    </td>
-                                    <td className="py-4 px-4">
-                                        <span className="text-gray-700">{fornecedor.produtos}</span>
-                                    </td>
-                                    <td className="py-4 px-4">
-                                        <div className="flex items-center gap-3">
-                                            <div className="flex-1 max-w-[200px]">
-                                                <div className="h-2 bg-gray-200 rounded-full overflow-hidden">
-                                                    <div
-                                                        className="h-full bg-[#44B16F] rounded-full transition-all"
-                                                        style={{ width: fornecedor.avaliacao }}
-                                                    ></div>
-                                                </div>
+                            {isLoading ? (
+                                <DashboardTableSkeleton rows={4} />
+                            ) : (
+                                fornecedores.map((fornecedor) => (
+                                    <tr key={fornecedor.id} className="border-b border-gray-100 hover:bg-gray-50 transition-colors">
+                                        <td className="py-4 px-4">
+                                            <span className="font-semibold text-gray-900">{fornecedor.empresa}</span>
+                                        </td>
+                                        <td className="py-4 px-4">
+                                            <div className="flex -space-x-2">
+                                                {fornecedor.usuarios.map((user, idx) => (
+                                                    <img
+                                                        key={idx}
+                                                        src={user.avatar}
+                                                        alt="User"
+                                                        className="w-8 h-8 rounded-full border-2 border-white"
+                                                    />
+                                                ))}
                                             </div>
-                                            <span className="text-sm font-medium text-[#44B16F] min-w-[40px]">{fornecedor.avaliacao}</span>
-                                        </div>
-                                    </td>
-                                    <td className="py-4 px-4">
-                                        <button className="px-4 py-2 bg-[#44B16F] text-white text-sm font-medium rounded-lg hover:bg-[#3a9d5f] transition-colors">
-                                            {fornecedor.atividades}
-                                        </button>
-                                    </td>
-                                </tr>
-                            ))}
+                                        </td>
+                                        <td className="py-4 px-4">
+                                            <span className="text-gray-700">{fornecedor.produtos}</span>
+                                        </td>
+                                        <td className="py-4 px-4">
+                                            <div className="flex items-center gap-3">
+                                                <div className="flex-1 max-w-[200px]">
+                                                    <div className="h-2 bg-gray-200 rounded-full overflow-hidden">
+                                                        <div
+                                                            className="h-full bg-[#44B16F] rounded-full transition-all"
+                                                            style={{ width: fornecedor.avaliacao }}
+                                                        ></div>
+                                                    </div>
+                                                </div>
+                                                <span className="text-sm font-medium text-[#44B16F] min-w-[40px]">{fornecedor.avaliacao}</span>
+                                            </div>
+                                        </td>
+                                        <td className="py-4 px-4">
+                                            <button className="px-4 py-2 bg-[#44B16F] text-white text-sm font-medium rounded-lg hover:bg-[#3a9d5f] transition-colors">
+                                                {fornecedor.atividades}
+                                            </button>
+                                        </td>
+                                    </tr>
+                                ))
+                            )}
                         </tbody>
                     </table>
                 </div>

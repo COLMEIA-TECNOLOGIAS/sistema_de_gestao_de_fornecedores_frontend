@@ -1,10 +1,12 @@
 import { useState } from "react";
 import { Search, SlidersHorizontal, MoreVertical } from "lucide-react";
 import ModalCadastroFornecedor from "../Components/ModalCadastroFornecedor";
+import FornecedorTableSkeleton from "../Components/FornecedorTableSkeleton";
 
 export default function FornecedoresPage() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [openMenuId, setOpenMenuId] = useState(null);
+  const [isLoading, setIsLoading] = useState(false); // Para demonstração
 
   const fornecedores = [
     {
@@ -138,80 +140,84 @@ export default function FornecedoresPage() {
               </tr>
             </thead>
             <tbody>
-              {fornecedores.map((f) => (
-                <tr key={f.id} className="border-b border-gray-100 hover:bg-gray-50 transition-colors">
-                  <td className="px-6 py-4">
-                    <input type="checkbox" className="rounded border-gray-300" />
-                  </td>
-                  <td className="px-6 py-4">
-                    <img src={f.logo} alt={f.nome} className="w-12 h-12 rounded-lg" />
-                  </td>
-                  <td className="px-6 py-4">
-                    <span className="font-semibold text-gray-900">{f.nome}</span>
-                  </td>
-                  <td className="px-6 py-4 text-gray-700">{f.dataRegistro}</td>
-                  <td className="px-6 py-4 text-gray-700">{f.provincia}</td>
-                  <td className="px-6 py-4 text-gray-700">{f.servicos}</td>
-                  <td className="px-6 py-4">
-                    <div className="flex items-center gap-3">
-                      <div className="flex-1 max-w-[120px]">
-                        <div className="h-2 bg-gray-200 rounded-full overflow-hidden">
-                          <div
-                            className="h-full bg-[#44B16F] rounded-full"
-                            style={{ width: f.avaliacao }}
-                          ></div>
+              {isLoading ? (
+                <FornecedorTableSkeleton rows={5} />
+              ) : (
+                fornecedores.map((f) => (
+                  <tr key={f.id} className="border-b border-gray-100 hover:bg-gray-50 transition-colors">
+                    <td className="px-6 py-4">
+                      <input type="checkbox" className="rounded border-gray-300" />
+                    </td>
+                    <td className="px-6 py-4">
+                      <img src={f.logo} alt={f.nome} className="w-12 h-12 rounded-lg" />
+                    </td>
+                    <td className="px-6 py-4">
+                      <span className="font-semibold text-gray-900">{f.nome}</span>
+                    </td>
+                    <td className="px-6 py-4 text-gray-700">{f.dataRegistro}</td>
+                    <td className="px-6 py-4 text-gray-700">{f.provincia}</td>
+                    <td className="px-6 py-4 text-gray-700">{f.servicos}</td>
+                    <td className="px-6 py-4">
+                      <div className="flex items-center gap-3">
+                        <div className="flex-1 max-w-[120px]">
+                          <div className="h-2 bg-gray-200 rounded-full overflow-hidden">
+                            <div
+                              className="h-full bg-[#44B16F] rounded-full"
+                              style={{ width: f.avaliacao }}
+                            ></div>
+                          </div>
                         </div>
+                        <span className="text-sm font-medium text-[#44B16F] min-w-[40px]">{f.avaliacao}</span>
                       </div>
-                      <span className="text-sm font-medium text-[#44B16F] min-w-[40px]">{f.avaliacao}</span>
-                    </div>
-                  </td>
-                  <td className="px-6 py-4">
-                    <span className="px-3 py-1 bg-green-100 text-green-700 rounded-full text-xs font-medium">
-                      {f.categoria}
-                    </span>
-                  </td>
-                  <td className="px-6 py-4">
-                    <div className="relative">
-                      <button
-                        onClick={() => setOpenMenuId(openMenuId === f.id ? null : f.id)}
-                        className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
-                      >
-                        <MoreVertical size={20} className="text-gray-600" />
-                      </button>
+                    </td>
+                    <td className="px-6 py-4">
+                      <span className="px-3 py-1 bg-green-100 text-green-700 rounded-full text-xs font-medium">
+                        {f.categoria}
+                      </span>
+                    </td>
+                    <td className="px-6 py-4">
+                      <div className="relative">
+                        <button
+                          onClick={() => setOpenMenuId(openMenuId === f.id ? null : f.id)}
+                          className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+                        >
+                          <MoreVertical size={20} className="text-gray-600" />
+                        </button>
 
-                      {openMenuId === f.id && (
-                        <div className="absolute right-0 mt-2 w-48 bg-white rounded-lg shadow-lg border border-gray-200 py-2 z-10">
-                          <button className="w-full px-4 py-2 text-left hover:bg-gray-50 text-sm flex items-center gap-2">
-                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
-                            </svg>
-                            Mais detalhes
-                          </button>
-                          <button className="w-full px-4 py-2 text-left hover:bg-gray-50 text-sm flex items-center gap-2">
-                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
-                            </svg>
-                            Editar
-                          </button>
-                          <button className="w-full px-4 py-2 text-left hover:bg-gray-50 text-sm flex items-center gap-2">
-                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                            </svg>
-                            Pedir Cotação
-                          </button>
-                          <button className="w-full px-4 py-2 text-left hover:bg-gray-50 text-sm flex items-center gap-2 text-red-600">
-                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                            </svg>
-                            Remover
-                          </button>
-                        </div>
-                      )}
-                    </div>
-                  </td>
-                </tr>
-              ))}
+                        {openMenuId === f.id && (
+                          <div className="absolute right-0 mt-2 w-48 bg-white rounded-lg shadow-lg border border-gray-200 py-2 z-10">
+                            <button className="w-full px-4 py-2 text-left hover:bg-gray-50 text-sm flex items-center gap-2">
+                              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                              </svg>
+                              Mais detalhes
+                            </button>
+                            <button className="w-full px-4 py-2 text-left hover:bg-gray-50 text-sm flex items-center gap-2">
+                              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                              </svg>
+                              Editar
+                            </button>
+                            <button className="w-full px-4 py-2 text-left hover:bg-gray-50 text-sm flex items-center gap-2">
+                              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                              </svg>
+                              Pedir Cotação
+                            </button>
+                            <button className="w-full px-4 py-2 text-left hover:bg-gray-50 text-sm flex items-center gap-2 text-red-600">
+                              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                              </svg>
+                              Remover
+                            </button>
+                          </div>
+                        )}
+                      </div>
+                    </td>
+                  </tr>
+                ))
+              )}
             </tbody>
           </table>
         </div>

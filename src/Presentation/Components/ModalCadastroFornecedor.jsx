@@ -1,9 +1,16 @@
 import { useState } from "react";
 import { X, UserPlus } from "lucide-react";
+import { useNavigate } from "react-router-dom";
 import ModalLinkExterno from "./ModalLinkExterno";
 
 export default function ModalCadastroFornecedor({ isOpen, onClose }) {
     const [isLinkExternoOpen, setIsLinkExternoOpen] = useState(false);
+    const navigate = useNavigate();
+
+    const handleCadastroDireto = () => {
+        onClose(); // Fecha o modal
+        navigate('/AddFornecedorPage'); // Navega para a página de adicionar fornecedor
+    };
 
     if (!isOpen) return null;
 
@@ -51,7 +58,10 @@ export default function ModalCadastroFornecedor({ isOpen, onClose }) {
 
                         {/* Buttons */}
                         <div className="flex gap-4 justify-center">
-                            <button className="px-8 py-3 border-2 border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors font-medium">
+                            <button
+                                onClick={handleCadastroDireto}
+                                className="px-8 py-3 border-2 border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors font-medium"
+                            >
                                 Cadastro Directo
                             </button>
                             <button

@@ -2,6 +2,7 @@ import { Plus, Search, Eye, Edit2, Trash2, ChevronLeft, ChevronRight, X, Calenda
 import { useState, useEffect } from "react";
 import api from "../../services/api";
 import ModalNovoUsuario from "../Components/ModalNovoUsuario";
+import UsuarioTableSkeleton from "../Components/UsuarioTableSkeleton";
 
 export default function UsuariosManagementPage() {
   const [searchQuery, setSearchQuery] = useState("");
@@ -126,14 +127,7 @@ export default function UsuariosManagementPage() {
             </thead>
             <tbody>
               {loading ? (
-                <tr>
-                  <td colSpan="6" className="px-6 py-12 text-center">
-                    <div className="flex items-center justify-center gap-3">
-                      <div className="w-6 h-6 border-2 border-[#44B16F] border-t-transparent rounded-full animate-spin"></div>
-                      <span className="text-gray-500">Carregando usuários...</span>
-                    </div>
-                  </td>
-                </tr>
+                <UsuarioTableSkeleton rows={5} />
               ) : error ? (
                 <tr>
                   <td colSpan="6" className="px-6 py-12 text-center">
