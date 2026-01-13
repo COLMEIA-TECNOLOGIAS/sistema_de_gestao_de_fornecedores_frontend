@@ -27,14 +27,14 @@ export default function UsuarioTableSkeleton({ rows = 5 }) {
                         <div className="h-4 w-48 bg-gray-200 rounded animate-pulse"></div>
                     </td>
 
-                    {/* Data de criação */}
+                    {/* Função */}
                     <td className="px-6 py-4">
-                        <div className="h-4 w-28 bg-gray-200 rounded animate-pulse"></div>
+                        <div className="h-4 w-32 bg-gray-200 rounded animate-pulse"></div>
                     </td>
 
                     {/* Ações */}
                     <td className="px-6 py-4">
-                        <div className="flex items-center gap-2">
+                        <div className="flex items-center justify-center gap-2">
                             <div className="w-9 h-9 bg-gray-200 rounded-lg animate-pulse"></div>
                             <div className="w-9 h-9 bg-gray-200 rounded-lg animate-pulse"></div>
                             <div className="w-9 h-9 bg-gray-200 rounded-lg animate-pulse"></div>
