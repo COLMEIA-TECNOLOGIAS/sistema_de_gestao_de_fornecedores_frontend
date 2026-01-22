@@ -21,6 +21,7 @@ export default function DashboardLayout() {
       fornecedores: PERMISSIONS.FORNECEDORES,
       usuarios: PERMISSIONS.USUARIOS,
       relatorios: PERMISSIONS.RELATORIOS,
+      aquisicoes: PERMISSIONS.AQUISICOES,
     };
 
     const requiredPermission = permissionMap[activeItem];

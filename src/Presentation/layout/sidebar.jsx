@@ -28,6 +28,12 @@ function Sidebar({ activeItem, onItemClick }) {
       adminOnly: true // Apenas admin pode ver
     },
     {
+      id: "aquisicoes",
+      label: "Aquisições",
+      icon: ShoppingCart,
+      permission: PERMISSIONS.AQUISICOES
+    },
+    {
       id: "relatorios",
       label: "Relatórios",
       icon: BarChart3,
