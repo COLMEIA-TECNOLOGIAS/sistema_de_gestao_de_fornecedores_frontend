@@ -46,14 +46,14 @@ function AppRoutes() {
 
   return (
     <Routes>
-      {/* Landing Page como página inicial */}
-      <Route path="/" element={<LandingPage />} />
-      <Route path="/landing" element={<LandingPage />} />
-      <Route path="/seja-fornecedor" element={<LandingPage />} />
-
-      {/* Autenticação */}
+      {/* Login como página inicial */}
+      <Route path="/" element={<LoginPage />} />
       <Route path="/login" element={<LoginPage />} />
       <Route path="/success-reset" element={<SuccessPasswordReset />} />
+
+      {/* Landing Page */}
+      <Route path="/landingpage" element={<LandingPage />} />
+      <Route path="/seja-fornecedor" element={<LandingPage />} />
 
       {/* Dashboard e páginas internas - Protected */}
       <Route path="/home" element={<ProtectedRoute><Home /></ProtectedRoute>} />

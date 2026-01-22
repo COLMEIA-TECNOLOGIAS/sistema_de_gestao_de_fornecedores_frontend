@@ -1,8 +1,10 @@
-import { Plus, Search, Eye, Edit2, Trash2, ChevronLeft, ChevronRight, X, Calendar } from "lucide-react";
+import { Plus, Search, Eye, Edit2, Trash2, ChevronLeft, ChevronRight, X, Calendar, Shield } from "lucide-react";
 import { useState, useEffect } from "react";
 import api from "../../services/api";
 import ModalNovoUsuario from "../Components/ModalNovoUsuario";
 import UsuarioTableSkeleton from "../Components/UsuarioTableSkeleton";
+import { useAuth } from "../../context/AuthContext";
+import { getRoleName } from "../../utils/permissions";
 
 export default function UsuariosManagementPage() {
   const [searchQuery, setSearchQuery] = useState("");
@@ -10,6 +12,7 @@ export default function UsuariosManagementPage() {
   const [usuarios, setUsuarios] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const { canDeleteRecords, isAdmin } = useAuth();
 
   useEffect(() => {
     fetchUsuarios();
@@ -27,6 +30,8 @@ export default function UsuariosManagementPage() {
         status: user.status || (user.ativo ? "Activo" : "Inactivo"),
         statusColor: user.status === "Activo" || user.ativo ? "green" : "red",
         email: user.email || "",
+        role: user.role || "user",
+        roleName: getRoleName(user.role || "user"),
         data: user.dataCriacao || user.createdAt || user.created_at || ""
       }));
       setUsuarios(usuariosFormatados);
@@ -115,6 +120,15 @@ export default function UsuariosManagementPage() {
                 </th>
                 <th className="px-6 py-4 text-left text-sm font-semibold text-gray-700">
                   <div className="flex items-center gap-2">
+                    Função
+                    <div className="flex flex-col gap-0.5">
+                      <div className="w-0 h-0 border-l-4 border-l-transparent border-r-4 border-r-transparent border-b-4 border-b-gray-400"></div>
+                      <div className="w-0 h-0 border-l-4 border-l-transparent border-r-4 border-r-transparent border-t-4 border-t-gray-300"></div>
+                    </div>
+                  </div>
+                </th>
+                <th className="px-6 py-4 text-left text-sm font-semibold text-gray-700">
+                  <div className="flex items-center gap-2">
                     Data de criação
                     <div className="flex flex-col gap-0.5">
                       <div className="w-0 h-0 border-l-4 border-l-transparent border-r-4 border-r-transparent border-b-4 border-b-gray-400"></div>
@@ -130,7 +144,7 @@ export default function UsuariosManagementPage() {
                 <UsuarioTableSkeleton rows={5} />
               ) : error ? (
                 <tr>
-                  <td colSpan="6" className="px-6 py-12 text-center">
+                  <td colSpan="7" className="px-6 py-12 text-center">
                     <div className="text-red-500">{error}</div>
                     <button
                       onClick={fetchUsuarios}
@@ -142,7 +156,7 @@ export default function UsuariosManagementPage() {
                 </tr>
               ) : usuarios.length === 0 ? (
                 <tr>
-                  <td colSpan="6" className="px-6 py-12 text-center text-gray-500">
+                  <td colSpan="7" className="px-6 py-12 text-center text-gray-500">
                     Nenhum usuário encontrado
                   </td>
                 </tr>
@@ -157,18 +171,31 @@ export default function UsuariosManagementPage() {
                     </div>
                   </td>
                   <td className="px-6 py-4 text-sm text-gray-700">{usuario.email}</td>
+                  <td className="px-6 py-4">
+                    <div className="flex items-center gap-2">
+                      <Shield size={14} className={usuario.role === 'admin' ? 'text-amber-500' : 'text-blue-500'} />
+                      <span className={`text-sm px-2 py-1 rounded-full ${usuario.role === 'admin'
+                          ? 'bg-amber-100 text-amber-700'
+                          : 'bg-blue-100 text-blue-700'
+                        }`}>
+                        {usuario.roleName}
+                      </span>
+                    </div>
+                  </td>
                   <td className="px-6 py-4 text-sm text-gray-700">{usuario.data}</td>
                   <td className="px-6 py-4">
                     <div className="flex items-center gap-2">
-                      <button className="p-2 hover:bg-gray-100 rounded-lg transition-colors">
+                      <button className="p-2 hover:bg-gray-100 rounded-lg transition-colors" title="Ver detalhes">
                         <Eye size={18} className="text-gray-600" />
                       </button>
-                      <button className="p-2 hover:bg-gray-100 rounded-lg transition-colors">
+                      <button className="p-2 hover:bg-gray-100 rounded-lg transition-colors" title="Editar">
                         <Edit2 size={18} className="text-gray-600" />
                       </button>
-                      <button className="p-2 hover:bg-gray-100 rounded-lg transition-colors">
-                        <Trash2 size={18} className="text-gray-600" />
-                      </button>
+                      {canDeleteRecords && (
+                        <button className="p-2 hover:bg-gray-100 rounded-lg transition-colors" title="Excluir">
+                          <Trash2 size={18} className="text-red-500" />
+                        </button>
+                      )}
                     </div>
                   </td>
                 </tr>

@@ -74,7 +74,11 @@ export const suppliersAPI = {
         return response.data;
     },
     create: async (supplierData) => {
-        const response = await api.post('/suppliers', supplierData);
+        const response = await api.post('/suppliers', supplierData, {
+            headers: {
+                'Content-Type': 'multipart/form-data',
+            },
+        });
         return response.data;
     },
     update: async (id, supplierData) => {
@@ -83,6 +87,96 @@ export const suppliersAPI = {
     },
     delete: async (id) => {
         const response = await api.delete(`/suppliers/${id}`);
+        return response.data;
+    },
+};
+
+// Quotation Requests API
+export const quotationRequestsAPI = {
+    getAll: async () => {
+        const response = await api.get('/quotation-requests');
+        return response.data;
+    },
+    getById: async (id) => {
+        const response = await api.get(`/quotation-requests/${id}`);
+        return response.data;
+    },
+    create: async (quotationData) => {
+        const response = await api.post('/quotation-requests', quotationData);
+        return response.data;
+    },
+    update: async (id, quotationData) => {
+        const response = await api.put(`/quotation-requests/${id}`, quotationData);
+        return response.data;
+    },
+    delete: async (id) => {
+        const response = await api.delete(`/quotation-requests/${id}`);
+        return response.data;
+    },
+    // Enviar convites aos fornecedores (só funciona para status 'draft')
+    send: async (id) => {
+        const response = await api.post(`/quotation-requests/${id}/send`);
+        return response.data;
+    },
+    // Cancelar pedido de cotação
+    cancel: async (id) => {
+        const response = await api.post(`/quotation-requests/${id}/cancel`);
+        return response.data;
+    },
+};
+
+// Quotation Responses API
+export const quotationResponsesAPI = {
+    // Listar todas as respostas de cotação
+    getAll: async () => {
+        const response = await api.get('/quotation-responses');
+        return response.data;
+    },
+    // Obter resposta por ID
+    getById: async (id) => {
+        const response = await api.get(`/quotation-responses/${id}`);
+        return response.data;
+    },
+    // Aprovar proposta
+    approve: async (id, notes) => {
+        const response = await api.post(`/quotation-responses/${id}/approve`, { notes });
+        return response.data;
+    },
+    // Rejeitar proposta
+    reject: async (id, notes) => {
+        const response = await api.post(`/quotation-responses/${id}/reject`, { notes });
+        return response.data;
+    },
+    // Solicitar revisão
+    requestRevision: async (id, reason, message) => {
+        const response = await api.post(`/quotation-responses/${id}/request-revision`, {
+            reason,
+            message
+        });
+        return response.data;
+    },
+    // Gerar aquisição
+    createAcquisition: async (id, expected_delivery_date, justification) => {
+        const response = await api.post(`/quotation-responses/${id}/create-acquisition`, {
+            expected_delivery_date,
+            justification
+        });
+        return response.data;
+    },
+};
+
+// Categories API
+export const categoriesAPI = {
+    getAll: async () => {
+        const response = await api.get('/categories');
+        return response.data;
+    },
+};
+
+// Dashboard API
+export const dashboardAPI = {
+    getData: async () => {
+        const response = await api.get('/dashboard');
         return response.data;
     },
 };

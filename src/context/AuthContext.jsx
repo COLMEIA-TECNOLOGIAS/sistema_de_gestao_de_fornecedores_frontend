@@ -1,5 +1,15 @@
-import { createContext, useContext, useState, useEffect } from 'react';
+import { createContext, useContext, useState, useEffect, useCallback, useMemo } from 'react';
 import { authAPI } from '../services/api';
+import {
+    hasPermission as checkPermission,
+    isAdmin as checkIsAdmin,
+    canManageUsers as checkCanManageUsers,
+    canDeleteRecords as checkCanDeleteRecords,
+    canApproveQuotations as checkCanApproveQuotations,
+    canGenerateAcquisitions as checkCanGenerateAcquisitions,
+    getRoleName,
+    getAvailableMenuItems
+} from '../utils/permissions';
 
 const AuthContext = createContext(null);
 
@@ -50,6 +60,54 @@ export function AuthProvider({ children }) {
         }
     };
 
+    // Função para verificar permissão do usuário atual
+    const hasPermission = useCallback((permission) => {
+        if (!user?.role) return false;
+        return checkPermission(user.role, permission);
+    }, [user?.role]);
+
+    // Verifica se o usuário é admin
+    const isAdmin = useMemo(() => {
+        if (!user?.role) return false;
+        return checkIsAdmin(user.role);
+    }, [user?.role]);
+
+    // Verifica se pode gerenciar usuários
+    const canManageUsers = useMemo(() => {
+        if (!user?.role) return false;
+        return checkCanManageUsers(user.role);
+    }, [user?.role]);
+
+    // Verifica se pode deletar registros
+    const canDeleteRecords = useMemo(() => {
+        if (!user?.role) return false;
+        return checkCanDeleteRecords(user.role);
+    }, [user?.role]);
+
+    // Verifica se pode aprovar cotações
+    const canApproveQuotations = useMemo(() => {
+        if (!user?.role) return false;
+        return checkCanApproveQuotations(user.role);
+    }, [user?.role]);
+
+    // Verifica se pode gerar aquisições
+    const canGenerateAcquisitions = useMemo(() => {
+        if (!user?.role) return false;
+        return checkCanGenerateAcquisitions(user.role);
+    }, [user?.role]);
+
+    // Obtém o nome do role
+    const userRoleName = useMemo(() => {
+        if (!user?.role) return 'Usuário';
+        return getRoleName(user.role);
+    }, [user?.role]);
+
+    // Obtém os items de menu disponíveis
+    const availableMenuItems = useMemo(() => {
+        if (!user?.role) return [];
+        return getAvailableMenuItems(user.role);
+    }, [user?.role]);
+
     const value = {
         user,
         token,
@@ -57,6 +115,15 @@ export function AuthProvider({ children }) {
         isLoading,
         login,
         logout,
+        // Funções de permissão
+        hasPermission,
+        isAdmin,
+        canManageUsers,
+        canDeleteRecords,
+        canApproveQuotations,
+        canGenerateAcquisitions,
+        userRoleName,
+        availableMenuItems,
     };
 
     return (

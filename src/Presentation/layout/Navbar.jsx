@@ -1,8 +1,9 @@
-import { Search, Bell, ChevronDown, User, LogOut } from "lucide-react";
+import { Search, Bell, ChevronDown, User, LogOut, MessageSquare } from "lucide-react";
 import { useState, useRef, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../../context/AuthContext";
 import LogoutConfirmModal from "../Components/LogoutConfirmModal";
+import DatePicker from "../Components/DatePicker";
 
 function Navbar() {
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
@@ -66,7 +67,13 @@ function Navbar() {
 
         {/* User Info with Dropdown */}
         <div className="flex items-center gap-4">
-          <button className="relative p-2 hover:bg-gray-100 rounded-lg">
+          <DatePicker />
+
+          <button className="relative p-2 hover:bg-gray-100 rounded-lg transition-colors">
+            <MessageSquare size={20} className="text-gray-600" />
+          </button>
+
+          <button className="relative p-2 hover:bg-gray-100 rounded-lg transition-colors">
             <Bell size={20} className="text-gray-600" />
             <span className="absolute top-1 right-1 w-2 h-2 bg-blue-500 rounded-full"></span>
           </button>

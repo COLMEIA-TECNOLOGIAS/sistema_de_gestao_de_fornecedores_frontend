@@ -1,39 +1,52 @@
-import { LayoutDashboard, Package, UserCircle, BarChart3, Settings } from "lucide-react";
+import { LayoutDashboard, Package, UserCircle, BarChart3, ShoppingCart, Settings } from "lucide-react";
 import { useAuth } from "../../context/AuthContext";
+import { PERMISSIONS } from "../../utils/permissions";
 
 function Sidebar({ activeItem, onItemClick }) {
-  const { user } = useAuth();
-  const userName = user?.nome || user?.name || "Usuário";
-  const userAvatar = `https://api.dicebear.com/7.x/avataaars/svg?seed=${userName}`;
+  const { hasPermission, isAdmin } = useAuth();
 
-  const menuItems = [
-    { id: "dashboard", label: "Dashboard", icon: LayoutDashboard },
-    { id: "fornecedores", label: "Fornecedores", sublabel: "Cotações", icon: Package },
-    { id: "usuarios", label: "Usuários", icon: UserCircle },
-    { id: "relatorios", label: "Relatórios", icon: BarChart3 },
-    { id: "configuracoes", label: "Configurações", icon: Settings },
+  // Definição de todos os itens de menu com suas permissões
+  const allMenuItems = [
+    {
+      id: "dashboard",
+      label: "Dashboard",
+      icon: LayoutDashboard,
+      permission: PERMISSIONS.DASHBOARD
+    },
+    {
+      id: "fornecedores",
+      label: "Fornecedores",
+      sublabel: "Cotações",
+      icon: Package,
+      permission: PERMISSIONS.FORNECEDORES
+    },
+    {
+      id: "usuarios",
+      label: "Usuários",
+      icon: UserCircle,
+      permission: PERMISSIONS.USUARIOS,
+      adminOnly: true // Apenas admin pode ver
+    },
+    {
+      id: "relatorios",
+      label: "Relatórios",
+      icon: BarChart3,
+      permission: PERMISSIONS.RELATORIOS
+    },
   ];
+
+  // Filtra os itens de menu baseado nas permissões do usuário
+  const menuItems = allMenuItems.filter(item => {
+    // Se o item é apenas para admin, verifica se é admin
+    if (item.adminOnly && !isAdmin) {
+      return false;
+    }
+    // Verifica se tem permissão para acessar
+    return hasPermission(item.permission);
+  });
 
   return (
     <aside className="fixed left-0 top-[65px] w-64 bg-white border-r border-gray-200 h-[calc(100vh-65px)] overflow-y-auto">
-      {/* User Profile Section */}
-      <div className="p-4 border-b border-gray-200">
-        <div className="flex items-center gap-3">
-          <div className="relative">
-            <img
-              src={userAvatar}
-              alt={userName}
-              className="w-12 h-12 rounded-full object-cover"
-            />
-            {/* Green online indicator */}
-            <span className="absolute bottom-0 right-0 w-3.5 h-3.5 bg-green-500 border-2 border-white rounded-full"></span>
-          </div>
-          <div className="flex-1 min-w-0">
-            <p className="text-sm font-semibold text-gray-900 truncate">{userName}</p>
-          </div>
-        </div>
-      </div>
-
       <nav className="p-4 space-y-1">
         {menuItems.map((item) => {
           const Icon = item.icon;

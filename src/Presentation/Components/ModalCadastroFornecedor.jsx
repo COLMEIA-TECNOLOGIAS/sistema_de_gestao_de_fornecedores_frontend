@@ -9,7 +9,7 @@ export default function ModalCadastroFornecedor({ isOpen, onClose }) {
 
     const handleCadastroDireto = () => {
         onClose(); // Fecha o modal
-        navigate('/AddFornecedorPage'); // Navega para a página de adicionar fornecedor
+        navigate('/FornecedorFormStep1');
     };
 
     if (!isOpen) return null;

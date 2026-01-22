@@ -1,62 +1,60 @@
 import { useAuth } from "../../context/AuthContext";
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { dashboardAPI } from "../../services/api";
 import DashboardTableSkeleton from "../Components/DashboardTableSkeleton";
+import { Package, AlertCircle, Users, FileText } from "lucide-react";
 
 export default function DashboardPage() {
     const { user } = useAuth();
     const userName = user?.nome || user?.name || "Usuário";
-    const [isLoading, setIsLoading] = useState(false); // Para demonstração
+    const [isLoading, setIsLoading] = useState(true);
+    const [dashboardData, setDashboardData] = useState(null);
+    const [error, setError] = useState(null);
 
-    const fornecedores = [
-        {
-            id: 1,
-            empresa: "Empresa 01",
-            usuarios: [
-                { avatar: "https://api.dicebear.com/7.x/avataaars/svg?seed=U1" },
-                { avatar: "https://api.dicebear.com/7.x/avataaars/svg?seed=U2" },
-                { avatar: "https://api.dicebear.com/7.x/avataaars/svg?seed=U3" },
-            ],
-            produtos: "34 Itens",
-            avaliacao: "10%",
-            atividades: "Ver atividades"
-        },
-        {
-            id: 2,
-            empresa: "Empresa 02",
-            usuarios: [
-                { avatar: "https://api.dicebear.com/7.x/avataaars/svg?seed=U4" },
-                { avatar: "https://api.dicebear.com/7.x/avataaars/svg?seed=U5" },
-                { avatar: "https://api.dicebear.com/7.x/avataaars/svg?seed=U6" },
-            ],
-            produtos: "24 Itens",
-            avaliacao: "100%",
-            atividades: "Ver atividades"
-        },
-        {
-            id: 3,
-            empresa: "Empresa 03",
-            usuarios: [
-                { avatar: "https://api.dicebear.com/7.x/avataaars/svg?seed=U7" },
-                { avatar: "https://api.dicebear.com/7.x/avataaars/svg?seed=U8" },
-                { avatar: "https://api.dicebear.com/7.x/avataaars/svg?seed=U9" },
-            ],
-            produtos: "10 Itens",
-            avaliacao: "25%",
-            atividades: "Ver atividades"
-        },
-        {
-            id: 4,
-            empresa: "Empresa 04",
-            usuarios: [
-                { avatar: "https://api.dicebear.com/7.x/avataaars/svg?seed=U10" },
-                { avatar: "https://api.dicebear.com/7.x/avataaars/svg?seed=U11" },
-                { avatar: "https://api.dicebear.com/7.x/avataaars/svg?seed=U12" },
-            ],
-            produtos: "4 Itens",
-            avaliacao: "0%",
-            atividades: "Ver atividades"
-        },
-    ];
+    useEffect(() => {
+        fetchDashboardData();
+    }, []);
+
+    const fetchDashboardData = async () => {
+        try {
+            setIsLoading(true);
+            setError(null);
+            const data = await dashboardAPI.getData();
+            setDashboardData(data);
+        } catch (err) {
+            console.error("Erro ao carregar dados do dashboard:", err);
+            setError("Erro ao carregar dados do dashboard");
+        } finally {
+            setIsLoading(false);
+        }
+    };
+
+    const formatDate = (dateString) => {
+        const date = new Date(dateString);
+        return date.toLocaleDateString('pt-PT', {
+            day: '2-digit',
+            month: '2-digit',
+            year: 'numeric',
+            hour: '2-digit',
+            minute: '2-digit'
+        });
+    };
+
+    const getStatusBadge = (status) => {
+        const statusConfig = {
+            draft: { label: 'Rascunho', class: 'bg-gray-100 text-gray-700' },
+            sent: { label: 'Enviada', class: 'bg-blue-100 text-blue-700' },
+            in_progress: { label: 'Em Progresso', class: 'bg-yellow-100 text-yellow-700' },
+            completed: { label: 'Completa', class: 'bg-green-100 text-green-700' },
+            cancelled: { label: 'Cancelada', class: 'bg-red-100 text-red-700' },
+        };
+        const config = statusConfig[status] || statusConfig.draft;
+        return (
+            <span className={`px-3 py-1 rounded-full text-xs font-medium ${config.class}`}>
+                {config.label}
+            </span>
+        );
+    };
 
     return (
         <div className="space-y-8">
@@ -80,66 +78,111 @@ export default function DashboardPage() {
                 </div>
             </div>
 
-            {/* Fornecedores cadastrados */}
+            {/* Statistics Cards */}
+            {isLoading ? (
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                    {[...Array(4)].map((_, i) => (
+                        <div key={i} className="bg-white rounded-xl shadow-sm p-6 animate-pulse">
+                            <div className="h-4 bg-gray-200 rounded w-3/4 mb-4"></div>
+                            <div className="h-8 bg-gray-200 rounded w-1/2"></div>
+                        </div>
+                    ))}
+                </div>
+            ) : error ? (
+                <div className="bg-red-50 border border-red-200 rounded-xl p-4 text-red-700">
+                    {error}
+                </div>
+            ) : dashboardData?.counts ? (
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                    <div className="bg-white rounded-xl shadow-sm p-6 border-l-4 border-blue-500">
+                        <div className="flex items-center justify-between mb-2">
+                            <h3 className="text-sm font-medium text-gray-600">Cotações Ativas</h3>
+                            <Package className="text-blue-500" size={24} />
+                        </div>
+                        <p className="text-3xl font-bold text-gray-900">{dashboardData.counts.active_quotations}</p>
+                    </div>
+
+                    <div className="bg-white rounded-xl shadow-sm p-6 border-l-4 border-yellow-500">
+                        <div className="flex items-center justify-between mb-2">
+                            <h3 className="text-sm font-medium text-gray-600">Revisões Pendentes</h3>
+                            <AlertCircle className="text-yellow-500" size={24} />
+                        </div>
+                        <p className="text-3xl font-bold text-gray-900">{dashboardData.counts.pending_reviews}</p>
+                    </div>
+
+                    <div className="bg-white rounded-xl shadow-sm p-6 border-l-4 border-green-500">
+                        <div className="flex items-center justify-between mb-2">
+                            <h3 className="text-sm font-medium text-gray-600">Fornecedores Ativos</h3>
+                            <Users className="text-green-500" size={24} />
+                        </div>
+                        <p className="text-3xl font-bold text-gray-900">{dashboardData.counts.active_suppliers}</p>
+                    </div>
+
+                    <div className="bg-white rounded-xl shadow-sm p-6 border-l-4 border-purple-500">
+                        <div className="flex items-center justify-between mb-2">
+                            <h3 className="text-sm font-medium text-gray-600">Total de Cotações</h3>
+                            <FileText className="text-purple-500" size={24} />
+                        </div>
+                        <p className="text-3xl font-bold text-gray-900">{dashboardData.counts.total_quotations}</p>
+                    </div>
+                </div>
+            ) : null}
+
+            {/* Recent Quotations */}
             <div className="bg-white rounded-xl shadow-sm p-8">
-                <h2 className="text-2xl font-bold text-gray-900 mb-2">Fornecedores cadastrados</h2>
-                <p className="text-gray-500 mb-6">Listamos os fornecedores cadastrados recentemente</p>
+                <h2 className="text-2xl font-bold text-gray-900 mb-2">Cotações Recentes</h2>
+                <p className="text-gray-500 mb-6">Listamos as cotações criadas recentemente</p>
 
                 <div className="overflow-x-auto">
                     <table className="w-full">
                         <thead>
                             <tr className="border-b border-gray-200">
-                                <th className="text-left py-4 px-4 text-sm font-semibold text-gray-500 uppercase">Empresas</th>
-                                <th className="text-left py-4 px-4 text-sm font-semibold text-gray-500 uppercase">Usuários</th>
-                                <th className="text-left py-4 px-4 text-sm font-semibold text-gray-500 uppercase">Produtos</th>
-                                <th className="text-left py-4 px-4 text-sm font-semibold text-gray-500 uppercase">Avaliação de qualidade</th>
-                                <th className="text-left py-4 px-4 text-sm font-semibold text-gray-500 uppercase">Atividades</th>
+                                <th className="text-left py-4 px-4 text-sm font-semibold text-gray-500 uppercase">Referência</th>
+                                <th className="text-left py-4 px-4 text-sm font-semibold text-gray-500 uppercase">Título</th>
+                                <th className="text-left py-4 px-4 text-sm font-semibold text-gray-500 uppercase">Descrição</th>
+                                <th className="text-left py-4 px-4 text-sm font-semibold text-gray-500 uppercase">Prazo</th>
+                                <th className="text-left py-4 px-4 text-sm font-semibold text-gray-500 uppercase">Status</th>
+                                <th className="text-left py-4 px-4 text-sm font-semibold text-gray-500 uppercase">Criado em</th>
                             </tr>
                         </thead>
                         <tbody>
                             {isLoading ? (
                                 <DashboardTableSkeleton rows={4} />
-                            ) : (
-                                fornecedores.map((fornecedor) => (
-                                    <tr key={fornecedor.id} className="border-b border-gray-100 hover:bg-gray-50 transition-colors">
+                            ) : error ? (
+                                <tr>
+                                    <td colSpan="6" className="py-8 text-center text-gray-500">
+                                        Erro ao carregar cotações
+                                    </td>
+                                </tr>
+                            ) : dashboardData?.recent_quotations?.length > 0 ? (
+                                dashboardData.recent_quotations.map((quotation) => (
+                                    <tr key={quotation.id} className="border-b border-gray-100 hover:bg-gray-50 transition-colors">
                                         <td className="py-4 px-4">
-                                            <span className="font-semibold text-gray-900">{fornecedor.empresa}</span>
+                                            <span className="font-semibold text-gray-900">{quotation.reference_number}</span>
                                         </td>
                                         <td className="py-4 px-4">
-                                            <div className="flex -space-x-2">
-                                                {fornecedor.usuarios.map((user, idx) => (
-                                                    <img
-                                                        key={idx}
-                                                        src={user.avatar}
-                                                        alt="User"
-                                                        className="w-8 h-8 rounded-full border-2 border-white"
-                                                    />
-                                                ))}
-                                            </div>
+                                            <span className="text-gray-900 font-medium">{quotation.title}</span>
                                         </td>
                                         <td className="py-4 px-4">
-                                            <span className="text-gray-700">{fornecedor.produtos}</span>
+                                            <span className="text-gray-600 text-sm">{quotation.description}</span>
                                         </td>
                                         <td className="py-4 px-4">
-                                            <div className="flex items-center gap-3">
-                                                <div className="flex-1 max-w-[200px]">
-                                                    <div className="h-2 bg-gray-200 rounded-full overflow-hidden">
-                                                        <div
-                                                            className="h-full bg-[#44B16F] rounded-full transition-all"
-                                                            style={{ width: fornecedor.avaliacao }}
-                                                        ></div>
-                                                    </div>
-                                                </div>
-                                                <span className="text-sm font-medium text-[#44B16F] min-w-[40px]">{fornecedor.avaliacao}</span>
-                                            </div>
+                                            <span className="text-gray-700 text-sm">{formatDate(quotation.deadline)}</span>
                                         </td>
                                         <td className="py-4 px-4">
-                                            <button className="px-4 py-2 bg-[#44B16F] text-white text-sm font-medium rounded-lg hover:bg-[#3a9d5f] transition-colors">
-                                                {fornecedor.atividades}
-                                            </button>
+                                            {getStatusBadge(quotation.status)}
+                                        </td>
+                                        <td className="py-4 px-4">
+                                            <span className="text-gray-600 text-sm">{formatDate(quotation.created_at)}</span>
                                         </td>
                                     </tr>
                                 ))
+                            ) : (
+                                <tr>
+                                    <td colSpan="6" className="py-8 text-center text-gray-500">
+                                        Nenhuma cotação recente
+                                    </td>
+                                </tr>
                             )}
                         </tbody>
                     </table>
