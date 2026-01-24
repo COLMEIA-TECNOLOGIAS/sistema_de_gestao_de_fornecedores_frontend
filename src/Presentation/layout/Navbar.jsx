@@ -1,23 +1,71 @@
-import { Search, Bell, ChevronDown, User, LogOut, MessageSquare } from "lucide-react";
+import { Search, Bell, ChevronDown, User, LogOut, Trash2, Check, Loader2, X } from "lucide-react";
 import { useState, useRef, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../../context/AuthContext";
 import LogoutConfirmModal from "../Components/LogoutConfirmModal";
 import DatePicker from "../Components/DatePicker";
+import { notificationsAPI } from "../../services/api";
+import ModalDetalhesNotificacao from "../Components/ModalDetalhesNotificacao";
 
 function Navbar({ userName: propUserName, userRole: propUserRole, userAvatar: propUserAvatar, onItemClick }) {
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const [isLogoutModalOpen, setIsLogoutModalOpen] = useState(false);
   const [isLoggingOut, setIsLoggingOut] = useState(false);
+
+  // Notifications state
+  const [isNotificationsOpen, setIsNotificationsOpen] = useState(false);
+  const [notifications, setNotifications] = useState([]);
+  const [unreadCount, setUnreadCount] = useState(0);
+  const [isLoadingNotifications, setIsLoadingNotifications] = useState(false);
+  const [selectedNotification, setSelectedNotification] = useState(null);
+
   const dropdownRef = useRef(null);
+  const notificationsRef = useRef(null);
   const navigate = useNavigate();
   const { user, logout } = useAuth();
 
-  // Close dropdown when clicking outside
+  // Fetch notifications
+  const fetchNotifications = async () => {
+    try {
+      const [countData, listData] = await Promise.all([
+        notificationsAPI.getUnreadCount(),
+        notificationsAPI.getAll()
+      ]);
+
+      // Handle unread count - assuming {count: 5} or just integer
+      setUnreadCount(typeof countData === 'object' ? (countData.count || 0) : countData);
+
+      // Handle notifications list - ensure it's an array
+      let notifArray = [];
+      if (Array.isArray(listData)) {
+        notifArray = listData;
+      } else if (listData && Array.isArray(listData.data)) {
+        notifArray = listData.data;
+      }
+
+      console.log('Notifications fetched:', notifArray);
+      setNotifications(notifArray);
+    } catch (error) {
+      console.error("Failed to fetch notifications:", error);
+      setNotifications([]);
+    }
+  };
+
+  useEffect(() => {
+    fetchNotifications();
+    // Poll every 60 seconds
+    const interval = setInterval(fetchNotifications, 60000);
+    return () => clearInterval(interval);
+  }, []);
+
+  // Close dropdowns when clicking outside
   useEffect(() => {
     function handleClickOutside(event) {
       if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
         setIsDropdownOpen(false);
+      }
+      if (notificationsRef.current && !notificationsRef.current.contains(event.target)) {
+        setIsNotificationsOpen(false);
       }
     }
     document.addEventListener("mousedown", handleClickOutside);
@@ -40,9 +88,96 @@ function Navbar({ userName: propUserName, userRole: propUserRole, userAvatar: pr
     }
   };
 
+  const handleMarkAsRead = async (id) => {
+    try {
+      await notificationsAPI.markAsRead(id);
+      // Optimistic update
+      setNotifications(prev => prev.map(n => n.id === id ? { ...n, read_at: new Date().toISOString() } : n));
+      setUnreadCount(prev => Math.max(0, prev - 1));
+    } catch (error) {
+      console.error("Error marking as read", error);
+    }
+  };
+
+  const handleMarkAllAsRead = async () => {
+    try {
+      setIsLoadingNotifications(true);
+      await notificationsAPI.markAllAsRead();
+      setNotifications(prev => prev.map(n => ({ ...n, read_at: new Date().toISOString() })));
+      setUnreadCount(0);
+    } catch (error) {
+      console.error("Error marking all as read", error);
+    } finally {
+      setIsLoadingNotifications(false);
+    }
+  };
+
+  const handleDeleteNotification = async (id, e) => {
+    e.stopPropagation(); // Prevent triggering other clicks
+    try {
+      await notificationsAPI.delete(id);
+      setNotifications(prev => prev.filter(n => n.id !== id));
+      // Re-fetch count just in case or decrement if it was unread
+      // Ideally check if it was unread before decrementing, but fetching API is safer for sync
+      fetchNotifications();
+    } catch (error) {
+      console.error("Error deleting notification", error);
+    }
+  };
+
+  const toggleNotifications = () => {
+    if (!isNotificationsOpen) {
+      fetchNotifications(); // Refresh on open
+    }
+    setIsNotificationsOpen(!isNotificationsOpen);
+    setIsDropdownOpen(false);
+  };
+
+  const handleNotificationClick = async (notification) => {
+    try {
+      if (!notification.read_at) {
+        handleMarkAsRead(notification.id);
+      }
+
+      // Fetch full details
+      const details = await notificationsAPI.getById(notification.id);
+      setSelectedNotification(details);
+    } catch (e) {
+      console.error("Error fetching details", e);
+      setSelectedNotification(notification);
+    } finally {
+      setIsNotificationsOpen(false);
+    }
+  };
+
   const userName = propUserName || user?.name || "Usuário";
   const userRole = propUserRole || user?.role || "Utilizador";
   const userAvatar = propUserAvatar || `https://api.dicebear.com/7.x/avataaars/svg?seed=${userName}`;
+
+  // Helper to get notification content
+  const getNotificationContent = (notification) => {
+    // Laravel notifications store data in `data` field
+    const sv = notification.data || {};
+
+    // Safely parse date
+    let timeDisplay = 'Data desconhecida';
+    try {
+      if (notification.created_at) {
+        const date = new Date(notification.created_at);
+        if (!isNaN(date.getTime())) {
+          timeDisplay = date.toLocaleString('pt-AO');
+        }
+      }
+    } catch (e) {
+      console.error("Error parsing date", e);
+    }
+
+    return {
+      title: notification.title || sv.title || "Notificação",
+      message: notification.message || sv.message || sv.description || "Nova notificação",
+      timeDisplay
+    };
+  };
 
   return (
     <>
@@ -69,19 +204,92 @@ function Navbar({ userName: propUserName, userRole: propUserRole, userAvatar: pr
         <div className="flex items-center gap-4">
           <DatePicker />
 
-          <button className="relative p-2 hover:bg-gray-100 rounded-lg transition-colors">
-            <MessageSquare size={20} className="text-gray-600" />
-          </button>
+          {/* Notifications */}
+          <div className="relative" ref={notificationsRef}>
+            <button
+              onClick={toggleNotifications}
+              className="relative p-2 hover:bg-gray-100 rounded-lg transition-colors focus:outline-none"
+            >
+              <Bell size={20} className="text-gray-600" />
+              {unreadCount > 0 && (
+                <span className="absolute top-1 right-1 flex h-4 w-4 items-center justify-center rounded-full bg-red-500 text-[10px] font-bold text-white">
+                  {unreadCount > 9 ? '9+' : unreadCount}
+                </span>
+              )}
+            </button>
 
-          <button className="relative p-2 hover:bg-gray-100 rounded-lg transition-colors">
-            <Bell size={20} className="text-gray-600" />
-            <span className="absolute top-1 right-1 w-2 h-2 bg-blue-500 rounded-full"></span>
-          </button>
+            {isNotificationsOpen && (
+              <div className="absolute right-0 mt-2 w-80 sm:w-96 bg-white rounded-xl shadow-xl border border-gray-200 overflow-hidden z-50 animate-fadeIn">
+                <div className="flex items-center justify-between px-4 py-3 border-b border-gray-100 bg-gray-50/50">
+                  <h3 className="font-bold text-gray-900">Notificações</h3>
+                  {unreadCount > 0 && (
+                    <button
+                      onClick={handleMarkAllAsRead}
+                      disabled={isLoadingNotifications}
+                      className="text-xs font-medium text-[#44B16F] hover:text-[#3a9d5f] flex items-center gap-1 transition-colors"
+                    >
+                      {isLoadingNotifications ? <Loader2 size={12} className="animate-spin" /> : <Check size={12} />}
+                      Marcar todas
+                    </button>
+                  )}
+                </div>
+
+                <div className="max-h-[70vh] overflow-y-auto">
+                  {notifications.length === 0 ? (
+                    <div className="p-8 text-center text-gray-500">
+                      <Bell size={32} className="mx-auto mb-3 text-gray-300" />
+                      <p className="text-sm">Nenhuma notificação.</p>
+                    </div>
+                  ) : (
+                    <div className="divide-y divide-gray-100">
+                      {notifications.map((notification) => {
+                        const content = getNotificationContent(notification);
+                        const isRead = !!notification.read_at;
+
+                        return (
+                          <div
+                            key={notification.id}
+                            className={`relative group px-4 py-4 hover:bg-gray-50 transition-colors cursor-pointer ${!isRead ? 'bg-blue-50/30' : ''}`}
+                            onClick={() => handleNotificationClick(notification)}
+                          >
+                            <div className="flex items-start gap-3">
+                              <div className={`mt-1 w-2 h-2 rounded-full flex-shrink-0 ${!isRead ? 'bg-blue-500' : 'bg-transparent'}`} />
+                              <div className="flex-1 min-w-0">
+                                <p className={`text-sm ${!isRead ? 'font-semibold text-gray-900' : 'font-medium text-gray-700'}`}>
+                                  {content.title}
+                                </p>
+                                <p className="text-sm text-gray-600 mt-0.5 line-clamp-2">
+                                  {content.message}
+                                </p>
+                                <p className="text-xs text-gray-400 mt-1.5">
+                                  {content.timeDisplay}
+                                </p>
+                              </div>
+                              <button
+                                onClick={(e) => handleDeleteNotification(notification.id, e)}
+                                className="p-1.5 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-lg opacity-0 group-hover:opacity-100 transition-all"
+                                title="Remover"
+                              >
+                                <Trash2 size={14} />
+                              </button>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+          </div>
 
           {/* User Dropdown */}
           <div className="relative" ref={dropdownRef}>
             <button
-              onClick={() => setIsDropdownOpen(!isDropdownOpen)}
+              onClick={() => {
+                setIsDropdownOpen(!isDropdownOpen);
+                setIsNotificationsOpen(false);
+              }}
               className="flex items-center gap-3 hover:bg-gray-50 rounded-lg px-2 py-1 transition-colors"
             >
               <div className="text-right">
@@ -132,6 +340,12 @@ function Navbar({ userName: propUserName, userRole: propUserRole, userAvatar: pr
         onClose={() => setIsLogoutModalOpen(false)}
         onConfirm={handleLogoutConfirm}
         isLoading={isLoggingOut}
+      />
+      <ModalDetalhesNotificacao
+        isOpen={!!selectedNotification}
+        notification={selectedNotification}
+        onClose={() => setSelectedNotification(null)}
+        onDelete={(id) => handleDeleteNotification(id)}
       />
     </>
   );
