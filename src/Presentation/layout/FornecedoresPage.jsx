@@ -5,6 +5,7 @@ import ModalPedirCotacao from "../Components/ModalPedirCotacao";
 import ModalRevisarCotacao from "../Components/ModalRevisarCotacao";
 import ModalSolicitarRevisao from "../Components/ModalSolicitarRevisao";
 import ModalDetalhesFornecedor from "../Components/ModalDetalhesFornecedor";
+import ModalConfirmarExclusaoFornecedor from "../Components/ModalConfirmarExclusaoFornecedor";
 import Toast from "../Components/Toast";
 import FornecedorTableSkeleton from "../Components/FornecedorTableSkeleton";
 import { suppliersAPI, quotationRequestsAPI, quotationResponsesAPI, categoriesAPI } from "../../services/api"; // Added categoriesAPI
@@ -22,6 +23,7 @@ export default function FornecedoresPage() {
   const [isRevisarModalOpen, setIsRevisarModalOpen] = useState(false);
   const [isSolicitarRevisaoModalOpen, setIsSolicitarRevisaoModalOpen] = useState(false);
   const [isDetalhesModalOpen, setIsDetalhesModalOpen] = useState(false);
+  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   const [selectedFornecedor, setSelectedFornecedor] = useState(null);
   const [selectedCotacao, setSelectedCotacao] = useState(null);
   const [openMenuId, setOpenMenuId] = useState(null);
@@ -34,6 +36,7 @@ export default function FornecedoresPage() {
   const [fornecedores, setFornecedores] = useState([]);
   const [filteredFornecedores, setFilteredFornecedores] = useState([]); // To hold filtered data
   const [error, setError] = useState(null);
+  const [isDeleting, setIsDeleting] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 10;
 
@@ -108,6 +111,39 @@ export default function FornecedoresPage() {
     setFilteredFornecedores(result);
     setCurrentPage(1); // Reset to first page when filtering
   }, [fornecedores, searchQuery, selectedCategory]);
+
+  const reloadSuppliers = async () => {
+    try {
+      const response = await suppliersAPI.getAll();
+      setFornecedores(response.data || []);
+    } catch (err) {
+      console.error('Error reloading suppliers:', err);
+    }
+  };
+
+  const handleDeleteFornecedor = (fornecedor) => {
+    setSelectedFornecedor(fornecedor);
+    setIsDeleteModalOpen(true);
+    setOpenMenuId(null);
+  };
+
+  const confirmDeleteFornecedor = async () => {
+    if (!selectedFornecedor) return;
+
+    setIsDeleting(true);
+    try {
+      await suppliersAPI.delete(selectedFornecedor.id);
+      showToast('success', 'Fornecedor eliminado com sucesso!');
+      await reloadSuppliers();
+      setIsDeleteModalOpen(false);
+      setSelectedFornecedor(null);
+    } catch (err) {
+      console.error('Error deleting supplier:', err);
+      showToast('error', err.response?.data?.message || 'Erro ao eliminar fornecedor');
+    } finally {
+      setIsDeleting(false);
+    }
+  };
 
   // Fetch quotation requests when cotações tab is active
   useEffect(() => {
@@ -1041,7 +1077,10 @@ export default function FornecedoresPage() {
                                   <span className="text-gray-700">Pedir Cotação</span>
                                 </button>
                                 <div className="my-1 border-t border-gray-100"></div>
-                                <button className="w-full px-4 py-3 text-left hover:bg-gray-50 text-sm flex items-center gap-3 transition-colors rounded-lg mx-1">
+                                <button
+                                  onClick={() => handleDeleteFornecedor(f)}
+                                  className="w-full px-4 py-3 text-left hover:bg-gray-50 text-sm flex items-center gap-3 transition-colors rounded-lg mx-1"
+                                >
                                   <Trash2 size={16} className="text-gray-500" />
                                   <span className="text-gray-700">Remover</span>
                                 </button>
@@ -1227,6 +1266,16 @@ export default function FornecedoresPage() {
         onClose={() => setIsSolicitarRevisaoModalOpen(false)}
         onSubmit={confirmSolicitarRevisao}
         isLoading={isSubmittingReview}
+      />
+      <ModalConfirmarExclusaoFornecedor
+        isOpen={isDeleteModalOpen}
+        onClose={() => {
+          setIsDeleteModalOpen(false);
+          setSelectedFornecedor(null);
+        }}
+        onConfirm={confirmDeleteFornecedor}
+        fornecedor={selectedFornecedor}
+        isLoading={isDeleting}
       />
     </div>
   );

@@ -1,11 +1,14 @@
-import React from 'react';
-import { X, FileText, MapPin, Mail, Phone, Building2, Calendar, CheckCircle, XCircle } from 'lucide-react';
+import React, { useState } from 'react';
+import { X, FileText, MapPin, Mail, Phone, Building2, Calendar, CheckCircle, XCircle, Loader2 } from 'lucide-react';
+import api from '../../services/api';
 
 export default function ModalDetalhesFornecedor({
     isOpen,
     onClose,
     fornecedor
 }) {
+    const [viewingDoc, setViewingDoc] = useState(null); // URL being viewed/downloaded
+
     if (!isOpen || !fornecedor) return null;
 
     // Helper to format date
@@ -18,16 +21,42 @@ export default function ModalDetalhesFornecedor({
         });
     };
 
-    // Helper to get document URL
-    const getDocUrl = (path) => {
-        if (!path) return null;
-        // Assuming the backend returns a relative path or full URL. 
-        // Adjust base URL if needed. For now assuming full URL or relative to public/storage.
-        // If it comes from API as 'suppliers/documents/...', prepend API base or storage URL.
-        // Assuming for now it's a direct accessible link or we need to construct it.
-        // Let's assume it might need a prefix if it's not absolute.
-        if (path.startsWith('http')) return path;
-        return `https://mosap3-api.yetuware.com/storage/${path}`; // Adjustable based on actual API storage path
+    const handleViewDocument = async (documentType, title) => {
+        if (!documentType) return;
+
+        setViewingDoc(documentType);
+        try {
+            // Construct the URL based on the API definition: /suppliers/{id}/documents/{documentType}
+            const url = `/suppliers/${fornecedor.id}/documents/${documentType}`;
+
+            // Request with authentication and blob response type
+            const response = await api.get(url, {
+                responseType: 'blob',
+                headers: {
+                    'Accept': 'application/pdf, image/*', // Accept PDF or images
+                }
+            });
+
+            // Create object URL
+            const blob = new Blob([response.data], { type: response.headers['content-type'] });
+            const objectUrl = window.URL.createObjectURL(blob);
+
+            // Open in new tab
+            window.open(objectUrl, '_blank');
+
+            // Cleanup after a delay (browser needs time to open)
+            setTimeout(() => window.URL.revokeObjectURL(objectUrl), 10000);
+
+        } catch (error) {
+            console.error("Error viewing document:", error);
+            // Fallback handling or detailed error message
+            const msg = error.response?.status === 404
+                ? "Documento não encontrado no servidor."
+                : "Erro ao carregar o documento.";
+            alert(msg);
+        } finally {
+            setViewingDoc(null);
+        }
     };
 
     const StatusBadge = ({ isActive }) => (
@@ -36,6 +65,33 @@ export default function ModalDetalhesFornecedor({
             {isActive ? <CheckCircle size={12} /> : <XCircle size={12} />}
             {isActive ? 'Ativo' : 'Inativo'}
         </span>
+    );
+
+    const DocumentItem = ({ type, label, subLabel, iconColorClass, icon: Icon }) => (
+        <button
+            onClick={() => handleViewDocument(type, label)}
+            disabled={!!viewingDoc}
+            className="w-full flex items-center justify-between p-4 rounded-xl border border-gray-200 hover:border-[#44B16F] hover:bg-[#44B16F]/5 transition-all group text-left"
+        >
+            <div className="flex items-center gap-3">
+                <div className={`w-10 h-10 rounded-lg ${iconColorClass} flex items-center justify-center`}>
+                    <Icon size={20} />
+                </div>
+                <div>
+                    <p className="font-bold text-gray-900 group-hover:text-[#44B16F]">{label}</p>
+                    <p className="text-xs text-gray-500">{subLabel}</p>
+                </div>
+            </div>
+            <div className="text-[#44B16F]">
+                {viewingDoc === type ? (
+                    <Loader2 size={16} className="animate-spin" />
+                ) : (
+                    <span className="text-xs font-bold opacity-0 group-hover:opacity-100 transition-opacity">
+                        Visualizar
+                    </span>
+                )}
+            </div>
+        </button>
     );
 
     return (
@@ -179,69 +235,33 @@ export default function ModalDetalhesFornecedor({
                                 </h3>
                                 <div className="space-y-3">
                                     {fornecedor.commercial_certificate && (
-                                        <a
-                                            href={getDocUrl(fornecedor.commercial_certificate)}
-                                            target="_blank"
-                                            rel="noopener noreferrer"
-                                            className="flex items-center justify-between p-4 rounded-xl border border-gray-200 hover:border-[#44B16F] hover:bg-[#44B16F]/5 transition-all group"
-                                        >
-                                            <div className="flex items-center gap-3">
-                                                <div className="w-10 h-10 rounded-lg bg-red-50 text-red-600 flex items-center justify-center">
-                                                    <FileText size={20} />
-                                                </div>
-                                                <div>
-                                                    <p className="font-bold text-gray-900 group-hover:text-[#44B16F]">Certificado Comercial</p>
-                                                    <p className="text-xs text-gray-500">Documento PDF/Imagem</p>
-                                                </div>
-                                            </div>
-                                            <span className="text-xs font-bold text-[#44B16F] opacity-0 group-hover:opacity-100 transition-opacity">
-                                                Visualizar
-                                            </span>
-                                        </a>
+                                        <DocumentItem
+                                            type="commercial_certificate"
+                                            label="Certificado Comercial"
+                                            subLabel="Documento PDF/Imagem"
+                                            iconColorClass="bg-red-50 text-red-600"
+                                            icon={FileText}
+                                        />
                                     )}
 
                                     {fornecedor.commercial_license && (
-                                        <a
-                                            href={getDocUrl(fornecedor.commercial_license)}
-                                            target="_blank"
-                                            rel="noopener noreferrer"
-                                            className="flex items-center justify-between p-4 rounded-xl border border-gray-200 hover:border-[#44B16F] hover:bg-[#44B16F]/5 transition-all group"
-                                        >
-                                            <div className="flex items-center gap-3">
-                                                <div className="w-10 h-10 rounded-lg bg-blue-50 text-blue-600 flex items-center justify-center">
-                                                    <FileText size={20} />
-                                                </div>
-                                                <div>
-                                                    <p className="font-bold text-gray-900 group-hover:text-[#44B16F]">Alvará Comercial</p>
-                                                    <p className="text-xs text-gray-500">Documento PDF/Imagem</p>
-                                                </div>
-                                            </div>
-                                            <span className="text-xs font-bold text-[#44B16F] opacity-0 group-hover:opacity-100 transition-opacity">
-                                                Visualizar
-                                            </span>
-                                        </a>
+                                        <DocumentItem
+                                            type="commercial_license"
+                                            label="Alvará Comercial"
+                                            subLabel="Documento PDF/Imagem"
+                                            iconColorClass="bg-blue-50 text-blue-600"
+                                            icon={FileText}
+                                        />
                                     )}
 
                                     {fornecedor.nif_proof && (
-                                        <a
-                                            href={getDocUrl(fornecedor.nif_proof)}
-                                            target="_blank"
-                                            rel="noopener noreferrer"
-                                            className="flex items-center justify-between p-4 rounded-xl border border-gray-200 hover:border-[#44B16F] hover:bg-[#44B16F]/5 transition-all group"
-                                        >
-                                            <div className="flex items-center gap-3">
-                                                <div className="w-10 h-10 rounded-lg bg-purple-50 text-purple-600 flex items-center justify-center">
-                                                    <FileText size={20} />
-                                                </div>
-                                                <div>
-                                                    <p className="font-bold text-gray-900 group-hover:text-[#44B16F]">Comprovativo NIF</p>
-                                                    <p className="text-xs text-gray-500">Documento PDF/Imagem</p>
-                                                </div>
-                                            </div>
-                                            <span className="text-xs font-bold text-[#44B16F] opacity-0 group-hover:opacity-100 transition-opacity">
-                                                Visualizar
-                                            </span>
-                                        </a>
+                                        <DocumentItem
+                                            type="nif_proof"
+                                            label="Comprovativo NIF"
+                                            subLabel="Documento PDF/Imagem"
+                                            iconColorClass="bg-purple-50 text-purple-600"
+                                            icon={FileText}
+                                        />
                                     )}
 
                                     {!fornecedor.commercial_certificate && !fornecedor.commercial_license && !fornecedor.nif_proof && (
