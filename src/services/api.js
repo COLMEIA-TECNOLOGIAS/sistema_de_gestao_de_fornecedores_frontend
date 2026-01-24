@@ -98,6 +98,10 @@ export const suppliersAPI = {
         const response = await api.delete(`/suppliers/${id}`);
         return response.data;
     },
+    getClassification: async (id) => {
+        const response = await api.get(`/suppliers/${id}/classification`);
+        return response.data;
+    },
 };
 
 // Quotation Requests API

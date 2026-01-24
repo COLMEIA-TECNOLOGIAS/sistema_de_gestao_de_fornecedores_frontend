@@ -112,6 +112,37 @@ export default function FornecedoresPage() {
     setCurrentPage(1); // Reset to first page when filtering
   }, [fornecedores, searchQuery, selectedCategory]);
 
+  // State for classifications
+  const [classifications, setClassifications] = useState({});
+
+  // Pagination logic (moved up to be accessible by effect)
+  const totalPages = Math.ceil(filteredFornecedores.length / itemsPerPage);
+  const startIndex = (currentPage - 1) * itemsPerPage;
+  const endIndex = startIndex + itemsPerPage;
+  const currentFornecedores = filteredFornecedores.slice(startIndex, endIndex);
+
+  // Fetch classifications for visible suppliers
+  useEffect(() => {
+    const fetchClassifications = async () => {
+      if (currentFornecedores.length === 0) return;
+      // We can fetch in parallel
+      const scores = {};
+      await Promise.all(currentFornecedores.map(async (f) => {
+        try {
+          const data = await suppliersAPI.getClassification(f.id);
+          scores[f.id] = data;
+        } catch (e) {
+          scores[f.id] = { overall_score: 0 };
+        }
+      }));
+      setClassifications(prev => ({ ...prev, ...scores }));
+    };
+
+    if (activeMainTab === "fornecedores") {
+      fetchClassifications();
+    }
+  }, [currentPage, filteredFornecedores, activeMainTab]);
+
   const reloadSuppliers = async () => {
     try {
       const response = await suppliersAPI.getAll();
@@ -200,12 +231,6 @@ export default function FornecedoresPage() {
     document.addEventListener('mousedown', handleClickOutside);
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, [openMenuId]);
-
-  // Pagination logic
-  const totalPages = Math.ceil(filteredFornecedores.length / itemsPerPage);
-  const startIndex = (currentPage - 1) * itemsPerPage;
-  const endIndex = startIndex + itemsPerPage;
-  const currentFornecedores = filteredFornecedores.slice(startIndex, endIndex);
 
   const handlePageChange = (page) => {
     setCurrentPage(page);
@@ -961,6 +986,7 @@ export default function FornecedoresPage() {
                     <th className="px-6 py-4 text-left text-sm font-semibold text-gray-600">NIF</th>
                     <th className="px-6 py-4 text-left text-sm font-semibold text-gray-600">Telefone</th>
                     <th className="px-6 py-4 text-left text-sm font-semibold text-gray-600">Email</th>
+                    <th className="px-6 py-4 text-left text-sm font-semibold text-gray-600">Avaliação</th>
                     <th className="px-6 py-4 text-left text-sm font-semibold text-gray-600">Tipo de Atividade</th>
                     <th className="px-6 py-4 text-left text-sm font-semibold text-gray-600">Província</th>
                     <th className="px-6 py-4 text-left text-sm font-semibold text-gray-600">Município</th>
@@ -1007,6 +1033,21 @@ export default function FornecedoresPage() {
                         <td className="px-6 py-8 text-gray-700">{f.nif || 'N/A'}</td>
                         <td className="px-6 py-8 text-gray-700">{f.phone || 'N/A'}</td>
                         <td className="px-6 py-8 text-gray-700">{f.email || 'N/A'}</td>
+                        <td className="px-6 py-8">
+                          <div className="w-24">
+                            <div className="flex justify-between mb-1">
+                              <span className="text-sm font-bold text-[#44B16F]">
+                                {classifications[f.id]?.overall_score || 0}%
+                              </span>
+                            </div>
+                            <div className="w-full bg-gray-200 rounded-full h-1.5">
+                              <div
+                                className="bg-[#44B16F] h-1.5 rounded-full"
+                                style={{ width: `${classifications[f.id]?.overall_score || 0}%` }}
+                              ></div>
+                            </div>
+                          </div>
+                        </td>
                         <td className="px-6 py-8">
                           <span className={`px-4 py-2 rounded-xl text-sm font-medium ${f.activity_type === 'service' ? 'bg-blue-50 text-blue-900' :
                             f.activity_type === 'product' ? 'bg-purple-50 text-purple-900' :
