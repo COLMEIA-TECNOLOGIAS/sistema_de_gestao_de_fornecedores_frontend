@@ -62,14 +62,14 @@ export default function ModalRevisarCotacao({
                 <div className="flex items-start justify-between px-8 py-6 border-b border-gray-100">
                     <div className="flex-1">
                         <h2 className="text-2xl font-bold text-gray-900 mb-4">
-                            Pedido de cotação - {cotacao.suppliers?.[0]?.commercial_name || cotacao.suppliers?.[0]?.legal_name || 'Fornecedor'}
+                            Pedido de cotação - {cotacao.quotation_supplier?.supplier?.commercial_name || cotacao.quotation_supplier?.supplier?.legal_name || 'Fornecedor'}
                         </h2>
 
                         {/* Endereço do fornecedor */}
                         <div className="text-sm text-gray-600 space-y-1">
-                            <p>{cotacao.suppliers?.[0]?.province || 'Angola'} - {cotacao.suppliers?.[0]?.municipality || 'Luanda'}</p>
-                            <p>{cotacao.suppliers?.[0]?.address || 'Endereço não disponível'}</p>
-                            <p>{cotacao.suppliers?.[0]?.phone || '---'}</p>
+                            <p>{cotacao.quotation_supplier?.supplier?.province || 'Angola'} - {cotacao.quotation_supplier?.supplier?.municipality || 'Luanda'}</p>
+                            <p>{cotacao.quotation_supplier?.supplier?.address || 'Endereço não disponível'}</p>
+                            <p>{cotacao.quotation_supplier?.supplier?.phone || '---'}</p>
                         </div>
                     </div>
 
@@ -104,9 +104,9 @@ export default function ModalRevisarCotacao({
                         <div>
                             <h3 className="font-semibold text-gray-900 mb-2">Enviado para:</h3>
                             <div className="text-sm text-gray-600 space-y-1">
-                                <p className="font-medium">{cotacao.suppliers?.[0]?.commercial_name || cotacao.suppliers?.[0]?.legal_name || 'N/A'}</p>
-                                <p>{cotacao.suppliers?.[0]?.address || 'Endereço não disponível'}</p>
-                                <p>{cotacao.suppliers?.[0]?.phone || '---'}</p>
+                                <p className="font-medium">{cotacao.quotation_supplier?.supplier?.commercial_name || cotacao.quotation_supplier?.supplier?.legal_name || 'N/A'}</p>
+                                <p>{cotacao.quotation_supplier?.supplier?.address || 'Endereço não disponível'}</p>
+                                <p>{cotacao.quotation_supplier?.supplier?.phone || '---'}</p>
                             </div>
                         </div>
 
@@ -115,57 +115,73 @@ export default function ModalRevisarCotacao({
                             <h3 className="font-semibold text-gray-900 mb-2">Detalhes:</h3>
                             <div className="text-sm text-gray-600 space-y-1">
                                 <p><span className="font-medium">ID:</span> CT - {String(cotacao.id).padStart(3, '0')}</p>
-                                <p><span className="font-medium">Data:</span> {cotacao.created_at ? new Date(cotacao.created_at).toLocaleDateString('pt-AO') : 'N/A'}</p>
+                                <p><span className="font-medium">Data:</span> {cotacao.submitted_at ? new Date(cotacao.submitted_at).toLocaleDateString('pt-AO') : 'N/A'}</p>
                             </div>
                         </div>
                     </div>
 
                     {/* Título e Descrição */}
                     <div className="mb-6">
-                        <h3 className="font-semibold text-gray-900 mb-2">Título:</h3>
-                        <p className="text-gray-700">{cotacao.title || 'N/A'}</p>
+                        <h3 className="font-semibold text-gray-900 mb-2">Título da Cotação:</h3>
+                        <p className="text-gray-700">{cotacao.quotation_supplier?.quotation_request?.title || 'N/A'}</p>
 
-                        {cotacao.description && (
+                        {cotacao.quotation_supplier?.quotation_request?.description && (
                             <>
                                 <h3 className="font-semibold text-gray-900 mt-4 mb-2">Descrição:</h3>
-                                <p className="text-gray-700">{cotacao.description}</p>
+                                <p className="text-gray-700">{cotacao.quotation_supplier?.quotation_request?.description}</p>
                             </>
                         )}
                     </div>
 
                     {/* Tabela de Produtos */}
-                    <div className="mb-6 pb-6 border-b border-gray-200">
-                        <div className="grid grid-cols-12 gap-4 font-semibold text-gray-900 mb-3">
-                            <div className="col-span-4">Produtos:</div>
-                            <div className="col-span-5">Descrição do produto:</div>
+                    <div className="mb-6 pb-6 border-b-2 border-dashed border-gray-200">
+                        <div className="grid grid-cols-12 gap-4 font-bold text-gray-900 mb-4">
+                            <div className="col-span-5">Produtos:</div>
+                            <div className="col-span-4">Descrição do produto:</div>
                             <div className="col-span-3 text-right">Valor:</div>
                         </div>
 
                         {cotacao.items && cotacao.items.length > 0 ? (
-                            <div className="space-y-2">
-                                {cotacao.items.map((item, index) => (
-                                    <div key={index} className="grid grid-cols-12 gap-4 text-sm text-gray-700">
-                                        <div className="col-span-4">
-                                            {String(index + 1).padStart(2, '0')} - {item.name}
-                                            {item.quantity && ` (${item.quantity} ${item.unit || 'un'})`}
+                            <div className="space-y-4">
+                                {cotacao.items.map((item, index) => {
+                                    // Try to find the item in the original request to get its name and quantity
+                                    const requestItem = cotacao.quotation_supplier?.quotation_request?.items?.find(
+                                        r => r.id === item.quotation_item_id
+                                    );
+
+                                    return (
+                                        <div key={index} className="grid grid-cols-12 gap-4 text-sm text-gray-700 items-start">
+                                            <div className="col-span-5">
+                                                <span className="text-gray-900">
+                                                    {String(index + 1).padStart(2, '0')} - {requestItem ? requestItem.name : `Item #${item.quotation_item_id}`}
+                                                </span>
+                                                {requestItem && (
+                                                    <span className="text-gray-600 ml-1">
+                                                        ({requestItem.quantity} {requestItem.unit || 'uni'})
+                                                    </span>
+                                                )}
+                                            </div>
+                                            <div className="col-span-4 text-gray-600">
+                                                {requestItem?.specifications || item.notes || '-'}
+                                            </div>
+                                            <div className="col-span-3 text-right font-medium text-gray-900">
+                                                {item.unit_price ? `${parseFloat(item.unit_price).toLocaleString('pt-AO', { minimumFractionDigits: 2 })} AOA` : '---'}
+                                            </div>
                                         </div>
-                                        <div className="col-span-5">{item.specifications || 'N/A'}</div>
-                                        <div className="col-span-3 text-right">
-                                            {item.price ? `${parseFloat(item.price).toFixed(2).replace('.', ',')} AOA` : '---'}
-                                        </div>
-                                    </div>
-                                ))}
+                                    );
+                                })}
                             </div>
                         ) : (
-                            <p className="text-gray-500 text-sm">Nenhum produto adicionado</p>
+                            <p className="text-gray-500 text-sm">Nenhum item cotado.</p>
                         )}
                     </div>
 
                     {/* Total */}
-                    <div className="flex justify-end items-center">
-                        <span className="text-xl font-semibold text-gray-900">
-                            Total: <span className="text-3xl">{calcularTotal()} AOA</span>
-                        </span>
+                    <div className="flex justify-end items-center mt-4">
+                        <span className="text-xl font-bold text-gray-900 mr-2">Total:</span>
+                        <span className="text-4xl font-black text-black tracking-tight">{cotacao.history && cotacao.history.length > 0 && cotacao.history[0].total_amount
+                            ? parseFloat(cotacao.history[0].total_amount).toLocaleString('pt-AO', { minimumFractionDigits: 2 })
+                            : '0,00'} AOA</span>
                     </div>
                 </div>
 

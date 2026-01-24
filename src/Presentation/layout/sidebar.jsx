@@ -34,6 +34,12 @@ function Sidebar({ activeItem, onItemClick }) {
       permission: PERMISSIONS.AQUISICOES
     },
     {
+      id: "categorias",
+      label: "Categorias",
+      icon: Settings,
+      permission: PERMISSIONS.CATEGORIAS
+    },
+    {
       id: "relatorios",
       label: "Relatórios",
       icon: BarChart3,

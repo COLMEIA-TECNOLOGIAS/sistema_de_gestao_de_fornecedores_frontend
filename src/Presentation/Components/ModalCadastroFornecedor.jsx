@@ -3,13 +3,13 @@ import { X, UserPlus } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import ModalLinkExterno from "./ModalLinkExterno";
 
-export default function ModalCadastroFornecedor({ isOpen, onClose }) {
+export default function ModalCadastroFornecedor({ isOpen, onClose, fornecedor }) {
     const [isLinkExternoOpen, setIsLinkExternoOpen] = useState(false);
     const navigate = useNavigate();
 
     const handleCadastroDireto = () => {
         onClose(); // Fecha o modal
-        navigate('/FornecedorFormStep1');
+        navigate('/FornecedorFormStep1', { state: { fornecedor } });
     };
 
     if (!isOpen) return null;
@@ -48,12 +48,14 @@ export default function ModalCadastroFornecedor({ isOpen, onClose }) {
 
                         {/* Title */}
                         <h2 className="text-3xl font-bold text-gray-900 mb-3">
-                            Cadastrar um novo fornecedor
+                            {fornecedor ? "Editar fornecedor" : "Cadastrar um novo fornecedor"}
                         </h2>
 
                         {/* Subtitle */}
                         <p className="text-gray-600 mb-10">
-                            Seleciona a forma de cadastro que pretende prosseguir.
+                            {fornecedor
+                                ? "Selecione a opção para editar os dados do fornecedor."
+                                : "Seleciona a forma de cadastro que pretende prosseguir."}
                         </p>
 
                         {/* Buttons */}
@@ -62,7 +64,7 @@ export default function ModalCadastroFornecedor({ isOpen, onClose }) {
                                 onClick={handleCadastroDireto}
                                 className="px-8 py-3 border-2 border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors font-medium"
                             >
-                                Cadastro Directo
+                                {fornecedor ? "Editar Dados" : "Cadastro Directo"}
                             </button>
                             <button
                                 onClick={() => setIsLinkExternoOpen(true)}

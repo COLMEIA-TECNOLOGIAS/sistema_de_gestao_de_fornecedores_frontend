@@ -108,6 +108,12 @@ export function AuthProvider({ children }) {
         return getAvailableMenuItems(user.role);
     }, [user?.role]);
 
+    const updateUser = useCallback((newData) => {
+        const updatedUser = { ...user, ...newData };
+        setUser(updatedUser);
+        localStorage.setItem('user', JSON.stringify(updatedUser));
+    }, [user]);
+
     const value = {
         user,
         token,
@@ -115,6 +121,7 @@ export function AuthProvider({ children }) {
         isLoading,
         login,
         logout,
+        updateUser,
         // Funções de permissão
         hasPermission,
         isAdmin,

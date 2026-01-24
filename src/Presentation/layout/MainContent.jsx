@@ -3,6 +3,8 @@ import FornecedoresPage from "./FornecedoresPage";
 import UsuariosPage from "./UsuariosPage";
 import RelatoriosPage from "./RelatoriosPage";
 import AquisicoesPage from "./AquisicoesPage";
+import MeuPerfilPage from "./MeuPerfilPage";
+import CategoriasPage from "./CategoriasPage";
 
 export default function MainContent({ activeItem }) {
   const renderPage = () => {
@@ -17,6 +19,10 @@ export default function MainContent({ activeItem }) {
         return <RelatoriosPage />;
       case "aquisicoes":
         return <AquisicoesPage />;
+      case "meu-perfil":
+        return <MeuPerfilPage />;
+      case "categorias":
+        return <CategoriasPage />;
       case "configuracoes":
         return <div className="text-center text-gray-600 mt-20">Página de Configurações em desenvolvimento...</div>;
       default:

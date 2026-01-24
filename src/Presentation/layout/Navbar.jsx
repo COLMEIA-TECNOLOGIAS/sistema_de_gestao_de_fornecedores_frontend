@@ -5,7 +5,7 @@ import { useAuth } from "../../context/AuthContext";
 import LogoutConfirmModal from "../Components/LogoutConfirmModal";
 import DatePicker from "../Components/DatePicker";
 
-function Navbar() {
+function Navbar({ userName: propUserName, userRole: propUserRole, userAvatar: propUserAvatar, onItemClick }) {
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const [isLogoutModalOpen, setIsLogoutModalOpen] = useState(false);
   const [isLoggingOut, setIsLoggingOut] = useState(false);
@@ -40,9 +40,9 @@ function Navbar() {
     }
   };
 
-  const userName = user?.name || "Usuário";
-  const userRole = user?.role || "Utilizador";
-  const userAvatar = `https://api.dicebear.com/7.x/avataaars/svg?seed=${userName}`;
+  const userName = propUserName || user?.name || "Usuário";
+  const userRole = propUserRole || user?.role || "Utilizador";
+  const userAvatar = propUserAvatar || `https://api.dicebear.com/7.x/avataaars/svg?seed=${userName}`;
 
   return (
     <>
@@ -102,14 +102,16 @@ function Navbar() {
             {/* Dropdown Menu */}
             {isDropdownOpen && (
               <div className="absolute right-0 mt-2 w-48 bg-white rounded-lg shadow-lg border border-gray-200 py-1 z-50">
-                <a
-                  href="#"
-                  className="flex items-center gap-3 px-4 py-2.5 text-gray-700 hover:bg-gray-50 transition-colors"
-                  onClick={() => setIsDropdownOpen(false)}
+                <button
+                  onClick={() => {
+                    setIsDropdownOpen(false);
+                    onItemClick('meu-perfil');
+                  }}
+                  className="w-full flex items-center gap-3 px-4 py-2.5 text-gray-700 hover:bg-gray-50 transition-colors text-left"
                 >
                   <User size={18} className="text-gray-500" />
                   <span className="text-sm">Meu Perfil</span>
-                </a>
+                </button>
                 <hr className="my-1 border-gray-100" />
                 <button
                   onClick={handleLogoutClick}

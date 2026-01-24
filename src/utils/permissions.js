@@ -21,6 +21,7 @@ export const PERMISSIONS = {
     RELATORIOS: 'relatorios',
     AQUISICOES: 'aquisicoes',
     CONFIGURACOES: 'configuracoes',
+    CATEGORIAS: 'categorias',
 };
 
 // Mapeamento de permissões por role
@@ -36,6 +37,7 @@ export const ROLE_PERMISSIONS = {
             PERMISSIONS.RELATORIOS,
             PERMISSIONS.AQUISICOES,
             PERMISSIONS.CONFIGURACOES,
+            PERMISSIONS.CATEGORIAS,
         ],
         canManageUsers: true,
         canDeleteRecords: true,
@@ -51,6 +53,7 @@ export const ROLE_PERMISSIONS = {
             PERMISSIONS.COTACOES,
             PERMISSIONS.RELATORIOS,
             PERMISSIONS.AQUISICOES,
+            PERMISSIONS.CATEGORIAS,
         ],
         canManageUsers: false,
         canDeleteRecords: false,

@@ -3,6 +3,7 @@ import { Search, SlidersHorizontal, MoreVertical, RefreshCw, FileText, Trash2, C
 import ModalCadastroFornecedor from "../Components/ModalCadastroFornecedor";
 import ModalPedirCotacao from "../Components/ModalPedirCotacao";
 import ModalRevisarCotacao from "../Components/ModalRevisarCotacao";
+import ModalSolicitarRevisao from "../Components/ModalSolicitarRevisao";
 import Toast from "../Components/Toast";
 import FornecedorTableSkeleton from "../Components/FornecedorTableSkeleton";
 import { suppliersAPI, quotationRequestsAPI, quotationResponsesAPI } from "../../services/api";
@@ -18,6 +19,7 @@ export default function FornecedoresPage() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isCotacaoModalOpen, setIsCotacaoModalOpen] = useState(false);
   const [isRevisarModalOpen, setIsRevisarModalOpen] = useState(false);
+  const [isSolicitarRevisaoModalOpen, setIsSolicitarRevisaoModalOpen] = useState(false);
   const [selectedFornecedor, setSelectedFornecedor] = useState(null);
   const [selectedCotacao, setSelectedCotacao] = useState(null);
   const [openMenuId, setOpenMenuId] = useState(null);
@@ -42,6 +44,7 @@ export default function FornecedoresPage() {
   const [respostas, setRespostas] = useState([]);
   const [respostasError, setRespostasError] = useState(null);
   const [selectedResposta, setSelectedResposta] = useState(null);
+  const [isLoadingDetails, setIsLoadingDetails] = useState(false);
 
   // Fetch suppliers data on component mount
   useEffect(() => {
@@ -163,6 +166,39 @@ export default function FornecedoresPage() {
     }
   };
 
+  const handleOpenRevisarModal = async (resposta) => {
+    setIsLoadingDetails(true);
+    try {
+      // Fetch full details including items and history
+      const data = await quotationResponsesAPI.getById(resposta.id);
+
+      // If the API doesn't return quotation_request populated with items, 
+      // we might need to look it up from the cotacoes list (which should be loaded)
+      // or ensure the API returns it. 
+      // For now, let's use the fetched data. 
+      // If we need to patch it with request items from the list:
+      let enrichedData = data;
+      if (!data.quotation_supplier?.quotation_request?.items && cotacoes.length > 0) {
+        const reqId = data.quotation_supplier?.quotation_request_id || data.quotation_request_id;
+        const request = cotacoes.find(c => c.id === reqId);
+        if (request) {
+          // Determine where to attach it. The modal expects cotacao.quotation_supplier.quotation_request
+          if (!enrichedData.quotation_supplier) enrichedData.quotation_supplier = {};
+          if (!enrichedData.quotation_supplier.quotation_request) enrichedData.quotation_supplier.quotation_request = request;
+        }
+      }
+
+      setSelectedCotacao(enrichedData);
+      setSelectedResposta(enrichedData); // Update this too as it's used for actions
+      setIsRevisarModalOpen(true);
+    } catch (error) {
+      console.error("Erro ao carregar detalhes da resposta:", error);
+      showToast("error", "Erro ao carregar detalhes da resposta.");
+    } finally {
+      setIsLoadingDetails(false);
+    }
+  };
+
   // Handler for approving proposal
   const handleAprovarProposta = async (id) => {
     try {
@@ -188,14 +224,36 @@ export default function FornecedoresPage() {
   };
 
   // Handler for requesting revision
-  const handleSolicitarRevisaoProposta = async (id) => {
+  // Handler for requesting revision - Opens modal
+  const handleSolicitarRevisaoProposta = (id) => {
+    // Find the response object if only ID is passed, although we likely have it in the mapping loop
+    const resposta = respostas.find(r => r.id === id);
+    setSelectedResposta(resposta || { id });
+    setIsSolicitarRevisaoModalOpen(true);
+  };
+
+  // Handler for submitting the revision request
+  const [isSubmittingReview, setIsSubmittingReview] = useState(false);
+
+  // Handler for submitting the revision request
+  const confirmSolicitarRevisao = async ({ reason, message }) => {
+    if (!selectedResposta) return;
+
+    setIsSubmittingReview(true);
+    console.log(`Enviando solicitação de revisão para resposta #${selectedResposta.id}`, { reason, message });
+
     try {
-      await quotationResponsesAPI.requestRevision(id, "Preço", "Por favor, reveja o preço unitário do item 2.");
+      await quotationResponsesAPI.requestRevision(selectedResposta.id, reason, message);
       showToast('success', 'Solicitação de revisão enviada com sucesso!');
+      setIsSolicitarRevisaoModalOpen(false);
+      setSelectedResposta(null);
       await reloadRespostas();
     } catch (err) {
       console.error('Erro ao solicitar revisão:', err);
+      console.log('Detalhes do erro:', err.response?.data);
       showToast('error', err.response?.data?.message || 'Erro ao solicitar revisão');
+    } finally {
+      setIsSubmittingReview(false);
     }
   };
 
@@ -381,6 +439,19 @@ export default function FornecedoresPage() {
 
                         {openMenuId === cotacao.id && (
                           <div className="absolute right-0 top-full mt-2 w-52 bg-white rounded-xl shadow-xl border border-gray-100 py-2 z-50">
+                            {/* Editar */}
+                            <button
+                              onClick={() => {
+                                console.log('Editar fornecedor:', f);
+                                // TODO: Implement edit functionality
+                                setOpenMenuId(null);
+                              }}
+                              className="w-full px-4 py-2.5 text-left hover:bg-gray-50 text-sm flex items-center gap-3 transition-colors"
+                            >
+                              <FileText size={16} className="text-gray-500" />
+                              <span className="text-gray-700">Editar</span>
+                            </button>
+
                             {/* Mais detalhes */}
                             <button
                               onClick={() => {
@@ -534,29 +605,33 @@ export default function FornecedoresPage() {
                     </td>
                     <td className="px-6 py-6">
                       <span className="font-semibold text-gray-900">
-                        {resposta.quotation_request?.title || `Cotação #${resposta.quotation_request_id}`}
+                        {resposta.quotation_supplier?.quotation_request?.title || `Cotação #${resposta.quotation_supplier?.quotation_request_id || 'N/A'}`}
                       </span>
                     </td>
                     <td className="px-6 py-6">
                       <div className="flex items-center gap-3">
                         <img
-                          src={`https://api.dicebear.com/7.x/initials/svg?seed=${resposta.supplier?.commercial_name || 'N/A'}`}
-                          alt={resposta.supplier?.commercial_name}
+                          src={`https://api.dicebear.com/7.x/initials/svg?seed=${resposta.quotation_supplier?.supplier?.commercial_name || 'N/A'}`}
+                          alt={resposta.quotation_supplier?.supplier?.commercial_name}
                           className="w-8 h-8 rounded-lg"
                         />
-                        <span className="text-gray-700">{resposta.supplier?.commercial_name || 'N/A'}</span>
+                        <span className="text-gray-700">
+                          {resposta.quotation_supplier?.supplier?.commercial_name ||
+                            resposta.quotation_supplier?.supplier?.legal_name ||
+                            'Fornecedor N/A'}
+                        </span>
                       </div>
                     </td>
                     <td className="px-6 py-6 text-gray-700 font-medium">
-                      {resposta.total_price
-                        ? `${parseFloat(resposta.total_price).toLocaleString('pt-AO', { minimumFractionDigits: 2 })} AOA`
+                      {resposta.history && resposta.history.length > 0
+                        ? `${parseFloat(resposta.history[0].total_amount || 0).toLocaleString('pt-AO', { minimumFractionDigits: 2 })} AOA`
                         : 'N/A'}
                     </td>
                     <td className="px-6 py-6 text-gray-700">
-                      {resposta.delivery_time ? `${resposta.delivery_time} dias` : 'N/A'}
+                      {resposta.delivery_days ? `${resposta.delivery_days} dias` : 'N/A'}
                     </td>
                     <td className="px-6 py-6 text-gray-700">
-                      {resposta.created_at ? new Date(resposta.created_at).toLocaleDateString('pt-AO', {
+                      {resposta.submitted_at ? new Date(resposta.submitted_at).toLocaleDateString('pt-AO', {
                         day: '2-digit',
                         month: '2-digit',
                         year: 'numeric'
@@ -581,9 +656,7 @@ export default function FornecedoresPage() {
                             {/* Revisar */}
                             <button
                               onClick={() => {
-                                setSelectedResposta(resposta);
-                                setSelectedCotacao(resposta);
-                                setIsRevisarModalOpen(true);
+                                handleOpenRevisarModal(resposta);
                                 setOpenMenuId(null);
                               }}
                               className="w-full px-4 py-2.5 text-left hover:bg-gray-50 text-sm flex items-center gap-3 transition-colors"
@@ -847,7 +920,14 @@ export default function FornecedoresPage() {
                                   <Eye size={16} className="text-gray-500" />
                                   <span className="text-gray-700">Mais detalhes</span>
                                 </button>
-                                <button className="w-full px-4 py-3 text-left hover:bg-gray-50 text-sm flex items-center gap-3 transition-colors rounded-lg mx-1">
+                                <button
+                                  onClick={() => {
+                                    setSelectedFornecedor(f);
+                                    setIsModalOpen(true);
+                                    setOpenMenuId(null);
+                                  }}
+                                  className="w-full px-4 py-3 text-left hover:bg-gray-50 text-sm flex items-center gap-3 transition-colors rounded-lg mx-1"
+                                >
                                   <svg className="w-4 h-4 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
                                   </svg>
@@ -1014,7 +1094,14 @@ export default function FornecedoresPage() {
       )}
 
       {/* Modals */}
-      <ModalCadastroFornecedor isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} />
+      <ModalCadastroFornecedor
+        isOpen={isModalOpen}
+        onClose={() => {
+          setIsModalOpen(false);
+          setSelectedFornecedor(null);
+        }}
+        fornecedor={selectedFornecedor}
+      />
       <ModalPedirCotacao
         isOpen={isCotacaoModalOpen}
         onClose={() => {
@@ -1030,6 +1117,12 @@ export default function FornecedoresPage() {
           setSelectedCotacao(null);
         }}
         cotacao={selectedCotacao}
+      />
+      <ModalSolicitarRevisao
+        isOpen={isSolicitarRevisaoModalOpen}
+        onClose={() => setIsSolicitarRevisaoModalOpen(false)}
+        onSubmit={confirmSolicitarRevisao}
+        isLoading={isSubmittingReview}
       />
     </div>
   );

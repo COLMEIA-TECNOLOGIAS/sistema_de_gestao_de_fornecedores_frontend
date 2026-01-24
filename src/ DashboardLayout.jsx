@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { useLocation, useNavigate } from "react-router-dom";
 import Navbar from "./Presentation/layout/Navbar";
 import Sidebar from "./Presentation/layout/sidebar";
 import MainContent from "./Presentation/layout/MainContent";
@@ -6,7 +7,22 @@ import { useAuth } from "./context/AuthContext";
 import { hasPermission, PERMISSIONS } from "./utils/permissions";
 
 export default function DashboardLayout() {
+  const location = useLocation();
+  const navigate = useNavigate();
   const [activeItem, setActiveItem] = useState("dashboard");
+
+  // Atualiza activeItem baseado na URL
+  useEffect(() => {
+    const path = location.pathname.split("/")[1];
+    if (path && ["dashboard", "fornecedores", "usuarios", "relatorios", "aquisicoes", "meu-perfil", "categorias"].includes(path)) {
+      setActiveItem(path);
+    }
+  }, [location.pathname]);
+
+  const handleItemClick = (id) => {
+    navigate(`/${id}`);
+  };
+
   const { user, userRoleName, hasPermission: checkPermission } = useAuth();
 
   // Gera um avatar baseado no nome do usuário
@@ -22,6 +38,7 @@ export default function DashboardLayout() {
       usuarios: PERMISSIONS.USUARIOS,
       relatorios: PERMISSIONS.RELATORIOS,
       aquisicoes: PERMISSIONS.AQUISICOES,
+      categorias: PERMISSIONS.CATEGORIAS,
     };
 
     const requiredPermission = permissionMap[activeItem];
@@ -36,8 +53,9 @@ export default function DashboardLayout() {
         userName={userName}
         userRole={userRoleName}
         userAvatar={userAvatar}
+        onItemClick={handleItemClick}
       />
-      <Sidebar activeItem={activeItem} onItemClick={setActiveItem} />
+      <Sidebar activeItem={activeItem} onItemClick={handleItemClick} />
       <MainContent activeItem={activeItem} />
     </div>
   );
