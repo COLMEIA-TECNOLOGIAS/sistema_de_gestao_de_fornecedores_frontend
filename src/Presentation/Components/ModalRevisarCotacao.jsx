@@ -1,5 +1,6 @@
 import { useState } from 'react';
-import { X, CheckCircle, XCircle, MessageSquare, ShoppingCart } from 'lucide-react';
+import { X, CheckCircle, XCircle, MessageSquare, ShoppingCart, FileText } from 'lucide-react';
+import api from '../../services/api';
 
 export default function ModalRevisarCotacao({
     isOpen,
@@ -10,6 +11,8 @@ export default function ModalRevisarCotacao({
     onSolicitarRevisao,
     onGerarAquisicao
 }) {
+    const [viewingDoc, setViewingDoc] = useState(false);
+
     if (!isOpen || !cotacao) return null;
 
     const handleAprovar = () => {
@@ -175,6 +178,45 @@ export default function ModalRevisarCotacao({
                         ) : (
                             <p className="text-gray-500 text-sm">Nenhum item cotado.</p>
                         )}
+                    </div>
+
+                    {/* Documentos */}
+                    <div className="mb-6 pb-6 border-b border-gray-200">
+                        <h3 className="font-semibold text-gray-900 mb-4">Documento da Proposta:</h3>
+                        <button
+                            onClick={async () => {
+                                try {
+                                    setViewingDoc(true);
+                                    // Endpoint: /quotation-responses/{id}/document
+                                    const url = `/quotation-responses/${cotacao.id}/document`;
+
+                                    const response = await api.get(url, {
+                                        responseType: 'blob',
+                                        headers: {
+                                            'Accept': 'application/pdf, image/*',
+                                        }
+                                    });
+
+                                    const blob = new Blob([response.data], { type: response.headers['content-type'] });
+                                    const objectUrl = window.URL.createObjectURL(blob);
+                                    window.open(objectUrl, '_blank');
+                                    setTimeout(() => window.URL.revokeObjectURL(objectUrl), 10000);
+                                } catch (error) {
+                                    console.error("Erro ao abrir documento:", error);
+                                    const msg = error.response?.status === 404
+                                        ? "Documento não encontrado."
+                                        : "Erro ao carregar o documento.";
+                                    alert(msg);
+                                } finally {
+                                    setViewingDoc(false);
+                                }
+                            }}
+                            disabled={viewingDoc}
+                            className="flex items-center gap-2 px-4 py-2 bg-blue-50 text-blue-600 rounded-lg hover:bg-blue-100 transition-colors font-medium border border-blue-200"
+                        >
+                            <FileText size={18} />
+                            {viewingDoc ? 'Carregando...' : 'Visualizar Proposta (PDF/Imagem)'}
+                        </button>
                     </div>
 
                     {/* Total */}
