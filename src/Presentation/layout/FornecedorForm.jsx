@@ -1,6 +1,6 @@
 import { ArrowLeft, AlertCircle, FileText, CheckCircle, Upload, X } from "lucide-react";
 import { useState, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 import { suppliersAPI, categoriesAPI } from "../../services/api";
 import Toast from "../Components/Toast";
 
@@ -11,6 +11,8 @@ export default function FornecedorFormWrapper() {
   const [isLoadingCategories, setIsLoadingCategories] = useState(false);
   const [toast, setToast] = useState(null);
   const navigate = useNavigate();
+  const location = useLocation();
+  const editingFornecedor = location.state?.fornecedor || null;
 
   useEffect(() => {
     const fetchCategories = async () => {
@@ -29,16 +31,16 @@ export default function FornecedorFormWrapper() {
   }, []);
 
   const [formData, setFormData] = useState({
-    legal_name: "",
-    commercial_name: "",
-    email: "",
-    phone: "",
-    nif: "",
-    activity_type: "product",
-    province: "Luanda",
-    municipality: "Viana",
-    address: "",
-    categories: [], // IDs
+    legal_name: editingFornecedor?.legal_name || "",
+    commercial_name: editingFornecedor?.commercial_name || "",
+    email: editingFornecedor?.email || "",
+    phone: editingFornecedor?.phone || "",
+    nif: editingFornecedor?.nif || "",
+    activity_type: editingFornecedor?.activity_type || "product",
+    province: editingFornecedor?.province || "Luanda",
+    municipality: editingFornecedor?.municipality || "Viana",
+    address: editingFornecedor?.address || "",
+    categories: editingFornecedor?.categories?.map(c => c.id) || [], // Assuming it comes populated or we need strict IDs if it's a relation
     commercial_certificate: null,
     commercial_license: null,
     nif_proof: null,
@@ -91,8 +93,11 @@ export default function FornecedorFormWrapper() {
       if (!formData.municipality) newErrors.municipality = "Município é obrigatório";
       if (!formData.address) newErrors.address = "Endereço é obrigatório";
     } else if (step === 3) {
-      if (!formData.commercial_certificate) newErrors.commercial_certificate = "Certificado comercial é obrigatório";
-      if (!formData.nif_proof) newErrors.nif_proof = "Comprovativo NIF é obrigatório";
+      // Documents are mandatory only for new registrations
+      if (!editingFornecedor) {
+        if (!formData.commercial_certificate) newErrors.commercial_certificate = "Certificado comercial é obrigatório";
+        if (!formData.nif_proof) newErrors.nif_proof = "Comprovativo NIF é obrigatório";
+      }
       if (formData.categories.length === 0) newErrors.categories = "Selecione pelo menos uma categoria";
     }
 
@@ -145,8 +150,22 @@ export default function FornecedorFormWrapper() {
         data.append("categories[]", id);
       });
 
-      console.log("Submitting formData with files...");
-      await suppliersAPI.create(data);
+      console.log("Submitting formData...");
+
+      if (editingFornecedor) {
+        // If editing, we might need a distinct update method or just use a PUT compatible approach
+        // Usually laravel/php backend with multipart/form-data requires _method=PUT or POST to a specific endpoint
+        // Let's assume standard PUT via API wrapper if available, or POST with _method
+        // For now, using suppliersAPI.update(id, data).
+        // Note: If using axios with FormData, PUT often fails to parse body in PHP without workarounds.
+        // A safer bet is POST with _method=PUT for PHP backends if standard PUT fails.
+        // I'll try standard update first as requested "já tem o metodo editar na api".
+        data.append("_method", "PUT"); // Just in case it's Laravel
+        await suppliersAPI.update(editingFornecedor.id, data);
+      } else {
+        await suppliersAPI.create(data);
+      }
+
       setCurrentStep(4);
     } catch (err) {
       console.error("Error submitting form:", err);
@@ -176,9 +195,11 @@ export default function FornecedorFormWrapper() {
             <div className="w-24 h-24 bg-[#44B16F] rounded-full flex items-center justify-center mx-auto mb-8 shadow-lg animate-bounce">
               <CheckCircle size={48} className="text-white" />
             </div>
-            <h2 className="text-4xl font-bold text-gray-900 mb-4 tracking-tight">Fornecedor cadastrado!</h2>
+            <h2 className="text-4xl font-bold text-gray-900 mb-4 tracking-tight">
+              {editingFornecedor ? "Fornecedor atualizado!" : "Fornecedor cadastrado!"}
+            </h2>
             <p className="text-gray-600 text-lg mb-10 leading-relaxed">
-              O fornecedor <strong>{formData.commercial_name}</strong> foi adicionado com sucesso à sua base de dados.
+              O fornecedor <strong>{formData.commercial_name}</strong> foi {editingFornecedor ? "atualizado" : "adicionado"} com sucesso à sua base de dados.
             </p>
             <button
               onClick={() => navigate("/fornecedores")}
@@ -423,7 +444,7 @@ export default function FornecedorFormWrapper() {
 
                   <div className="grid grid-cols-2 gap-8 pt-4">
                     <FileUploadField
-                      label="Certificado Comercial *"
+                      label={`Certificado Comercial ${editingFornecedor ? "" : "*"}`}
                       name="commercial_certificate"
                       file={formData.commercial_certificate}
                       onChange={handleFileChange}
@@ -437,7 +458,7 @@ export default function FornecedorFormWrapper() {
                       error={errors.commercial_license}
                     />
                     <FileUploadField
-                      label="Comprovativo NIF *"
+                      label={`Comprovativo NIF ${editingFornecedor ? "" : "*"}`}
                       name="nif_proof"
                       file={formData.nif_proof}
                       onChange={handleFileChange}

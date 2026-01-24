@@ -4,6 +4,7 @@ import ModalCadastroFornecedor from "../Components/ModalCadastroFornecedor";
 import ModalPedirCotacao from "../Components/ModalPedirCotacao";
 import ModalRevisarCotacao from "../Components/ModalRevisarCotacao";
 import ModalSolicitarRevisao from "../Components/ModalSolicitarRevisao";
+import ModalDetalhesFornecedor from "../Components/ModalDetalhesFornecedor";
 import Toast from "../Components/Toast";
 import FornecedorTableSkeleton from "../Components/FornecedorTableSkeleton";
 import { suppliersAPI, quotationRequestsAPI, quotationResponsesAPI } from "../../services/api";
@@ -20,6 +21,7 @@ export default function FornecedoresPage() {
   const [isCotacaoModalOpen, setIsCotacaoModalOpen] = useState(false);
   const [isRevisarModalOpen, setIsRevisarModalOpen] = useState(false);
   const [isSolicitarRevisaoModalOpen, setIsSolicitarRevisaoModalOpen] = useState(false);
+  const [isDetalhesModalOpen, setIsDetalhesModalOpen] = useState(false);
   const [selectedFornecedor, setSelectedFornecedor] = useState(null);
   const [selectedCotacao, setSelectedCotacao] = useState(null);
   const [openMenuId, setOpenMenuId] = useState(null);
@@ -916,7 +918,14 @@ export default function FornecedoresPage() {
 
                             {openMenuId === f.id && (
                               <div className="absolute right-0 top-full mt-2 w-56 bg-white rounded-xl shadow-xl border border-gray-100 py-1 z-50">
-                                <button className="w-full px-4 py-3 text-left hover:bg-gray-50 text-sm flex items-center gap-3 transition-colors rounded-lg mx-1">
+                                <button
+                                  onClick={() => {
+                                    setSelectedFornecedor(f);
+                                    setIsDetalhesModalOpen(true);
+                                    setOpenMenuId(null);
+                                  }}
+                                  className="w-full px-4 py-3 text-left hover:bg-gray-50 text-sm flex items-center gap-3 transition-colors rounded-lg mx-1"
+                                >
                                   <Eye size={16} className="text-gray-500" />
                                   <span className="text-gray-700">Mais detalhes</span>
                                 </button>
@@ -1098,6 +1107,14 @@ export default function FornecedoresPage() {
         isOpen={isModalOpen}
         onClose={() => {
           setIsModalOpen(false);
+          setSelectedFornecedor(null);
+        }}
+        fornecedor={selectedFornecedor}
+      />
+      <ModalDetalhesFornecedor
+        isOpen={isDetalhesModalOpen}
+        onClose={() => {
+          setIsDetalhesModalOpen(false);
           setSelectedFornecedor(null);
         }}
         fornecedor={selectedFornecedor}
