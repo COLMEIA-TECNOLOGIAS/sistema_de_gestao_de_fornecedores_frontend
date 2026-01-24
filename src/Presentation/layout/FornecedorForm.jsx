@@ -153,15 +153,10 @@ export default function FornecedorFormWrapper() {
       console.log("Submitting formData...");
 
       if (editingFornecedor) {
-        // If editing, we might need a distinct update method or just use a PUT compatible approach
-        // Usually laravel/php backend with multipart/form-data requires _method=PUT or POST to a specific endpoint
-        // Let's assume standard PUT via API wrapper if available, or POST with _method
-        // For now, using suppliersAPI.update(id, data).
-        // Note: If using axios with FormData, PUT often fails to parse body in PHP without workarounds.
-        // A safer bet is POST with _method=PUT for PHP backends if standard PUT fails.
-        // I'll try standard update first as requested "já tem o metodo editar na api".
-        data.append("_method", "PUT"); // Just in case it's Laravel
-        await suppliersAPI.update(editingFornecedor.id, data);
+        // If editing, we uses specialized updateMultipart method which sends POST with _method=PUT
+        // This is required for PHP/Laravel backends to correctly handle file uploads in updates
+        data.append("_method", "PUT");
+        await suppliersAPI.updateMultipart(editingFornecedor.id, data);
       } else {
         await suppliersAPI.create(data);
       }

@@ -144,8 +144,9 @@ export default function ModalRevisarCotacao({
                         {cotacao.items && cotacao.items.length > 0 ? (
                             <div className="space-y-4">
                                 {cotacao.items.map((item, index) => {
-                                    // Try to find the item in the original request to get its name and quantity
-                                    const requestItem = cotacao.quotation_supplier?.quotation_request?.items?.find(
+                                    // Try to get item details from the nested quotation_item object (priority)
+                                    // or find it in the original request items array (fallback)
+                                    const requestItem = item.quotation_item || cotacao.quotation_supplier?.quotation_request?.items?.find(
                                         r => r.id === item.quotation_item_id
                                     );
 

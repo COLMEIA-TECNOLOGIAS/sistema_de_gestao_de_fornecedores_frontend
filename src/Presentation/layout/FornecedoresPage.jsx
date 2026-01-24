@@ -7,7 +7,7 @@ import ModalSolicitarRevisao from "../Components/ModalSolicitarRevisao";
 import ModalDetalhesFornecedor from "../Components/ModalDetalhesFornecedor";
 import Toast from "../Components/Toast";
 import FornecedorTableSkeleton from "../Components/FornecedorTableSkeleton";
-import { suppliersAPI, quotationRequestsAPI, quotationResponsesAPI } from "../../services/api";
+import { suppliersAPI, quotationRequestsAPI, quotationResponsesAPI, categoriesAPI } from "../../services/api"; // Added categoriesAPI
 
 export default function FornecedoresPage() {
   // Main tabs state
@@ -32,9 +32,16 @@ export default function FornecedoresPage() {
   // Data states for Fornecedores
   const [isLoading, setIsLoading] = useState(true);
   const [fornecedores, setFornecedores] = useState([]);
+  const [filteredFornecedores, setFilteredFornecedores] = useState([]); // To hold filtered data
   const [error, setError] = useState(null);
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 10;
+
+  // Search and Filter states
+  const [searchQuery, setSearchQuery] = useState("");
+  const [categories, setCategories] = useState([]); // Available categories
+  const [selectedCategory, setSelectedCategory] = useState(""); // Selected category ID for filtering
+  const [isFilterOpen, setIsFilterOpen] = useState(false);
 
   // Data states for Cotações
   const [isLoadingCotacoes, setIsLoadingCotacoes] = useState(false);
@@ -48,26 +55,59 @@ export default function FornecedoresPage() {
   const [selectedResposta, setSelectedResposta] = useState(null);
   const [isLoadingDetails, setIsLoadingDetails] = useState(false);
 
-  // Fetch suppliers data on component mount
+  // Fetch suppliers and categories data on component mount
   useEffect(() => {
-    const fetchSuppliers = async () => {
+    const fetchSuppliersAndCategories = async () => {
       try {
         setIsLoading(true);
         setError(null);
-        const response = await suppliersAPI.getAll();
-        setFornecedores(response.data || []);
+
+        // Fetch suppliers
+        const suppliersResponse = await suppliersAPI.getAll();
+        setFornecedores(suppliersResponse.data || []);
+
+        // Fetch categories
+        const categoriesResponse = await categoriesAPI.getAll();
+        setCategories(categoriesResponse || []);
+
       } catch (err) {
-        console.error('Error fetching suppliers:', err);
-        setError(err.message || 'Failed to load suppliers');
+        console.error('Error fetching data:', err);
+        setError(err.message || 'Failed to load data');
       } finally {
         setIsLoading(false);
       }
     };
 
     if (activeMainTab === "fornecedores") {
-      fetchSuppliers();
+      fetchSuppliersAndCategories();
     }
   }, [activeMainTab]);
+
+  // Filtering Logic
+  useEffect(() => {
+    let result = fornecedores;
+
+    // Filter by Search Query
+    if (searchQuery) {
+      const lowerQuery = searchQuery.toLowerCase();
+      result = result.filter(f =>
+        (f.commercial_name?.toLowerCase() || "").includes(lowerQuery) ||
+        (f.legal_name?.toLowerCase() || "").includes(lowerQuery) ||
+        (f.email?.toLowerCase() || "").includes(lowerQuery) ||
+        (f.nif?.toLowerCase() || "").includes(lowerQuery)
+      );
+    }
+
+    // Filter by Category
+    if (selectedCategory) {
+      result = result.filter(f =>
+        f.categories && f.categories.some(cat => String(cat.id) === String(selectedCategory))
+      );
+    }
+
+    setFilteredFornecedores(result);
+    setCurrentPage(1); // Reset to first page when filtering
+  }, [fornecedores, searchQuery, selectedCategory]);
 
   // Fetch quotation requests when cotações tab is active
   useEffect(() => {
@@ -126,10 +166,10 @@ export default function FornecedoresPage() {
   }, [openMenuId]);
 
   // Pagination logic
-  const totalPages = Math.ceil(fornecedores.length / itemsPerPage);
+  const totalPages = Math.ceil(filteredFornecedores.length / itemsPerPage);
   const startIndex = (currentPage - 1) * itemsPerPage;
   const endIndex = startIndex + itemsPerPage;
-  const currentFornecedores = fornecedores.slice(startIndex, endIndex);
+  const currentFornecedores = filteredFornecedores.slice(startIndex, endIndex);
 
   const handlePageChange = (page) => {
     setCurrentPage(page);
@@ -783,16 +823,63 @@ export default function FornecedoresPage() {
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={20} />
                 <input
                   type="text"
-                  placeholder="Search for anything..."
-                  className="w-full pl-10 pr-4 py-3 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#44B16F] focus:border-transparent"
+                  placeholder="Pesquisar por nome, email, nif..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="w-full pl-10 pr-4 py-3 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#44B16F] focus:border-transparent transition-all"
                 />
               </div>
             </div>
 
-            {/* Filter Button */}
-            <button className="flex items-center gap-2 px-4 py-3 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors">
-              <SlidersHorizontal size={20} className="text-gray-600" />
-            </button>
+            {/* Filter Dropdown */}
+            <div className="relative">
+              <button
+                onClick={() => setIsFilterOpen(!isFilterOpen)}
+                className={`flex items-center gap-2 px-4 py-3 border rounded-lg transition-colors ${selectedCategory ? 'bg-emerald-50 border-[#44B16F] text-[#44B16F]' : 'border-gray-200 hover:bg-gray-50 text-gray-600'}`}
+              >
+                <SlidersHorizontal size={20} />
+                <span className="font-medium">Filtros</span>
+                {selectedCategory && (
+                  <span className="ml-1 bg-[#44B16F] text-white text-xs rounded-full w-5 h-5 flex items-center justify-center">1</span>
+                )}
+              </button>
+
+              {isFilterOpen && (
+                <div className="absolute right-0 top-full mt-2 w-64 bg-white rounded-xl shadow-xl border border-gray-100 p-4 z-50">
+                  <h3 className="text-sm font-bold text-gray-900 mb-3 uppercase tracking-wider">Categorias</h3>
+                  <div className="space-y-2 max-h-60 overflow-y-auto">
+                    <label className="flex items-center gap-2 p-2 hover:bg-gray-50 rounded-lg cursor-pointer">
+                      <input
+                        type="radio"
+                        name="category"
+                        className="text-[#44B16F] focus:ring-[#44B16F]"
+                        checked={selectedCategory === ""}
+                        onChange={() => {
+                          setSelectedCategory("");
+                          setIsFilterOpen(false);
+                        }}
+                      />
+                      <span className="text-gray-700 text-sm">Todas</span>
+                    </label>
+                    {categories.map(cat => (
+                      <label key={cat.id} className="flex items-center gap-2 p-2 hover:bg-gray-50 rounded-lg cursor-pointer">
+                        <input
+                          type="radio"
+                          name="category"
+                          className="text-[#44B16F] focus:ring-[#44B16F]"
+                          checked={String(selectedCategory) === String(cat.id)}
+                          onChange={() => {
+                            setSelectedCategory(cat.id);
+                            setIsFilterOpen(false);
+                          }}
+                        />
+                        <span className="text-gray-700 text-sm">{cat.name}</span>
+                      </label>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
 
             {/* Action Buttons */}
             <button

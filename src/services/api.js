@@ -85,6 +85,15 @@ export const suppliersAPI = {
         const response = await api.put(`/suppliers/${id}`, supplierData);
         return response.data;
     },
+    updateMultipart: async (id, supplierData) => {
+        // For file uploads in PUT, we must use POST with _method=PUT (Laravel/PHP convention)
+        const response = await api.post(`/suppliers/${id}`, supplierData, {
+            headers: {
+                'Content-Type': 'multipart/form-data',
+            },
+        });
+        return response.data;
+    },
     delete: async (id) => {
         const response = await api.delete(`/suppliers/${id}`);
         return response.data;

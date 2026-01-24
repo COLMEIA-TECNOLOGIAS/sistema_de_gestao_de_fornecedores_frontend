@@ -1,8 +1,8 @@
-import { X, UserPlus, Eye, EyeOff } from "lucide-react";
-import { useState } from "react";
+import { X, UserPlus, Eye, EyeOff, Edit, Save } from "lucide-react";
+import { useState, useEffect } from "react";
 import { usersAPI } from "../../services/api";
 
-export default function ModalNovoUsuario({ isOpen, onClose, onSuccess }) {
+export default function ModalNovoUsuario({ isOpen, onClose, onSuccess, userToEdit }) {
     const [isLoading, setIsLoading] = useState(false);
     const [error, setError] = useState("");
     const [showPassword, setShowPassword] = useState(false);
@@ -13,6 +13,27 @@ export default function ModalNovoUsuario({ isOpen, onClose, onSuccess }) {
         role: "",
         is_active: true,
     });
+
+    useEffect(() => {
+        if (isOpen && userToEdit) {
+            setFormData({
+                name: userToEdit.name || "",
+                email: userToEdit.email || "",
+                password: "", // Password empty on edit means "don't change"
+                role: userToEdit.role || "",
+                is_active: userToEdit.is_active !== false,
+            });
+        } else if (isOpen) {
+            setFormData({
+                name: "",
+                email: "",
+                password: "",
+                role: "",
+                is_active: true,
+            });
+        }
+        setError("");
+    }, [isOpen, userToEdit]);
 
     const handleChange = (e) => {
         const { name, value, type, checked } = e.target;
@@ -28,7 +49,16 @@ export default function ModalNovoUsuario({ isOpen, onClose, onSuccess }) {
         setIsLoading(true);
 
         try {
-            await usersAPI.create(formData);
+            if (userToEdit) {
+                // Remove password if empty so it doesn't try to update it
+                const dataToUpdate = { ...formData };
+                if (!dataToUpdate.password) delete dataToUpdate.password;
+
+                await usersAPI.update(userToEdit.id, dataToUpdate);
+            } else {
+                await usersAPI.create(formData);
+            }
+
             // Reset form
             setFormData({
                 name: "",
@@ -39,10 +69,10 @@ export default function ModalNovoUsuario({ isOpen, onClose, onSuccess }) {
             });
             onSuccess?.();
         } catch (err) {
-            console.error("Error creating user:", err);
+            console.error("Error saving user:", err);
             setError(
                 err.response?.data?.message ||
-                "Erro ao criar usuário. Verifique os dados e tente novamente."
+                "Erro ao salvar usuário. Verifique os dados e tente novamente."
             );
         } finally {
             setIsLoading(false);
@@ -51,14 +81,6 @@ export default function ModalNovoUsuario({ isOpen, onClose, onSuccess }) {
 
     const handleClose = () => {
         if (!isLoading) {
-            setError("");
-            setFormData({
-                name: "",
-                email: "",
-                password: "",
-                role: "",
-                is_active: true,
-            });
             onClose();
         }
     };
@@ -72,9 +94,9 @@ export default function ModalNovoUsuario({ isOpen, onClose, onSuccess }) {
                 <div className="flex items-center justify-between p-6 border-b border-gray-200">
                     <div className="flex items-center gap-3">
                         <div className="p-2 bg-[#44B16F]/10 rounded-lg">
-                            <UserPlus className="w-5 h-5 text-[#44B16F]" />
+                            {userToEdit ? <Edit className="w-5 h-5 text-[#44B16F]" /> : <UserPlus className="w-5 h-5 text-[#44B16F]" />}
                         </div>
-                        <h2 className="text-xl font-bold text-gray-900">Adicionar Novo Usuário</h2>
+                        <h2 className="text-xl font-bold text-gray-900">{userToEdit ? "Editar Usuário" : "Adicionar Novo Usuário"}</h2>
                     </div>
                     <button
                         onClick={handleClose}
@@ -133,7 +155,7 @@ export default function ModalNovoUsuario({ isOpen, onClose, onSuccess }) {
                         <div className="grid grid-cols-2 gap-4">
                             <div>
                                 <label className="block text-sm font-medium text-gray-700 mb-2">
-                                    Senha *
+                                    {userToEdit ? "Senha (opcional)" : "Senha *"}
                                 </label>
                                 <div className="relative">
                                     <input
@@ -141,9 +163,9 @@ export default function ModalNovoUsuario({ isOpen, onClose, onSuccess }) {
                                         name="password"
                                         value={formData.password}
                                         onChange={handleChange}
-                                        placeholder="Mínimo 6 caracteres"
-                                        required
-                                        minLength={6}
+                                        placeholder={userToEdit ? "Deixe em branco para manter" : "Mínimo 6 caracteres"}
+                                        required={!userToEdit}
+                                        minLength={!userToEdit ? 6 : undefined}
                                         disabled={isLoading}
                                         className="w-full px-4 py-3 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#44B16F] focus:border-transparent transition-all pr-12 disabled:bg-gray-100"
                                     />
@@ -225,8 +247,8 @@ export default function ModalNovoUsuario({ isOpen, onClose, onSuccess }) {
                                 </>
                             ) : (
                                 <>
-                                    <UserPlus className="w-4 h-4" />
-                                    Salvar
+                                    {userToEdit ? <Save className="w-4 h-4" /> : <UserPlus className="w-4 h-4" />}
+                                    {userToEdit ? "Salvar Alterações" : "Criar Usuário"}
                                 </>
                             )}
                         </button>
