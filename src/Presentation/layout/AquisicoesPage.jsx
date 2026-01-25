@@ -97,23 +97,54 @@ export default function AquisicoesPage() {
         try {
             let responseDetails = aquisicao;
 
+            // Strategy: Try to get the richest data source available
             if (aquisicao.quotation_response_id) {
                 try {
+                    // 1. Try getting the full Quotation Response (preferred for formatting)
                     const res = await quotationResponsesAPI.getById(aquisicao.quotation_response_id);
                     responseDetails = res.data || res;
                 } catch (innerError) {
-                    console.warn("Failed to load quotation response details, using acquisition data as fallback", innerError);
-                    // Keep using aquisicao data
+                    console.warn("Technician: Failed to load quotation response details, fallback to Acquisition details", innerError);
+
+                    // 2. Fallback: Get Acquisition details (technician definitely has access)
+                    try {
+                        if (acquisitionsAPI.getById) {
+                            const acqRes = await acquisitionsAPI.getById(aquisicao.id);
+                            responseDetails = acqRes.data || acqRes;
+                        }
+                    } catch (acqErr) {
+                        console.warn("Technician: Failed fallback to acquisition details", acqErr);
+                    }
+                }
+            } else {
+                // Direct acquisition: Get details
+                try {
+                    if (acquisitionsAPI.getById) {
+                        const acqRes = await acquisitionsAPI.getById(aquisicao.id);
+                        responseDetails = acqRes.data || acqRes;
+                    }
+                } catch (acqErr) {
+                    console.warn("Failed to load acquisition details", acqErr);
                 }
             }
 
-            // Ensure nested structures exist for the modal (which expects quotation_supplier, etc)
+            // 3. Data Normalization for Modal
+
+            // Ensure quotation_supplier structure exists (Modal relies on it for Supplier Info)
             if (!responseDetails.quotation_supplier && responseDetails.supplier) {
-                // Mock it if missing (e.g. direct acquisition)
                 responseDetails.quotation_supplier = {
                     supplier: responseDetails.supplier,
-                    quotation_request: responseDetails.quotation_request
+                    quotation_request: responseDetails.quotation_request || {}
                 };
+            }
+
+            // Ensure items exist. Some endpoints might return 'products' or 'acquisition_items'
+            if (!responseDetails.items || responseDetails.items.length === 0) {
+                if (responseDetails.products) {
+                    responseDetails.items = responseDetails.products;
+                } else if (responseDetails.acquisition_items) {
+                    responseDetails.items = responseDetails.acquisition_items;
+                }
             }
 
             setSelectedResponse(responseDetails);

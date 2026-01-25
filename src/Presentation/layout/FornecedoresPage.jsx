@@ -367,37 +367,42 @@ export default function FornecedoresPage() {
     }
   };
 
-  const handleOpenRevisarModal = async (resposta) => {
+  const handleOpenDetails = async (resposta) => {
     setIsLoadingDetails(true);
     try {
-      // Fetch full details including items and history
-      const data = await quotationResponsesAPI.getById(resposta.id);
+      let responseDetails = resposta;
 
-      // If the API doesn't return quotation_request populated with items, 
-      // we might need to look it up from the cotacoes list (which should be loaded)
-      // or ensure the API returns it. 
-      // For now, let's use the fetched data. 
-      // If we need to patch it with request items from the list:
-      let enrichedData = data;
-      if (!data.quotation_supplier?.quotation_request?.items && cotacoes.length > 0) {
-        const reqId = data.quotation_supplier?.quotation_request_id || data.quotation_request_id;
-        const request = cotacoes.find(c => c.id === reqId);
-        if (request) {
-          // Determine where to attach it. The modal expects cotacao.quotation_supplier.quotation_request
-          if (!enrichedData.quotation_supplier) enrichedData.quotation_supplier = {};
-          if (!enrichedData.quotation_supplier.quotation_request) enrichedData.quotation_supplier.quotation_request = request;
+      // Strategy: Try to get the richest data source available
+      if (resposta.id) {
+        try {
+          const res = await quotationResponsesAPI.getById(resposta.id);
+          responseDetails = res.data || res;
+        } catch (innerError) {
+          console.warn("Technician: Failed to load quotation response details, using fallback...", innerError);
+          // suppress error and use fallback
         }
       }
 
-      setSelectedCotacao(enrichedData);
-      setSelectedResposta(enrichedData); // Update this too as it's used for actions
+      // Ensure nested structures for Modal
+      if (!responseDetails.quotation_supplier && responseDetails.supplier) {
+        responseDetails.quotation_supplier = {
+          supplier: responseDetails.supplier,
+          quotation_request: responseDetails.quotation_request || {}
+        };
+      }
+
+      setSelectedResponse(responseDetails);
       setIsRevisarModalOpen(true);
-    } catch (error) {
-      console.error("Erro ao carregar detalhes da resposta:", error);
-      showToast("error", "Erro ao carregar detalhes da resposta.");
+    } catch (e) {
+      console.error("Error fetching details", e);
+      showToast("error", "Erro ao carregar detalhes");
     } finally {
       setIsLoadingDetails(false);
     }
+  };
+
+  const handleOpenRevisarModal = (resposta) => {
+    return handleOpenDetails(resposta);
   };
 
   // Handler for approving proposal

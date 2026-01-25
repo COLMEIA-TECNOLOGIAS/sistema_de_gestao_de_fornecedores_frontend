@@ -134,14 +134,15 @@ export default function ModalRevisarCotacao({
                     </div>
 
                     {/* Título e Descrição */}
+                    {/* Título e Descrição */}
                     <div className="mb-6">
                         <h3 className="font-semibold text-gray-900 mb-2">Título da Cotação:</h3>
-                        <p className="text-gray-700">{cotacao.quotation_supplier?.quotation_request?.title || 'N/A'}</p>
+                        <p className="text-gray-700">{cotacao.quotation_supplier?.quotation_request?.title || cotacao.quotation_request?.title || 'N/A'}</p>
 
-                        {cotacao.quotation_supplier?.quotation_request?.description && (
+                        {(cotacao.quotation_supplier?.quotation_request?.description || cotacao.quotation_request?.description) && (
                             <>
                                 <h3 className="font-semibold text-gray-900 mt-4 mb-2">Descrição:</h3>
-                                <p className="text-gray-700">{cotacao.quotation_supplier?.quotation_request?.description}</p>
+                                <p className="text-gray-700">{cotacao.quotation_supplier?.quotation_request?.description || cotacao.quotation_request?.description}</p>
                             </>
                         )}
                     </div>

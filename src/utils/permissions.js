@@ -58,7 +58,7 @@ export const ROLE_PERMISSIONS = {
             PERMISSIONS.PRODUTOS,
         ],
         canManageUsers: false,
-        canDeleteRecords: false,
+        canDeleteRecords: true,
         canApproveQuotations: true,
         canGenerateAcquisitions: true,
     },
