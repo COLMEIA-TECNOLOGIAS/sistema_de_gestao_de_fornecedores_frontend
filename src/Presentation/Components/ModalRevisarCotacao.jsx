@@ -39,15 +39,24 @@ export default function ModalRevisarCotacao({
         }
     };
 
-    // Calcular total se houver items com valores
+    // Calcular total considerando quantidade
     const calcularTotal = () => {
         if (!cotacao.items || cotacao.items.length === 0) return '0,00';
 
         const total = cotacao.items.reduce((acc, item) => {
-            const valor = parseFloat(item.price || 0);
-            return acc + valor;
+            // Find quantity from request item or item itself
+            const requestItem = item.quotation_item || cotacao.quotation_supplier?.quotation_request?.items?.find(
+                r => r.id === item.quotation_item_id
+            );
+            const quantity = parseFloat(requestItem?.quantity || item.quantity || 1);
+            const valor = parseFloat(item.unit_price || item.price || 0);
+            return acc + (valor * quantity);
         }, 0);
 
+        return total.toFixed(2); // Keep raw for formatting later or format here? 
+        // Original returned string.
+        // Let's return number to be safe, or string formatted. 
+        // Original: total.toFixed(2).replace('.', ',');
         return total.toFixed(2).replace('.', ',');
     };
 
@@ -139,9 +148,10 @@ export default function ModalRevisarCotacao({
                     {/* Tabela de Produtos */}
                     <div className="mb-6 pb-6 border-b-2 border-dashed border-gray-200">
                         <div className="grid grid-cols-12 gap-4 font-bold text-gray-900 mb-4">
-                            <div className="col-span-5">Produtos:</div>
-                            <div className="col-span-4">Descrição do produto:</div>
-                            <div className="col-span-3 text-right">Valor:</div>
+                            <div className="col-span-4">Produtos:</div>
+                            <div className="col-span-4">Descrição:</div>
+                            <div className="col-span-2 text-right">Unitário:</div>
+                            <div className="col-span-2 text-right">Total:</div>
                         </div>
 
                         {cotacao.items && cotacao.items.length > 0 ? (
@@ -153,9 +163,13 @@ export default function ModalRevisarCotacao({
                                         r => r.id === item.quotation_item_id
                                     );
 
+                                    const quantity = parseFloat(requestItem?.quantity || item.quantity || 1);
+                                    const unitPrice = parseFloat(item.unit_price || item.price || 0);
+                                    const lineTotal = quantity * unitPrice;
+
                                     return (
-                                        <div key={index} className="grid grid-cols-12 gap-4 text-sm text-gray-700 items-start">
-                                            <div className="col-span-5">
+                                        <div key={index} className="grid grid-cols-12 gap-4 text-sm text-gray-700 items-center">
+                                            <div className="col-span-4">
                                                 <span className="text-gray-900">
                                                     {String(index + 1).padStart(2, '0')} - {requestItem ? requestItem.name : `Item #${item.quotation_item_id}`}
                                                 </span>
@@ -168,8 +182,11 @@ export default function ModalRevisarCotacao({
                                             <div className="col-span-4 text-gray-600">
                                                 {requestItem?.specifications || item.notes || '-'}
                                             </div>
-                                            <div className="col-span-3 text-right font-medium text-gray-900">
-                                                {item.unit_price ? `${parseFloat(item.unit_price).toLocaleString('pt-AO', { minimumFractionDigits: 2 })} AOA` : '---'}
+                                            <div className="col-span-2 text-right font-medium text-gray-900">
+                                                {unitPrice ? `${unitPrice.toLocaleString('pt-AO', { minimumFractionDigits: 2 })} AOA` : '---'}
+                                            </div>
+                                            <div className="col-span-2 text-right font-bold text-gray-900">
+                                                {lineTotal ? `${lineTotal.toLocaleString('pt-AO', { minimumFractionDigits: 2 })} AOA` : '---'}
                                             </div>
                                         </div>
                                     );
@@ -187,8 +204,13 @@ export default function ModalRevisarCotacao({
                             onClick={async () => {
                                 try {
                                     setViewingDoc(true);
-                                    // Endpoint: /quotation-responses/{id}/document
-                                    const url = `/quotation-responses/${cotacao.id}/document`;
+
+                                    // Determine the correct ID and endpoint for the document
+                                    // If this is an acquisition record, it might point to a response
+                                    const responseId = cotacao.quotation_response_id || cotacao.id;
+
+                                    // Try the response document endpoint first as that's where the file usually lives
+                                    const url = `/quotation-responses/${responseId}/document`;
 
                                     const response = await api.get(url, {
                                         responseType: 'blob',
@@ -222,27 +244,60 @@ export default function ModalRevisarCotacao({
                     {/* Total */}
                     <div className="flex justify-end items-center mt-4">
                         <span className="text-xl font-bold text-gray-900 mr-2">Total:</span>
-                        <span className="text-4xl font-black text-black tracking-tight">{cotacao.history && cotacao.history.length > 0 && cotacao.history[0].total_amount
-                            ? parseFloat(cotacao.history[0].total_amount).toLocaleString('pt-AO', { minimumFractionDigits: 2 })
-                            : '0,00'} AOA</span>
+                        <span className="text-4xl font-black text-black tracking-tight">
+                            {cotacao.items && cotacao.items.length > 0 ? calcularTotal() : '0,00'} AOA
+                        </span>
                     </div>
                 </div>
 
                 {/* Footer com botões */}
-                <div className="px-8 py-6 border-t border-gray-100 flex items-center justify-between">
+                <div className="px-8 py-6 border-t border-gray-100 flex items-center justify-end gap-3">
                     <button
                         onClick={onClose}
-                        className="px-8 py-3 bg-[#44B16F] text-white rounded-lg hover:bg-[#3a9d5f] transition-colors font-medium shadow-sm"
+                        className="px-6 py-2.5 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors font-medium text-sm"
                     >
-                        Finalizar revisão
+                        Fechar
                     </button>
 
-                    <button
-                        onClick={onClose}
-                        className="px-8 py-3 bg-red-500 text-white rounded-lg hover:bg-red-600 transition-colors font-medium shadow-sm"
-                    >
-                        Cancelar
-                    </button>
+                    {onRejeitar && (
+                        <button
+                            onClick={handleRejeitar}
+                            className="px-6 py-2.5 bg-red-50 text-red-600 border border-red-100 rounded-lg hover:bg-red-100 transition-colors font-medium text-sm flex items-center gap-2"
+                        >
+                            <XCircle size={18} />
+                            Rejeitar
+                        </button>
+                    )}
+
+                    {onSolicitarRevisao && (
+                        <button
+                            onClick={handleSolicitarRevisao}
+                            className="px-6 py-2.5 bg-amber-50 text-amber-700 border border-amber-100 rounded-lg hover:bg-amber-100 transition-colors font-medium text-sm flex items-center gap-2"
+                        >
+                            <MessageSquare size={18} />
+                            Solicitar Revisão
+                        </button>
+                    )}
+
+                    {onAprovar && (
+                        <button
+                            onClick={handleAprovar}
+                            className="px-6 py-2.5 bg-emerald-50 text-emerald-700 border border-emerald-100 rounded-lg hover:bg-emerald-100 transition-colors font-medium text-sm flex items-center gap-2"
+                        >
+                            <CheckCircle size={18} />
+                            Aprovar
+                        </button>
+                    )}
+
+                    {onGerarAquisicao && (
+                        <button
+                            onClick={handleGerarAquisicao}
+                            className="px-6 py-2.5 bg-[#44B16F] text-white rounded-lg hover:bg-[#3a9d5f] transition-colors font-medium text-sm shadow-sm flex items-center gap-2"
+                        >
+                            <ShoppingCart size={18} />
+                            Gerar Aquisição
+                        </button>
+                    )}
                 </div>
             </div>
         </div>

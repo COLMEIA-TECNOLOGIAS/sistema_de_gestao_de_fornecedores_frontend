@@ -1,8 +1,10 @@
 import { useState, useEffect } from "react";
-import { Search, SlidersHorizontal, Eye, FileText, CheckCircle, Clock, AlertCircle, TrendingUp } from "lucide-react";
+import { Search, SlidersHorizontal, Eye, FileText, CheckCircle, Clock, AlertCircle, TrendingUp, Truck } from "lucide-react";
 import { quotationResponsesAPI, quotationRequestsAPI, acquisitionsAPI } from "../../services/api";
 import Toast from "../Components/Toast";
 import DashboardTableSkeleton from "../Components/DashboardTableSkeleton";
+import ModalRevisarCotacao from "../Components/ModalRevisarCotacao";
+import ModalSolicitarRevisao from "../Components/ModalSolicitarRevisao";
 
 export default function AquisicoesPage() {
     const [isLoading, setIsLoading] = useState(true);
@@ -11,6 +13,12 @@ export default function AquisicoesPage() {
     const [error, setError] = useState(null);
     const [toast, setToast] = useState(null);
     const [searchTerm, setSearchTerm] = useState("");
+
+    // Modal states
+    const [selectedResponse, setSelectedResponse] = useState(null);
+    const [isRevisarModalOpen, setIsRevisarModalOpen] = useState(false);
+    const [isSolicitarRevisaoModalOpen, setIsSolicitarRevisaoModalOpen] = useState(false);
+    const [isSubmittingReview, setIsSubmittingReview] = useState(false);
 
     useEffect(() => {
         fetchResponses();
@@ -56,6 +64,7 @@ export default function AquisicoesPage() {
 
     const getStatusBadge = (status) => {
         const statusConfig = {
+            completed: { label: 'Concluída', class: 'bg-green-50 text-green-700 border-green-100' },
             pending_review: { label: 'Pendente', class: 'bg-yellow-50 text-yellow-700 border-yellow-100' },
             approved: { label: 'Aprovada', class: 'bg-emerald-50 text-emerald-700 border-emerald-100' },
             rejected: { label: 'Rejeitada', class: 'bg-red-50 text-red-700 border-red-100' },
@@ -83,6 +92,95 @@ export default function AquisicoesPage() {
         (resp.supplier?.commercial_name || "").toLowerCase().includes(searchTerm.toLowerCase()) ||
         (resp.reference_number || "").toLowerCase().includes(searchTerm.toLowerCase())
     );
+
+    const handleOpenDetails = async (aquisicao) => {
+        try {
+            let responseDetails = aquisicao;
+
+            if (aquisicao.quotation_response_id) {
+                try {
+                    const res = await quotationResponsesAPI.getById(aquisicao.quotation_response_id);
+                    responseDetails = res.data || res;
+                } catch (innerError) {
+                    console.warn("Failed to load quotation response details, using acquisition data as fallback", innerError);
+                    // Keep using aquisicao data
+                }
+            }
+
+            // Ensure nested structures exist for the modal (which expects quotation_supplier, etc)
+            if (!responseDetails.quotation_supplier && responseDetails.supplier) {
+                // Mock it if missing (e.g. direct acquisition)
+                responseDetails.quotation_supplier = {
+                    supplier: responseDetails.supplier,
+                    quotation_request: responseDetails.quotation_request
+                };
+            }
+
+            setSelectedResponse(responseDetails);
+            setIsRevisarModalOpen(true);
+        } catch (e) {
+            console.error("Error fetching details", e);
+            showToast("error", "Erro ao carregar detalhes");
+        }
+    };
+
+    const handleAprovarProposta = async (responseObj) => {
+        try {
+            const idToApprove = responseObj.quotation_response_id || responseObj.id;
+            await quotationResponsesAPI.approve(idToApprove, "Aprovado via Aquisições");
+            showToast("success", "Proposta aprovada!");
+            setIsRevisarModalOpen(false);
+            fetchResponses();
+        } catch (e) {
+            console.error("Error approving", e);
+            showToast("error", "Erro ao aprovar proposta");
+        }
+    };
+
+    const handleRejeitarProposta = async (responseObj) => {
+        try {
+            // If we are in acquisitions, we might need the response ID
+            const idToReject = responseObj.quotation_response_id || responseObj.id;
+            await quotationResponsesAPI.reject(idToReject, "Rejeitado via Aquisições");
+            showToast("success", "Proposta rejeitada!");
+            setIsRevisarModalOpen(false);
+            fetchResponses();
+        } catch (e) {
+            console.error("Error rejecting", e);
+            showToast("error", "Erro ao rejeitar proposta");
+        }
+    };
+
+    const confirmSolicitarRevisao = async ({ reason, message }) => {
+        if (!selectedResponse) return;
+        setIsSubmittingReview(true);
+        try {
+            const idToReview = selectedResponse.quotation_response_id || selectedResponse.id;
+            await quotationResponsesAPI.requestRevision(idToReview, reason, message);
+            showToast('success', 'Solicitação de revisão enviada!');
+            setIsSolicitarRevisaoModalOpen(false);
+            fetchResponses();
+        } catch (err) {
+            console.error('Erro ao solicitar revisão:', err);
+            showToast('error', 'Erro ao solicitar revisão');
+        } finally {
+            setIsSubmittingReview(false);
+        }
+    };
+
+    const handleConfirmDelivery = async (aquisicao) => {
+        // Use window.confirm properly or a custom modal. For now window.confirm as requested implicitly by quick action.
+        if (!window.confirm("Tem certeza que deseja confirmar a entrega desta aquisição?")) return;
+
+        try {
+            await acquisitionsAPI.confirmDelivery(aquisicao.id);
+            showToast("success", "Entrega confirmada com sucesso!");
+            fetchResponses();
+        } catch (e) {
+            console.error("Erro ao confirmar entrega:", e);
+            showToast("error", "Erro ao confirmar entrega.");
+        }
+    };
 
     return (
         <div className="space-y-8 animate-fadeIn">
@@ -211,14 +309,27 @@ export default function AquisicoesPage() {
                                         <td className="px-6 py-6">
                                             <div className="flex items-center justify-center gap-2">
                                                 <button
+                                                    onClick={() => handleOpenDetails(resp)}
                                                     className="p-2 hover:bg-[#44B16F]/10 text-gray-400 hover:text-[#44B16F] rounded-lg transition-all"
                                                     title="Ver Detalhes"
                                                 >
                                                     <Eye size={18} />
                                                 </button>
+
+                                                {resp.status !== 'completed' && (
+                                                    <button
+                                                        onClick={() => handleConfirmDelivery(resp)}
+                                                        className="p-2 hover:bg-blue-50 text-gray-400 hover:text-blue-600 rounded-lg transition-all"
+                                                        title="Confirmar Entrega"
+                                                    >
+                                                        <Truck size={18} />
+                                                    </button>
+                                                )}
+
                                                 <button
+                                                    onClick={() => handleOpenDetails(resp)}
                                                     className="p-2 hover:bg-emerald-50 text-gray-400 hover:text-emerald-600 rounded-lg transition-all"
-                                                    title="Aprovar"
+                                                    title="Aprovar/Revisar"
                                                 >
                                                     <CheckCircle size={18} />
                                                 </button>
@@ -232,7 +343,28 @@ export default function AquisicoesPage() {
                 </div>
             </div>
 
-            {/* Toast Notification */}
+            <ModalRevisarCotacao
+                isOpen={isRevisarModalOpen}
+                onClose={() => setIsRevisarModalOpen(false)}
+                cotacao={selectedResponse}
+                onAprovar={handleAprovarProposta}
+                onRejeitar={handleRejeitarProposta}
+                onSolicitarRevisao={(c) => {
+                    setIsRevisarModalOpen(false);
+                    // Use the response ID (handled in handleSolicitarRevisaoProposta logic if needed, 
+                    // or just set selectedResponse and open the revision modal)
+                    // The 'c' passed here is likely the same as 'selectedResponse'
+                    setIsSolicitarRevisaoModalOpen(true);
+                }}
+            />
+
+            <ModalSolicitarRevisao
+                isOpen={isSolicitarRevisaoModalOpen}
+                onClose={() => setIsSolicitarRevisaoModalOpen(false)}
+                onSubmit={confirmSolicitarRevisao}
+                isLoading={isSubmittingReview}
+            />
+
             {toast && (
                 <Toast
                     type={toast.type}

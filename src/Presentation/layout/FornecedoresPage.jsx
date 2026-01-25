@@ -204,90 +204,107 @@ export default function FornecedoresPage() {
       try {
         setIsLoadingRespostas(true);
         setRespostasError(null);
-        const response = await quotationResponsesAPI.getAll();
-        console.log('Respostas recebidas da API:', response);
-        setRespostas(response.data || []);
-      } catch (err) {
-        console.error('Error fetching responses:', err);
-        // Supress 403 error for technicians and try fallback
-        if (err.response && err.response.status === 403) {
-          try {
-            console.log('Attempting fallback: deriving responses from requests...');
-            const requestsResponse = await quotationRequestsAPI.getAll();
-            let requests = Array.isArray(requestsResponse) ? requestsResponse : (requestsResponse.data || []);
 
-            // If requests don't have nested data (shallow list), fetch details
-            const hasNestedData = requests.some(r => r.responses || r.quotation_suppliers);
-            if (!hasNestedData && requests.length > 0) {
-              console.log('Requests list appears shallow. Fetching details for each request...');
-              const detailPromises = requests.map(req =>
-                quotationRequestsAPI.getById(req.id)
-                  .then(data => data.data || data)
-                  .catch(e => null)
-              );
-              const details = await Promise.all(detailPromises);
-              requests = details.filter(d => d !== null);
-            }
+        // 1. Try direct endpoint first
+        let directData = [];
+        try {
+          const response = await quotationResponsesAPI.getAll();
+          directData = response.data || [];
+        } catch (e) {
+          console.warn("Direct responses endpoint failed, attempting fallback...", e);
+        }
 
-            const derivedResponses = [];
+        if (directData.length > 0) {
+          setRespostas(directData);
+          return;
+        }
 
-            requests.forEach(req => {
-              // Check standard locations for responses
-              const potentialResponses = req.responses || req.quotation_responses || [];
+        // 2. Fallback: Fetch Requests and extract responses manually
+        // This is necessary if the user (Technician) doesn't have permission to list all responses 
+        // but can see them via their requests.
+        const requestsResponse = await quotationRequestsAPI.getAll();
+        const requests = Array.isArray(requestsResponse) ? requestsResponse : (requestsResponse.data || []);
 
-              if (Array.isArray(potentialResponses) && potentialResponses.length > 0) {
-                potentialResponses.forEach(resp => {
-                  // Ensure structure matches what table expects
-                  if (!resp.quotation_supplier) {
-                    resp.quotation_supplier = {
-                      quotation_request: req,
-                      supplier: resp.supplier || { commercial_name: 'Fornecedor' }
-                    };
-                  } else if (!resp.quotation_supplier.quotation_request) {
-                    resp.quotation_supplier.quotation_request = req;
-                  }
-                  derivedResponses.push(resp);
-                });
-              }
-              // Also check quotation_suppliers pivots which might hold response data
-              else if (req.quotation_suppliers && Array.isArray(req.quotation_suppliers)) {
-                req.quotation_suppliers.forEach(qs => {
-                  if (qs.response) {
-                    // Nested response object
-                    const r = qs.response;
-                    if (!r.quotation_supplier) r.quotation_supplier = qs;
-                    if (!qs.quotation_request) qs.quotation_request = req;
-                    derivedResponses.push(r);
-                  } else if (qs.status && ['submitted', 'approved', 'rejected', 'revision_requested'].includes(qs.status)) {
-                    // The pivot itself might be acting as the response record
-                    derivedResponses.push({
-                      id: qs.id,
-                      status: qs.status,
-                      submitted_at: qs.updated_at || qs.created_at,
-                      delivery_days: qs.delivery_days,
-                      history: [{ total_amount: qs.total_amount || 0 }], // Mock history for simple value
-                      quotation_supplier: {
-                        ...qs,
-                        quotation_request: req
-                      }
-                    });
-                  }
-                });
+        let allResponses = [];
+
+        // Fetch full details for requests to ensure we have nested quotation_suppliers
+        // Limit concurrency if needed, but Promise.all is usually fine for < 50 items.
+        const detailedRequests = await Promise.all(
+          requests.map(req =>
+            quotationRequestsAPI.getById(req.id)
+              .then(r => r.data || r)
+              .catch(e => {
+                console.error(`Failed to load details for request ${req.id}`, e);
+                return null;
+              })
+          )
+        );
+
+        detailedRequests.filter(Boolean).forEach(req => {
+          // Strategy 1: Check for explicit quotation_suppliers array
+          const suppliersList = [...(req.quotation_suppliers || [])];
+
+          // Strategy 2: Check for suppliers array with pivot (Laravel style)
+          if (req.suppliers && Array.isArray(req.suppliers)) {
+            req.suppliers.forEach(s => {
+              if (s.pivot) {
+                // Identify this pivoting logic
+                const pivotData = { ...s.pivot };
+                if (!pivotData.supplier) pivotData.supplier = s; // Ensure supplier info is attached
+                suppliersList.push(pivotData);
               }
             });
-
-            console.log('Derived responses:', derivedResponses);
-            setRespostas(derivedResponses);
-            setRespostasError(null);
-
-          } catch (fallbackErr) {
-            console.error('Fallback failed:', fallbackErr);
-            setRespostas([]);
-            setRespostasError(null);
           }
-        } else {
-          setRespostasError(err.message || 'Failed to load responses');
-        }
+
+          // Deduplicate by ID if possible to avoid double counting
+          const uniqueSuppliers = Array.from(new Map(suppliersList.map(item => [item.id, item])).values());
+
+          if (uniqueSuppliers.length > 0) {
+            uniqueSuppliers.forEach(qs => {
+              // PERMISSIVE: Include all links
+              const realResponse = qs.response || {};
+              let totalAmount = realResponse.total_amount || qs.price || qs.total_amount;
+
+              // Calculate from items if total isn't explicit
+              if (!totalAmount && (realResponse.items || qs.items)) {
+                const items = realResponse.items || qs.items;
+                if (Array.isArray(items)) {
+                  totalAmount = items.reduce((acc, item) => {
+                    const val = parseFloat(item.total_price || item.unit_price || item.price || 0);
+                    // If total_price is missing, assume unit_price * quantity (if available) or just unit_price
+                    const qty = parseFloat(item.quantity || 1);
+                    return acc + (item.total_price ? val : val * qty);
+                  }, 0);
+                }
+              }
+              if (!totalAmount) totalAmount = 0;
+
+              allResponses.push({
+                id: realResponse.id || `qs-${qs.id}` || Math.random(),
+                status: realResponse.status || qs.status || 'pending',
+                history: [{ total_amount: totalAmount }],
+                delivery_days: realResponse.delivery_days || qs.delivery_days || realResponse.deadline || qs.deadline || 0,
+
+                // Map dates correctly for table: Table uses 'submitted_at'
+                submitted_at: realResponse.created_at || qs.updated_at || qs.created_at || qs.response_date || req.created_at || req.updated_at,
+                created_at: qs.updated_at || qs.created_at || req.created_at,
+
+                quotation_supplier: {
+                  ...qs,
+                  supplier: qs.supplier || { commercial_name: 'Fornecedor' },
+                  quotation_request: req
+                }
+              });
+            });
+          }
+        });
+
+        console.log("Derived Responses from Requests:", allResponses);
+        setRespostas(allResponses);
+
+      } catch (err) {
+        console.error('Error fetching responses:', err);
+        setRespostasError(err.message || 'Failed to load responses');
       } finally {
         setIsLoadingRespostas(false);
       }
@@ -317,6 +334,8 @@ export default function FornecedoresPage() {
 
   const getStatusColor = (status) => {
     const statusColors = {
+      "submitted": "bg-gray-100 text-gray-700",
+      "sent": "bg-yellow-100 text-yellow-700",
       "Finalizado": "bg-green-100 text-green-700",
       "Enviado": "bg-yellow-100 text-yellow-700",
       "Em andamento": "bg-blue-100 text-blue-700",
@@ -328,6 +347,7 @@ export default function FornecedoresPage() {
       "rejected": "bg-red-100 text-red-700",
       "pending": "bg-yellow-100 text-yellow-700",
       "revision_requested": "bg-amber-100 text-amber-700",
+      "needs_revision": "bg-gray-100 text-gray-700",
     };
     return statusColors[status] || "bg-gray-100 text-gray-700";
   };
@@ -726,9 +746,11 @@ export default function FornecedoresPage() {
     const getStatusLabel = (status) => {
       const labels = {
         'pending': 'Pendente',
+        'submitted': 'Submetido',
         'approved': 'Aprovada',
         'rejected': 'Rejeitada',
         'revision_requested': 'Revisão Solicitada',
+        'needs_revision': 'Revisão Necessária',
       };
       return labels[status] || status;
     };
@@ -1379,6 +1401,22 @@ export default function FornecedoresPage() {
           setSelectedCotacao(null);
         }}
         cotacao={selectedCotacao}
+        onAprovar={(c) => {
+          handleAprovarProposta(c.id);
+          setIsRevisarModalOpen(false);
+        }}
+        onRejeitar={(c) => {
+          handleRejeitarProposta(c.id);
+          setIsRevisarModalOpen(false);
+        }}
+        onSolicitarRevisao={(c) => {
+          setIsRevisarModalOpen(false);
+          handleSolicitarRevisaoProposta(c.id);
+        }}
+        onGerarAquisicao={(c) => {
+          handleGerarAquisicaoProposta(c.id);
+          setIsRevisarModalOpen(false);
+        }}
       />
       <ModalSolicitarRevisao
         isOpen={isSolicitarRevisaoModalOpen}

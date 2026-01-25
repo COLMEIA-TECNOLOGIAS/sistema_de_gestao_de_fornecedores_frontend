@@ -55,10 +55,10 @@ export default function LoginPage() {
 
             <div className="text-center text-white max-w-2xl">
               <h2 className="text-5xl font-bold mb-4">
-                Plataforma de gestão
+                Sistema de Gestão
               </h2>
               <h2 className="text-5xl font-bold">
-                de Procurement.
+                de Fornecedores.
               </h2>
             </div>
           </div>

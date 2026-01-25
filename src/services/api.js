@@ -268,6 +268,19 @@ export const acquisitionsAPI = {
         const response = await api.get('/acquisitions/stats/products');
         return response.data;
     },
+    confirmDelivery: async (id) => {
+        const response = await api.post(`/acquisitions/${id}/confirm-delivery`);
+        return response.data;
+    },
+};
+
+// Reports API
+export const reportsAPI = {
+    getSummary: async (params) => {
+        // params: { period: 'weekly'|'monthly'|'yearly', start_date, end_date }
+        const response = await api.get('/reports/summary', { params });
+        return response.data;
+    },
 };
 
 export default api;
