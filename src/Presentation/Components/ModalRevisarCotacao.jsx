@@ -9,7 +9,8 @@ export default function ModalRevisarCotacao({
     onAprovar,
     onRejeitar,
     onSolicitarRevisao,
-    onGerarAquisicao
+    onGerarAquisicao,
+    isAcquisition
 }) {
     const [viewingDoc, setViewingDoc] = useState(false);
 
@@ -74,7 +75,7 @@ export default function ModalRevisarCotacao({
                 <div className="flex items-start justify-between px-8 py-6 border-b border-gray-100">
                     <div className="flex-1">
                         <h2 className="text-2xl font-bold text-gray-900 mb-4">
-                            Pedido de cotação - {cotacao.quotation_supplier?.supplier?.commercial_name || cotacao.quotation_supplier?.supplier?.legal_name || 'Fornecedor'}
+                            {isAcquisition ? 'Aquisição' : 'Pedido de cotação'} - {cotacao.quotation_supplier?.supplier?.commercial_name || cotacao.quotation_supplier?.supplier?.legal_name || 'Fornecedor'}
                         </h2>
 
                         {/* Endereço do fornecedor */}

@@ -325,14 +325,6 @@ export default function AquisicoesPage() {
                                                         <Truck size={18} />
                                                     </button>
                                                 )}
-
-                                                <button
-                                                    onClick={() => handleOpenDetails(resp)}
-                                                    className="p-2 hover:bg-emerald-50 text-gray-400 hover:text-emerald-600 rounded-lg transition-all"
-                                                    title="Aprovar/Revisar"
-                                                >
-                                                    <CheckCircle size={18} />
-                                                </button>
                                             </div>
                                         </td>
                                     </tr>
@@ -347,15 +339,7 @@ export default function AquisicoesPage() {
                 isOpen={isRevisarModalOpen}
                 onClose={() => setIsRevisarModalOpen(false)}
                 cotacao={selectedResponse}
-                onAprovar={handleAprovarProposta}
-                onRejeitar={handleRejeitarProposta}
-                onSolicitarRevisao={(c) => {
-                    setIsRevisarModalOpen(false);
-                    // Use the response ID (handled in handleSolicitarRevisaoProposta logic if needed, 
-                    // or just set selectedResponse and open the revision modal)
-                    // The 'c' passed here is likely the same as 'selectedResponse'
-                    setIsSolicitarRevisaoModalOpen(true);
-                }}
+                isAcquisition={true}
             />
 
             <ModalSolicitarRevisao
