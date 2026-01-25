@@ -30,76 +30,21 @@ export default function AquisicoesPage() {
         try {
             setIsLoading(true);
             setError(null);
-            const response = await quotationResponsesAPI.getAll();
-            // Assuming response.data is the array from the paginated response
-            setResponses(response.data || []);
+
+            // Use the correct API endpoint for acquisitions
+            const data = await acquisitionsAPI.getAll();
+
+            if (data.data) {
+                setResponses(data.data);
+            } else if (Array.isArray(data)) {
+                setResponses(data);
+            } else {
+                setResponses([]);
+            }
+
         } catch (err) {
             console.error("Erro ao carregar aquisições:", err);
-
-            // Supress 403 error for technicians and try fallback
-            if (err.response && err.response.status === 403) {
-                try {
-                    console.log('Attempting fallback for acquisitions: deriving from requests...');
-                    const requestsResponse = await quotationRequestsAPI.getAll();
-                    const requests = Array.isArray(requestsResponse) ? requestsResponse : (requestsResponse.data || []);
-
-                    const derivedResponses = [];
-
-                    requests.forEach(req => {
-                        // Check standard locations for responses
-                        const potentialResponses = req.responses || req.quotation_responses || [];
-
-                        if (Array.isArray(potentialResponses) && potentialResponses.length > 0) {
-                            potentialResponses.forEach(resp => {
-                                // Ensure structure matches
-                                if (!resp.quotation_supplier) {
-                                    resp.quotation_supplier = {
-                                        quotation_request: req,
-                                        supplier: resp.supplier || { commercial_name: 'Fornecedor' },
-                                        quotation_request_id: req.id
-                                    };
-                                } else if (!resp.quotation_supplier.quotation_request) {
-                                    resp.quotation_supplier.quotation_request = req;
-                                }
-                                derivedResponses.push(resp);
-                            });
-                        }
-                        // Also check quotation_suppliers pivots
-                        else if (req.quotation_suppliers && Array.isArray(req.quotation_suppliers)) {
-                            req.quotation_suppliers.forEach(qs => {
-                                if (qs.response) {
-                                    const r = qs.response;
-                                    if (!r.quotation_supplier) r.quotation_supplier = qs;
-                                    if (!qs.quotation_request) qs.quotation_request = req;
-                                    derivedResponses.push(r);
-                                } else if (qs.status && ['submitted', 'approved', 'rejected', 'revision_requested'].includes(qs.status)) {
-                                    derivedResponses.push({
-                                        id: qs.id,
-                                        status: qs.status,
-                                        submitted_at: qs.updated_at || qs.created_at,
-                                        delivery_days: qs.delivery_days,
-                                        quotation_supplier: {
-                                            ...qs,
-                                            quotation_request: req,
-                                            quotation_request_id: req.id
-                                        }
-                                    });
-                                }
-                            });
-                        }
-                    });
-
-                    console.log('Derived acquisitions/responses:', derivedResponses);
-                    setResponses(derivedResponses);
-                    setError(null);
-                } catch (fallbackErr) {
-                    console.error('Fallback failed:', fallbackErr);
-                    setResponses([]);
-                    setError(null);
-                }
-            } else {
-                setError("Erro ao carregar dados das aquisições");
-            }
+            setError("Erro ao carregar lista de aquisições.");
         } finally {
             setIsLoading(false);
         }
@@ -135,7 +80,8 @@ export default function AquisicoesPage() {
 
     const filteredResponses = responses.filter(resp =>
         resp.id.toString().includes(searchTerm) ||
-        (resp.quotation_supplier?.supplier?.commercial_name || "").toLowerCase().includes(searchTerm.toLowerCase())
+        (resp.supplier?.commercial_name || "").toLowerCase().includes(searchTerm.toLowerCase()) ||
+        (resp.reference_number || "").toLowerCase().includes(searchTerm.toLowerCase())
     );
 
     return (
@@ -241,21 +187,23 @@ export default function AquisicoesPage() {
                                         <td className="px-6 py-6 text-sm font-bold text-gray-900">#{resp.id}</td>
                                         <td className="px-6 py-6">
                                             <div className="flex flex-col">
-                                                <span className="text-sm font-semibold text-gray-800">Cotação #{resp.quotation_supplier?.quotation_request_id || "N/A"}</span>
-                                                <span className="text-xs text-gray-400 mt-1">Ref: {resp.quotation_supplier?.quotation_request?.reference_number || "N/A"}</span>
+                                                <span className="text-sm font-semibold text-gray-800">Cotação #{resp.quotation_request_id || "N/A"}</span>
+                                                <span className="text-xs text-gray-400 mt-1">Ref: {resp.reference_number || "N/A"}</span>
+                                                <span className="text-xs text-gray-500 mt-0.5" title={resp.quotation_request?.title}>
+                                                    {resp.quotation_request?.title?.substring(0, 20)}...
+                                                </span>
                                             </div>
                                         </td>
                                         <td className="px-6 py-6">
                                             <span className="text-sm font-medium text-gray-700">
-                                                {resp.quotation_supplier?.supplier?.commercial_name || "N/A"}
+                                                {resp.supplier?.commercial_name || resp.supplier?.legal_name || "N/A"}
                                             </span>
                                         </td>
                                         <td className="px-6 py-6 text-sm text-gray-600 font-medium">
-                                            {formatDate(resp.delivery_date)}
-                                            <span className="block text-[10px] text-gray-400 uppercase mt-0.5">{resp.delivery_days} dias</span>
+                                            {formatDate(resp.expected_delivery_date)}
                                         </td>
                                         <td className="px-6 py-6 text-sm text-gray-500">
-                                            {formatDate(resp.submitted_at)}
+                                            {formatDate(resp.created_at)}
                                         </td>
                                         <td className="px-6 py-6">
                                             {getStatusBadge(resp.status)}

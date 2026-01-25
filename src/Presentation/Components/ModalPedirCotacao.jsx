@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
-import { X, Package, Clock, Plus, Trash2 } from 'lucide-react';
-import { quotationRequestsAPI, suppliersAPI } from '../../services/api';
+import { X, Package, Clock, Plus, Trash2, Search } from 'lucide-react';
+import { quotationRequestsAPI, suppliersAPI, productsAPI } from '../../services/api';
 
 export default function ModalPedirCotacao({ isOpen, onClose, fornecedor }) {
     const [showAddProducts, setShowAddProducts] = useState(false);
@@ -12,6 +12,10 @@ export default function ModalPedirCotacao({ isOpen, onClose, fornecedor }) {
     const [productQuantity, setProductQuantity] = useState(1);
     const [productUnit, setProductUnit] = useState('un');
     const [productsList, setProductsList] = useState([]);
+
+    // Autocomplete states
+    const [filteredProducts, setFilteredProducts] = useState([]);
+    const [showSuggestions, setShowSuggestions] = useState(false);
 
     // Fornecedores states
     const [fornecedoresList, setFornecedoresList] = useState([]);
@@ -46,7 +50,51 @@ export default function ModalPedirCotacao({ isOpen, onClose, fornecedor }) {
         fetchFornecedores();
     }, [isOpen, fornecedor]);
 
+    // Search products when user types
+    useEffect(() => {
+        const searchProducts = async () => {
+            if (productName.trim().length >= 2) {
+                try {
+                    // Search using the API
+                    const res = await productsAPI.search(productName);
+
+                    // Helper to safely extract array from response
+                    let items = [];
+                    if (res.data && Array.isArray(res.data)) {
+                        items = res.data;
+                    } else if (Array.isArray(res)) {
+                        items = res;
+                    }
+
+                    // Client-side filtering as fallback/refinement
+                    // This ensures that if the backend ignores the ?search= param, we still show relevant results
+                    const filtered = items.filter(p =>
+                        p.name.toLowerCase().includes(productName.toLowerCase())
+                    );
+
+                    setFilteredProducts(filtered);
+                    setShowSuggestions(true);
+                } catch (error) {
+                    console.error("Erro ao buscar produtos:", error);
+                }
+            } else {
+                setFilteredProducts([]);
+                setShowSuggestions(false);
+            }
+        };
+
+        const timer = setTimeout(searchProducts, 300);
+        return () => clearTimeout(timer);
+    }, [productName]);
+
     if (!isOpen) return null;
+
+    const handleSelectProduct = (product) => {
+        setProductName(product.name);
+        setProductDescription(product.description || "");
+        if (product.unit) setProductUnit(product.unit);
+        setShowSuggestions(false);
+    };
 
     const handleContinue = () => {
         setShowAddProducts(true);
@@ -61,7 +109,11 @@ export default function ModalPedirCotacao({ isOpen, onClose, fornecedor }) {
         setProductDescription('');
         setProductQuantity(1);
         setProductUnit('un');
+        setProductQuantity(1);
+        setProductUnit('un');
         setProductsList([]);
+        setFilteredProducts([]);
+        setShowSuggestions(false);
         setSelectedFornecedores([]);
         setSubmitError(null);
         setSubmitSuccess(false);
@@ -330,7 +382,7 @@ export default function ModalPedirCotacao({ isOpen, onClose, fornecedor }) {
                                     </div>
 
                                     {/* Product Name */}
-                                    <div>
+                                    <div className="relative">
                                         <label className="block text-sm font-medium text-gray-700 mb-2">
                                             Nome do produto
                                         </label>
@@ -338,9 +390,27 @@ export default function ModalPedirCotacao({ isOpen, onClose, fornecedor }) {
                                             type="text"
                                             value={productName}
                                             onChange={(e) => setProductName(e.target.value)}
+                                            onFocus={() => { if (productName.length >= 2) setShowSuggestions(true); }}
+                                            onBlur={() => setTimeout(() => setShowSuggestions(false), 200)} // Delay to allow click
                                             placeholder="Computador portátil"
                                             className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#44B16F] focus:border-transparent"
                                         />
+                                        {showSuggestions && filteredProducts.length > 0 && (
+                                            <div className="absolute z-50 w-full bg-white mt-1 border border-gray-200 rounded-lg shadow-xl max-h-60 overflow-y-auto">
+                                                {filteredProducts.map(product => (
+                                                    <div
+                                                        key={product.id}
+                                                        onClick={() => handleSelectProduct(product)}
+                                                        className="px-4 py-2 hover:bg-gray-50 cursor-pointer border-b border-gray-50 last:border-0"
+                                                    >
+                                                        <p className="font-medium text-sm text-gray-800">{product.name}</p>
+                                                        {product.description && (
+                                                            <p className="text-xs text-gray-500 truncate">{product.description}</p>
+                                                        )}
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        )}
                                     </div>
 
                                     {/* Product Description */}

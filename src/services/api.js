@@ -252,10 +252,18 @@ export const productsAPI = {
         const response = await api.delete(`/products/${id}`);
         return response.data;
     },
+    search: async (query, page = 1) => {
+        const response = await api.get(`/products?search=${query}&page=${page}`);
+        return response.data;
+    },
 };
 
 // Acquisitions API
 export const acquisitionsAPI = {
+    getAll: async (page = 1) => {
+        const response = await api.get(`/acquisitions?page=${page}`);
+        return response.data;
+    },
     getStatsProducts: async () => {
         const response = await api.get('/acquisitions/stats/products');
         return response.data;
