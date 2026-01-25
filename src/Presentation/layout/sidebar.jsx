@@ -40,6 +40,12 @@ function Sidebar({ activeItem, onItemClick }) {
       permission: PERMISSIONS.CATEGORIAS
     },
     {
+      id: "produtos",
+      label: "Produtos",
+      icon: Package,
+      permission: PERMISSIONS.PRODUTOS
+    },
+    {
       id: "relatorios",
       label: "Relatórios",
       icon: BarChart3,

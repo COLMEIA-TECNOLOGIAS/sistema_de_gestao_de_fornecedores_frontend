@@ -171,10 +171,10 @@ Colunas exibidas:
 - Token de autenticação é automaticamente adicionado aos headers
 - Todas as datas são formatadas para o fuso horário pt-AO
 - O modal pode ser usado com ou sem um fornecedor específico selecionado
-- Quando um fornecedor está selecionado ao abrir o modal, ele é automaticamente adicionado à seleção
+- Quando um fornecedor está selecionado ao abrir o modal, ele é automaticamente adicionado à seleção 
 - **É obrigatório selecionar pelo menos 1 fornecedor** para criar a cotação
 - Pode-se selecionar múltiplos fornecedores para enviar a mesma cotação
-
+ 
 ## 🐛 Debug
 
 Se encontrar problemas:

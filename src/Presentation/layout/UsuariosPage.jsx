@@ -16,6 +16,8 @@ export default function UsuariosPage() {
   const [error, setError] = useState(null);
   const [isDeleting, setIsDeleting] = useState(false);
 
+  const [searchTerm, setSearchTerm] = useState("");
+
   const fetchUsuarios = async () => {
     setIsLoading(true);
     setError(null);
@@ -81,6 +83,15 @@ export default function UsuariosPage() {
     return roles[role] || role;
   };
 
+  // Filter users based on search term
+  const filteredUsuarios = usuarios.filter((user) => {
+    const search = searchTerm.toLowerCase();
+    const name = (user.name || user.nome || "").toLowerCase();
+    const email = (user.email || "").toLowerCase();
+    const role = (getRoleLabel(user.role) || "").toLowerCase();
+    return name.includes(search) || email.includes(search) || role.includes(search);
+  });
+
   return (
     <div className="space-y-8">
       {/* Welcome Section */}
@@ -133,6 +144,8 @@ export default function UsuariosPage() {
           </svg>
           <input
             type="text"
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
             placeholder="Pesquisar usuário"
             className="pl-10 pr-4 py-3 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#44B16F] focus:border-transparent w-64"
           />
@@ -177,7 +190,7 @@ export default function UsuariosPage() {
             <tbody>
               {isLoading ? (
                 <UsuarioTableSkeleton rows={5} />
-              ) : usuarios.length === 0 ? (
+              ) : filteredUsuarios.length === 0 ? (
                 <tr>
                   <td colSpan="6" className="px-6 py-12 text-center text-gray-500">
                     <div className="flex flex-col items-center gap-2">
@@ -190,7 +203,7 @@ export default function UsuariosPage() {
                   </td>
                 </tr>
               ) : (
-                usuarios.map((u, index) => (
+                filteredUsuarios.map((u, index) => (
                   <tr key={u.id || index} className="border-b border-gray-100 hover:bg-gray-50 transition-colors">
                     <td className="px-6 py-4 text-gray-700">{u.id}</td>
                     <td className="px-6 py-4">

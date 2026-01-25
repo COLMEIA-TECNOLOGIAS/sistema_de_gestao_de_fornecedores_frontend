@@ -2,7 +2,6 @@ import { useState, useEffect } from "react";
 import {
     Plus,
     Search,
-    MoreHorizontal,
     Edit2,
     Trash2,
     Loader2,
@@ -13,8 +12,10 @@ import {
 } from "lucide-react";
 import { categoriesAPI } from "../../services/api";
 import CategoriasTableSkeleton from "../Components/CategoriasTableSkeleton";
+import { useAuth } from "../../context/AuthContext";
 
 export default function CategoriasPage() {
+    const { isAdmin } = useAuth();
     const [categorias, setCategorias] = useState([]);
     const [isLoading, setIsLoading] = useState(true);
     const [searchTerm, setSearchTerm] = useState("");
@@ -122,13 +123,15 @@ export default function CategoriasPage() {
                     <h1 className="text-2xl font-bold text-gray-900">Categorias</h1>
                     <p className="text-gray-500 text-sm">Gerencie as categorias de produtos e serviços do sistema.</p>
                 </div>
-                <button
-                    onClick={() => handleOpenModal()}
-                    className="flex items-center gap-2 px-6 py-2.5 bg-[#44B16F] text-white font-bold rounded-xl hover:bg-[#368d58] transition-all shadow-lg shadow-[#44B16F]/20"
-                >
-                    <Plus size={20} />
-                    Nova Categoria
-                </button>
+                {isAdmin && (
+                    <button
+                        onClick={() => handleOpenModal()}
+                        className="flex items-center gap-2 px-6 py-2.5 bg-[#44B16F] text-white font-bold rounded-xl hover:bg-[#368d58] transition-all shadow-lg shadow-[#44B16F]/20"
+                    >
+                        <Plus size={20} />
+                        Nova Categoria
+                    </button>
+                )}
             </div>
 
             {/* Search and Alert */}
@@ -189,20 +192,16 @@ export default function CategoriasPage() {
                                         </td>
                                         <td className="px-6 py-4 text-right">
                                             <div className="flex items-center justify-end gap-2">
-                                                <button
-                                                    onClick={() => handleOpenModal(cat)}
-                                                    className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
-                                                    title="Editar"
-                                                >
-                                                    <Edit2 size={18} />
-                                                </button>
-                                                <button
-                                                    onClick={() => handleOpenDeleteModal(cat)}
-                                                    className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors"
-                                                    title="Excluir"
-                                                >
-                                                    <Trash2 size={18} />
-                                                </button>
+                                                {/* Edit functionality removed as per requirements */}
+                                                {isAdmin && (
+                                                    <button
+                                                        onClick={() => handleOpenDeleteModal(cat)}
+                                                        className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                                                        title="Excluir"
+                                                    >
+                                                        <Trash2 size={18} />
+                                                    </button>
+                                                )}
                                             </div>
                                         </td>
                                     </tr>

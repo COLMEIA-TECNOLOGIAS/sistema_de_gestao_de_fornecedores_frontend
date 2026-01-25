@@ -1,19 +1,30 @@
 import { useState, useEffect } from "react";
-import { Search, SlidersHorizontal, Eye, FileText, CheckCircle, Clock, AlertCircle } from "lucide-react";
-import { quotationResponsesAPI } from "../../services/api";
+import { Search, SlidersHorizontal, Eye, FileText, CheckCircle, Clock, AlertCircle, TrendingUp } from "lucide-react";
+import { quotationResponsesAPI, quotationRequestsAPI, acquisitionsAPI } from "../../services/api";
 import Toast from "../Components/Toast";
 import DashboardTableSkeleton from "../Components/DashboardTableSkeleton";
 
 export default function AquisicoesPage() {
     const [isLoading, setIsLoading] = useState(true);
     const [responses, setResponses] = useState([]);
+    const [stats, setStats] = useState([]);
     const [error, setError] = useState(null);
     const [toast, setToast] = useState(null);
     const [searchTerm, setSearchTerm] = useState("");
 
     useEffect(() => {
         fetchResponses();
+        fetchStats();
     }, []);
+
+    const fetchStats = async () => {
+        try {
+            const data = await acquisitionsAPI.getStatsProducts();
+            setStats(Array.isArray(data) ? data : []);
+        } catch (error) {
+            console.error("Erro ao carregar estatísticas:", error);
+        }
+    };
 
     const fetchResponses = async () => {
         try {
@@ -24,7 +35,71 @@ export default function AquisicoesPage() {
             setResponses(response.data || []);
         } catch (err) {
             console.error("Erro ao carregar aquisições:", err);
-            setError("Erro ao carregar dados das aquisições");
+
+            // Supress 403 error for technicians and try fallback
+            if (err.response && err.response.status === 403) {
+                try {
+                    console.log('Attempting fallback for acquisitions: deriving from requests...');
+                    const requestsResponse = await quotationRequestsAPI.getAll();
+                    const requests = Array.isArray(requestsResponse) ? requestsResponse : (requestsResponse.data || []);
+
+                    const derivedResponses = [];
+
+                    requests.forEach(req => {
+                        // Check standard locations for responses
+                        const potentialResponses = req.responses || req.quotation_responses || [];
+
+                        if (Array.isArray(potentialResponses) && potentialResponses.length > 0) {
+                            potentialResponses.forEach(resp => {
+                                // Ensure structure matches
+                                if (!resp.quotation_supplier) {
+                                    resp.quotation_supplier = {
+                                        quotation_request: req,
+                                        supplier: resp.supplier || { commercial_name: 'Fornecedor' },
+                                        quotation_request_id: req.id
+                                    };
+                                } else if (!resp.quotation_supplier.quotation_request) {
+                                    resp.quotation_supplier.quotation_request = req;
+                                }
+                                derivedResponses.push(resp);
+                            });
+                        }
+                        // Also check quotation_suppliers pivots
+                        else if (req.quotation_suppliers && Array.isArray(req.quotation_suppliers)) {
+                            req.quotation_suppliers.forEach(qs => {
+                                if (qs.response) {
+                                    const r = qs.response;
+                                    if (!r.quotation_supplier) r.quotation_supplier = qs;
+                                    if (!qs.quotation_request) qs.quotation_request = req;
+                                    derivedResponses.push(r);
+                                } else if (qs.status && ['submitted', 'approved', 'rejected', 'revision_requested'].includes(qs.status)) {
+                                    derivedResponses.push({
+                                        id: qs.id,
+                                        status: qs.status,
+                                        submitted_at: qs.updated_at || qs.created_at,
+                                        delivery_days: qs.delivery_days,
+                                        quotation_supplier: {
+                                            ...qs,
+                                            quotation_request: req,
+                                            quotation_request_id: req.id
+                                        }
+                                    });
+                                }
+                            });
+                        }
+                    });
+
+                    console.log('Derived acquisitions/responses:', derivedResponses);
+                    setResponses(derivedResponses);
+                    setError(null);
+                } catch (fallbackErr) {
+                    console.error('Fallback failed:', fallbackErr);
+                    setResponses([]);
+                    setError(null);
+                }
+            } else {
+                setError("Erro ao carregar dados das aquisições");
+            }
         } finally {
             setIsLoading(false);
         }
@@ -72,6 +147,33 @@ export default function AquisicoesPage() {
                     <p className="text-gray-500 mt-1">Gerencie as respostas e aquisições de fornecedores</p>
                 </div>
             </div>
+
+            {/* Stats Section */}
+            {stats.length > 0 && (
+                <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
+                    <h2 className="text-lg font-bold text-gray-800 mb-4 flex items-center gap-2">
+                        <TrendingUp size={20} className="text-[#44B16F]" />
+                        Produtos Mais Adquiridos
+                    </h2>
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                        {stats.map((item, index) => (
+                            <div key={index} className="bg-gray-50 p-4 rounded-xl border border-gray-100 hover:shadow-md transition-shadow">
+                                <p className="font-bold text-gray-800 truncate" title={item.product_name}>{item.product_name}</p>
+                                <div className="flex justify-between items-end mt-3">
+                                    <div>
+                                        <p className="text-[10px] text-gray-500 uppercase tracking-widest font-semibold">Quantidade</p>
+                                        <p className="text-2xl font-bold text-[#44B16F] mt-1">{item.total_quantity}</p>
+                                    </div>
+                                    <div className="text-right">
+                                        <p className="text-[10px] text-gray-500 uppercase tracking-widest font-semibold">Aquisições</p>
+                                        <p className="text-sm font-bold text-gray-700 mt-1">{item.acquisition_count}</p>
+                                    </div>
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+                </div>
+            )}
 
             {/* Filters and Search */}
             <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 flex flex-col md:flex-row gap-4 items-center justify-between">

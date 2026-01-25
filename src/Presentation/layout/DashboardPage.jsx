@@ -1,6 +1,11 @@
 import { useAuth } from "../../context/AuthContext";
 import { useState, useEffect } from "react";
-import { dashboardAPI } from "../../services/api";
+import {
+    dashboardAPI,
+    quotationRequestsAPI,
+    suppliersAPI,
+    quotationResponsesAPI
+} from "../../services/api";
 import DashboardTableSkeleton from "../Components/DashboardTableSkeleton";
 import { Package, AlertCircle, Users, FileText } from "lucide-react";
 
@@ -22,10 +27,76 @@ export default function DashboardPage() {
             const data = await dashboardAPI.getData();
             setDashboardData(data);
         } catch (err) {
-            console.error("Erro ao carregar dados do dashboard:", err);
-            setError("Erro ao carregar dados do dashboard");
+            console.error("Erro ao carregar dados do dashboard via API principal:", err);
+            console.log("Tentando carregar dados via fallback (cálculo manual)...");
+            await fetchDashboardDataFallback();
         } finally {
             setIsLoading(false);
+        }
+    };
+
+    const fetchDashboardDataFallback = async () => {
+        try {
+            // Fetch all necessary data in parallel
+            const [quotations, suppliers, responses] = await Promise.all([
+                quotationRequestsAPI.getAll().catch(() => []),
+                suppliersAPI.getAll().catch(() => []),
+                quotationResponsesAPI.getAll().catch(() => [])
+            ]);
+
+            // Normalizing data (API sometimes returns { data: [] } wrapper)
+            const quotationsList = Array.isArray(quotations) ? quotations : (quotations.data || []);
+            const suppliersList = Array.isArray(suppliers) ? suppliers : (suppliers.data || []);
+            const responsesList = Array.isArray(responses) ? responses : (responses.data || []);
+
+            // Calculate Counts
+
+            // Active Quotations: sent or in_progress
+            const activeQuotationsCount = quotationsList.filter(q =>
+                ['sent', 'in_progress', 'open'].includes(q.status)
+            ).length;
+
+            // Pending Reviews: Responses that are pending
+            // Assuming responses have a 'status' field.
+            const pendingReviewsCount = responsesList.filter(r =>
+                ['pending', 'review', 'submitted'].includes(r.status)
+            ).length;
+
+            // Active Suppliers
+            const activeSuppliersCount = suppliersList.length;
+
+            // Total Quotations
+            const totalQuotationsCount = quotationsList.length;
+
+            // Recent Quotations (Take last 5)
+            // Sorting by created_at desc if possible, otherwise assume list order
+            const sortedQuotations = [...quotationsList].sort((a, b) => {
+                return new Date(b.created_at) - new Date(a.created_at);
+            }).slice(0, 5);
+
+            setDashboardData({
+                counts: {
+                    active_quotations: activeQuotationsCount,
+                    pending_reviews: pendingReviewsCount,
+                    active_suppliers: activeSuppliersCount,
+                    total_quotations: totalQuotationsCount
+                },
+                recent_quotations: sortedQuotations
+            });
+
+        } catch (fallbackErr) {
+            console.error("Erro no fallback do dashboard:", fallbackErr);
+            // Default empty state if even fallback fails
+            setDashboardData({
+                counts: {
+                    active_quotations: 0,
+                    pending_reviews: 0,
+                    active_suppliers: 0,
+                    total_quotations: 0
+                },
+                recent_quotations: []
+            });
+            setError(null);
         }
     };
 

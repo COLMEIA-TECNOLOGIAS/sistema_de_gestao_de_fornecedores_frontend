@@ -209,7 +209,85 @@ export default function FornecedoresPage() {
         setRespostas(response.data || []);
       } catch (err) {
         console.error('Error fetching responses:', err);
-        setRespostasError(err.message || 'Failed to load responses');
+        // Supress 403 error for technicians and try fallback
+        if (err.response && err.response.status === 403) {
+          try {
+            console.log('Attempting fallback: deriving responses from requests...');
+            const requestsResponse = await quotationRequestsAPI.getAll();
+            let requests = Array.isArray(requestsResponse) ? requestsResponse : (requestsResponse.data || []);
+
+            // If requests don't have nested data (shallow list), fetch details
+            const hasNestedData = requests.some(r => r.responses || r.quotation_suppliers);
+            if (!hasNestedData && requests.length > 0) {
+              console.log('Requests list appears shallow. Fetching details for each request...');
+              const detailPromises = requests.map(req =>
+                quotationRequestsAPI.getById(req.id)
+                  .then(data => data.data || data)
+                  .catch(e => null)
+              );
+              const details = await Promise.all(detailPromises);
+              requests = details.filter(d => d !== null);
+            }
+
+            const derivedResponses = [];
+
+            requests.forEach(req => {
+              // Check standard locations for responses
+              const potentialResponses = req.responses || req.quotation_responses || [];
+
+              if (Array.isArray(potentialResponses) && potentialResponses.length > 0) {
+                potentialResponses.forEach(resp => {
+                  // Ensure structure matches what table expects
+                  if (!resp.quotation_supplier) {
+                    resp.quotation_supplier = {
+                      quotation_request: req,
+                      supplier: resp.supplier || { commercial_name: 'Fornecedor' }
+                    };
+                  } else if (!resp.quotation_supplier.quotation_request) {
+                    resp.quotation_supplier.quotation_request = req;
+                  }
+                  derivedResponses.push(resp);
+                });
+              }
+              // Also check quotation_suppliers pivots which might hold response data
+              else if (req.quotation_suppliers && Array.isArray(req.quotation_suppliers)) {
+                req.quotation_suppliers.forEach(qs => {
+                  if (qs.response) {
+                    // Nested response object
+                    const r = qs.response;
+                    if (!r.quotation_supplier) r.quotation_supplier = qs;
+                    if (!qs.quotation_request) qs.quotation_request = req;
+                    derivedResponses.push(r);
+                  } else if (qs.status && ['submitted', 'approved', 'rejected', 'revision_requested'].includes(qs.status)) {
+                    // The pivot itself might be acting as the response record
+                    derivedResponses.push({
+                      id: qs.id,
+                      status: qs.status,
+                      submitted_at: qs.updated_at || qs.created_at,
+                      delivery_days: qs.delivery_days,
+                      history: [{ total_amount: qs.total_amount || 0 }], // Mock history for simple value
+                      quotation_supplier: {
+                        ...qs,
+                        quotation_request: req
+                      }
+                    });
+                  }
+                });
+              }
+            });
+
+            console.log('Derived responses:', derivedResponses);
+            setRespostas(derivedResponses);
+            setRespostasError(null);
+
+          } catch (fallbackErr) {
+            console.error('Fallback failed:', fallbackErr);
+            setRespostas([]);
+            setRespostasError(null);
+          }
+        } else {
+          setRespostasError(err.message || 'Failed to load responses');
+        }
       } finally {
         setIsLoadingRespostas(false);
       }

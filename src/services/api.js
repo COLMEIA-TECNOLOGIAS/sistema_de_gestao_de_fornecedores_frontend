@@ -234,4 +234,32 @@ export const notificationsAPI = {
     },
 };
 
+// Products API
+export const productsAPI = {
+    getAll: async (page = 1) => {
+        const response = await api.get(`/products?page=${page}`);
+        return response.data;
+    },
+    create: async (productData) => {
+        const response = await api.post('/products', productData);
+        return response.data;
+    },
+    update: async (id, productData) => {
+        const response = await api.put(`/products/${id}`, productData);
+        return response.data;
+    },
+    delete: async (id) => {
+        const response = await api.delete(`/products/${id}`);
+        return response.data;
+    },
+};
+
+// Acquisitions API
+export const acquisitionsAPI = {
+    getStatsProducts: async () => {
+        const response = await api.get('/acquisitions/stats/products');
+        return response.data;
+    },
+};
+
 export default api;
