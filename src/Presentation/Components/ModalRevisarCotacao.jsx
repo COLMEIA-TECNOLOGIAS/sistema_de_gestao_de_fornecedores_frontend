@@ -54,7 +54,7 @@ export default function ModalRevisarCotacao({
             return acc + (valor * quantity);
         }, 0);
 
-        return total.toFixed(2); // Keep raw for formatting later or format here? 
+        // return total.toFixed(2); 
         // Original returned string.
         // Let's return number to be safe, or string formatted. 
         // Original: total.toFixed(2).replace('.', ',');
@@ -129,6 +129,7 @@ export default function ModalRevisarCotacao({
                             <div className="text-sm text-gray-600 space-y-1">
                                 <p><span className="font-medium">ID:</span> CT - {String(cotacao.id).padStart(3, '0')}</p>
                                 <p><span className="font-medium">Data:</span> {cotacao.submitted_at ? new Date(cotacao.submitted_at).toLocaleDateString('pt-AO') : 'N/A'}</p>
+                                <p><span className="font-medium">Prazo de entrega:</span> {cotacao.expected_delivery_date ? new Date(cotacao.expected_delivery_date).toLocaleDateString('pt-AO') : 'N/A'}</p>
                             </div>
                         </div>
                     </div>
@@ -166,14 +167,44 @@ export default function ModalRevisarCotacao({
                                     );
 
                                     const quantity = parseFloat(requestItem?.quantity || item.quantity || 1);
-                                    const unitPrice = parseFloat(item.unit_price || item.price || 0);
+                                    let unitPrice = parseFloat(item.unit_price || item.price || 0);
+
+                                    // Heuristic: If we have a total_amount for the whole quote but 0 for unit price,
+                                    // try to distribute it or assign it to the single item.
+                                    if (unitPrice === 0 && (cotacao.total_amount || cotacao.amount)) {
+                                        const total = parseFloat(cotacao.total_amount || cotacao.amount);
+                                        if (total > 0) {
+                                            if (cotacao.items.length === 1 && quantity > 0) {
+                                                // Single item: exact match
+                                                unitPrice = total / quantity;
+                                            } else if (cotacao.items.length > 1 && quantity > 0) {
+                                                // Multiple items: This is technically inaccurate, but if the user demands "add the price",
+                                                // and we ONLY have the grand total, we can try to distribute it explicitly OR
+                                                // check if there's a stored 'estimated_price' from the request fallback we might have missed.
+
+                                                // Better heuristic: if we have prices on SOME items, don't overwrite. 
+                                                // If ALL items are 0, distribute evenly? No, that's misleading.
+
+                                                // Let's at least check 'item.estimated_price' again very explicitly.
+                                                unitPrice = parseFloat(item.estimated_price || 0);
+
+                                                // Final fallback: If still 0, and we really want to show *something* that sums up?
+                                                // No, showing 0.00 on multi-item lines is safer than lying.
+                                                // However, the screenshot shows 2 items (Caneta/Borracha) and Total 5000.
+                                                // The user wants unit prices. 
+                                                // If the technician view is restricted, we LITERALLY DO NOT HAVE THEM.
+                                                // I will leave it as 0.00 for multi-item unless estimated_price saves us.
+                                            }
+                                        }
+                                    }
+
                                     const lineTotal = quantity * unitPrice;
 
                                     return (
                                         <div key={index} className="grid grid-cols-12 gap-4 text-sm text-gray-700 items-center">
                                             <div className="col-span-4">
                                                 <span className="text-gray-900">
-                                                    {String(index + 1).padStart(2, '0')} - {requestItem ? requestItem.name : `Item #${item.quotation_item_id}`}
+                                                    {String(index + 1).padStart(2, '0')} - {requestItem ? requestItem.name : (item.name || item.product_name || `Item #${item.quotation_item_id || index + 1}`)}
                                                 </span>
                                                 {requestItem && (
                                                     <span className="text-gray-600 ml-1">
@@ -182,13 +213,13 @@ export default function ModalRevisarCotacao({
                                                 )}
                                             </div>
                                             <div className="col-span-4 text-gray-600">
-                                                {requestItem?.specifications || item.notes || '-'}
+                                                {requestItem?.specifications || item.notes || item.description || item.specifications || '-'}
                                             </div>
                                             <div className="col-span-2 text-right font-medium text-gray-900">
-                                                {unitPrice ? `${unitPrice.toLocaleString('pt-AO', { minimumFractionDigits: 2 })} AOA` : '---'}
+                                                {(unitPrice !== undefined && unitPrice !== null) ? `${unitPrice.toLocaleString('pt-AO', { minimumFractionDigits: 2 })} AOA` : '---'}
                                             </div>
                                             <div className="col-span-2 text-right font-bold text-gray-900">
-                                                {lineTotal ? `${lineTotal.toLocaleString('pt-AO', { minimumFractionDigits: 2 })} AOA` : '---'}
+                                                {(lineTotal !== undefined && lineTotal !== null) ? `${lineTotal.toLocaleString('pt-AO', { minimumFractionDigits: 2 })} AOA` : '---'}
                                             </div>
                                         </div>
                                     );
@@ -207,11 +238,23 @@ export default function ModalRevisarCotacao({
                                 try {
                                     setViewingDoc(true);
 
-                                    // Determine the correct ID and endpoint for the document
-                                    // If this is an acquisition record, it might point to a response
-                                    const responseId = cotacao.quotation_response_id || cotacao.id;
+                                    // Check if we have a direct URL (from list/snapshot)
+                                    if (cotacao.proposal_document_url) {
+                                        window.open(cotacao.proposal_document_url, '_blank');
+                                        setViewingDoc(false);
+                                        return;
+                                    }
 
-                                    // Try the response document endpoint first as that's where the file usually lives
+                                    // Determine the correct ID
+                                    // If acquisition, try quotation_response_id first, then fallback to id itself 
+                                    const responseId = (isAcquisition ? cotacao.quotation_response_id : null) || cotacao.id;
+
+                                    if (!responseId) {
+                                        alert("ID do documento não encontrado.");
+                                        setViewingDoc(false);
+                                        return;
+                                    }
+
                                     const url = `/quotation-responses/${responseId}/document`;
 
                                     const response = await api.get(url, {
@@ -247,7 +290,13 @@ export default function ModalRevisarCotacao({
                     <div className="flex justify-end items-center mt-4">
                         <span className="text-xl font-bold text-gray-900 mr-2">Total:</span>
                         <span className="text-4xl font-black text-black tracking-tight">
-                            {cotacao.items && cotacao.items.length > 0 ? calcularTotal() : '0,00'} AOA
+                            {(() => {
+                                const calculated = cotacao.items && cotacao.items.length > 0 ? calcularTotal() : '0,00';
+                                if (calculated === '0,00' && (cotacao.total_amount || cotacao.amount)) {
+                                    return parseFloat(cotacao.total_amount || cotacao.amount).toLocaleString('pt-AO', { minimumFractionDigits: 2 }).replace('.', ',');
+                                }
+                                return calculated;
+                            })()} AOA
                         </span>
                     </div>
                 </div>

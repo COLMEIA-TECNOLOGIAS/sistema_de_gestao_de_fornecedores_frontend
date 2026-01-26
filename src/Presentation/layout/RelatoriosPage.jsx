@@ -1,6 +1,6 @@
 
 import { useState, useEffect } from 'react';
-import { Package, Zap, Users, FileText, Calendar, Download, TrendingUp, AlertCircle, ShoppingCart } from 'lucide-react';
+import { Package, Zap, Users, FileText, Calendar, Download, TrendingUp, AlertCircle, ShoppingCart, RefreshCw } from 'lucide-react';
 import { reportsAPI } from '../../services/api';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
@@ -280,6 +280,15 @@ export default function RelatoriosPage() {
 
 
         <div className="flex flex-wrap items-center gap-3">
+          <button
+            onClick={fetchReport}
+            disabled={isLoading}
+            className="flex items-center gap-2 px-4 py-3 bg-white border border-gray-200 text-gray-700 rounded-xl hover:bg-gray-50 transition-colors shadow-sm font-medium"
+          >
+            <RefreshCw size={18} className={isLoading ? "animate-spin" : ""} />
+            <span className="hidden sm:inline">Atualizar</span>
+          </button>
+
           <button
             onClick={handleExportPDF}
             disabled={isLoading}

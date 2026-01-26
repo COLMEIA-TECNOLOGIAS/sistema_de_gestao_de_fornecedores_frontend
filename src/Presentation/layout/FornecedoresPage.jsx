@@ -367,19 +367,21 @@ export default function FornecedoresPage() {
     }
   };
 
-  const handleOpenDetails = async (resposta) => {
+  const [modalContext, setModalContext] = useState(null); // 'response_review', 'details'
+
+  const handleOpenDetails = async (resposta, context = 'details') => {
     setIsLoadingDetails(true);
+    setModalContext(context);
     try {
       let responseDetails = resposta;
 
       // Strategy: Try to get the richest data source available
-      if (resposta.id) {
+      if (resposta.id && !String(resposta.id).startsWith('qs-')) { // Avoid fetching for composite IDs if safely possible, or handle 404
         try {
           const res = await quotationResponsesAPI.getById(resposta.id);
           responseDetails = res.data || res;
         } catch (innerError) {
           console.warn("Technician: Failed to load quotation response details, using fallback...", innerError);
-          // suppress error and use fallback
         }
       }
 
@@ -391,7 +393,24 @@ export default function FornecedoresPage() {
         };
       }
 
-      setSelectedResponse(responseDetails);
+      // Preservation/Patching of Title (Fix for "N/A" title)
+      // Check if we have the title in the original 'resposta' object passed from the table
+      const fallbackTitle = resposta.quotation_supplier?.quotation_request?.title ||
+        resposta.quotation_request?.title;
+
+      if (fallbackTitle &&
+        (!responseDetails.quotation_supplier?.quotation_request?.title &&
+          !responseDetails.quotation_request?.title)) {
+
+        if (!responseDetails.quotation_request) responseDetails.quotation_request = {};
+        responseDetails.quotation_request.title = fallbackTitle;
+
+        if (resposta.quotation_supplier?.quotation_request?.description) {
+          responseDetails.quotation_request.description = resposta.quotation_supplier.quotation_request.description;
+        }
+      }
+
+      setSelectedCotacao(responseDetails);
       setIsRevisarModalOpen(true);
     } catch (e) {
       console.error("Error fetching details", e);
@@ -402,7 +421,7 @@ export default function FornecedoresPage() {
   };
 
   const handleOpenRevisarModal = (resposta) => {
-    return handleOpenDetails(resposta);
+    return handleOpenDetails(resposta, 'response_review');
   };
 
   // Handler for approving proposal
@@ -477,8 +496,15 @@ export default function FornecedoresPage() {
 
   // Render Cotações Table
   const renderCotacoesTable = () => {
-    // Filter cotações based on active tab - you may need to adjust based on API response structure
-    const currentCotacoes = cotacoes || [];
+    // Filter cotações based on active tab
+    let currentCotacoes = cotacoes || [];
+
+    if (activeCotacaoTab === 'pedidos-cancelados') {
+      currentCotacoes = currentCotacoes.filter(c => c.status === 'cancelled');
+    } else if (activeCotacaoTab === 'pedidos-enviados') {
+      // Exclude cancelled ones from the main sent list
+      currentCotacoes = currentCotacoes.filter(c => c.status !== 'cancelled');
+    }
 
     const handleSendCotacao = async (cotacao) => {
       if (cotacao.status !== 'draft') {
@@ -648,7 +674,7 @@ export default function FornecedoresPage() {
                             {/* Editar */}
                             <button
                               onClick={() => {
-                                console.log('Editar fornecedor:', f);
+                                console.log('Editar cotação:', cotacao);
                                 // TODO: Implement edit functionality
                                 setOpenMenuId(null);
                               }}
@@ -671,19 +697,16 @@ export default function FornecedoresPage() {
                               <span className="text-gray-700">Mais detalhes</span>
                             </button>
 
-                            {/* Remover */}
+                            {/* Cancelar/Remover */}
                             <button
                               onClick={() => {
-                                if (confirm('Tem certeza que deseja remover esta cotação?')) {
-                                  console.log('Remover cotação:', cotacao);
-                                  // Logic to remove
-                                }
+                                handleCancelCotacao(cotacao);
                                 setOpenMenuId(null);
                               }}
                               className="w-full px-4 py-2.5 text-left hover:bg-gray-50 text-sm flex items-center gap-3 transition-colors"
                             >
                               <Trash2 size={16} className="text-gray-400" />
-                              <span className="text-gray-700">Remover</span>
+                              <span className="text-gray-700">Cancelar/Remover</span>
                             </button>
 
                             {/* Enviar para fornecedores - Apenas para Rascunho */}
@@ -1410,11 +1433,11 @@ export default function FornecedoresPage() {
           handleAprovarProposta(c.id);
           setIsRevisarModalOpen(false);
         }}
-        onRejeitar={(c) => {
+        onRejeitar={modalContext === 'response_review' ? null : (c) => {
           handleRejeitarProposta(c.id);
           setIsRevisarModalOpen(false);
         }}
-        onSolicitarRevisao={(c) => {
+        onSolicitarRevisao={modalContext === 'response_review' ? null : (c) => {
           setIsRevisarModalOpen(false);
           handleSolicitarRevisaoProposta(c.id);
         }}

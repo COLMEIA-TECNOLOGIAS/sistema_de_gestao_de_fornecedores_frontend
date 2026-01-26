@@ -138,13 +138,74 @@ export default function AquisicoesPage() {
                 };
             }
 
-            // Ensure items exist. Some endpoints might return 'products' or 'acquisition_items'
-            if (!responseDetails.items || responseDetails.items.length === 0) {
-                if (responseDetails.products) {
-                    responseDetails.items = responseDetails.products;
-                } else if (responseDetails.acquisition_items) {
-                    responseDetails.items = responseDetails.acquisition_items;
+            // Preservation of Acquisition Data
+            // If the fetched response doesn't have the delivery date but the acquisition does, preserve it.
+            if (!responseDetails.expected_delivery_date && aquisicao.expected_delivery_date) {
+                responseDetails.expected_delivery_date = aquisicao.expected_delivery_date;
+            }
+
+            // Patch 'Data' (submitted_at) using created_at if missing
+            if (!responseDetails.submitted_at) {
+                responseDetails.submitted_at = aquisicao.submitted_at || aquisicao.created_at || responseDetails.created_at;
+            }
+
+            // Preservation of Title
+            // If responseDetails doesn't have the title deep down, try to patch it from acquisition
+            if (aquisicao.quotation_request?.title &&
+                (!responseDetails.quotation_supplier?.quotation_request?.title && !responseDetails.quotation_request?.title)) {
+                if (!responseDetails.quotation_request) responseDetails.quotation_request = {};
+                responseDetails.quotation_request.title = aquisicao.quotation_request.title;
+                if (aquisicao.quotation_request.description) {
+                    responseDetails.quotation_request.description = aquisicao.quotation_request.description;
                 }
+            }
+
+            // Ensure proposal_document_url is preserved if missing in details but present in list/acquisition
+            if (!responseDetails.proposal_document_url && aquisicao.proposal_document_url) {
+                responseDetails.proposal_document_url = aquisicao.proposal_document_url;
+            }
+
+            // Ensure items exist. Some endpoints might return 'products', 'acquisition_items' or just 'items'
+            // If the fetched details have no items, try to recover from the list object 'aquisicao'
+            if (!responseDetails.items || responseDetails.items.length === 0) {
+                const potentialItems = responseDetails.products || responseDetails.acquisition_items ||
+                    aquisicao.items || aquisicao.products || aquisicao.acquisition_items;
+
+                if (potentialItems && potentialItems.length > 0) {
+                    responseDetails.items = potentialItems;
+                } else {
+                    // LAST RESORT: Try fetching the Quotation REQUEST to get the requested items
+                    // This is useful for Technicians who can't see Response details but can see Requests.
+                    // The items will lack pricing (response data), but at least we show what was ordered.
+                    try {
+                        const reqId = aquisicao.quotation_request_id || aquisicao.quotation_supplier?.quotation_request_id;
+                        if (reqId) {
+                            const reqRes = await quotationRequestsAPI.getById(reqId);
+                            const reqData = reqRes.data || reqRes;
+                            if (reqData.items && reqData.items.length > 0) {
+                                // Map request items to structure expected by Modal
+                                // We flag them as 'request_fallback' so Modal knows they might lack specific response data
+                                responseDetails.items = reqData.items.map(i => ({
+                                    ...i,
+                                    name: i.name, // Ensure top-level name
+                                    quantity: i.quantity,
+                                    // Map description fields to 'notes' which the modal uses
+                                    notes: i.specifications || i.description || i.notes || '-',
+                                    // Try to preserve price if available (unlikely in request, but good for safety)
+                                    unit_price: i.unit_price || i.estimated_price || 0,
+                                    is_request_fallback: true
+                                }));
+                            }
+                        }
+                    } catch (reqErr) {
+                        console.warn("Technician: Failed to fetch fallback Quotation Request items", reqErr);
+                    }
+                }
+            }
+
+            // Preserve total amount if available in list object but missing in details
+            if (!responseDetails.total_amount && (aquisicao.total_amount || aquisicao.amount || aquisicao.value)) {
+                responseDetails.total_amount = aquisicao.total_amount || aquisicao.amount || aquisicao.value;
             }
 
             setSelectedResponse(responseDetails);

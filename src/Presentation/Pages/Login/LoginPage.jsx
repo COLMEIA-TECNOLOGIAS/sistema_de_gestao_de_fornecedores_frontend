@@ -133,7 +133,7 @@ export default function LoginPage() {
             </div>
 
             {/* Submit Button and Forgot Password in same line */}
-            <div className="flex items-center justify-between gap-4">
+            <div className="flex items-center justify-end">
               <button
                 type="submit"
                 disabled={isLoading}
@@ -151,10 +151,6 @@ export default function LoginPage() {
                   'Fazer Login'
                 )}
               </button>
-
-              <a href="#" className="text-sm text-[#44B16F] hover:underline whitespace-nowrap">
-                Esqueci minha senha
-              </a>
             </div>
           </form>
         </div>
