@@ -6,6 +6,7 @@ import ModalRevisarCotacao from "../Components/ModalRevisarCotacao";
 import ModalSolicitarRevisao from "../Components/ModalSolicitarRevisao";
 import ModalDetalhesFornecedor from "../Components/ModalDetalhesFornecedor";
 import ModalConfirmarExclusaoFornecedor from "../Components/ModalConfirmarExclusaoFornecedor";
+import ModalRespostasPedido from "../Components/ModalRespostasPedido";
 import Toast from "../Components/Toast";
 import FornecedorTableSkeleton from "../Components/FornecedorTableSkeleton";
 import { suppliersAPI, quotationRequestsAPI, quotationResponsesAPI, categoriesAPI } from "../../services/api"; // Added categoriesAPI
@@ -16,6 +17,10 @@ export default function FornecedoresPage() {
 
     // Cotações sub-tabs state  
     const [activeCotacaoTab, setActiveCotacaoTab] = useState("pedidos-enviados");
+
+    // Modal Respostas Pedido state
+    const [isRespostasPedidoModalOpen, setIsRespostasPedidoModalOpen] = useState(false);
+    const [selectedPedidoForRespostas, setSelectedPedidoForRespostas] = useState(null);
 
     // Modal states
     const [isModalOpen, setIsModalOpen] = useState(false);
@@ -198,122 +203,11 @@ export default function FornecedoresPage() {
         }
     }, [activeMainTab]);
 
-    // Fetch quotation responses when "respostas" sub-tab is active
-    useEffect(() => {
-        const fetchResponses = async () => {
-            try {
-                setIsLoadingRespostas(true);
-                setRespostasError(null);
-
-                // 1. Try direct endpoint first
-                let directData = [];
-                try {
-                    const response = await quotationResponsesAPI.getAll();
-                    directData = response.data || [];
-                } catch (e) {
-                    console.warn("Direct responses endpoint failed, attempting fallback...", e);
-                }
-
-                if (directData.length > 0) {
-                    setRespostas(directData);
-                    return;
-                }
-
-                // 2. Fallback: Fetch Requests and extract responses manually
-                // This is necessary if the user (Technician) doesn't have permission to list all responses 
-                // but can see them via their requests.
-                const requestsResponse = await quotationRequestsAPI.getAll();
-                const requests = Array.isArray(requestsResponse) ? requestsResponse : (requestsResponse.data || []);
-
-                let allResponses = [];
-
-                // Fetch full details for requests to ensure we have nested quotation_suppliers
-                // Limit concurrency if needed, but Promise.all is usually fine for < 50 items.
-                const detailedRequests = await Promise.all(
-                    requests.map(req =>
-                        quotationRequestsAPI.getById(req.id)
-                            .then(r => r.data || r)
-                            .catch(e => {
-                                console.error(`Failed to load details for request ${req.id}`, e);
-                                return null;
-                            })
-                    )
-                );
-
-                detailedRequests.filter(Boolean).forEach(req => {
-                    // Strategy 1: Check for explicit quotation_suppliers array
-                    const suppliersList = [...(req.quotation_suppliers || [])];
-
-                    // Strategy 2: Check for suppliers array with pivot (Laravel style)
-                    if (req.suppliers && Array.isArray(req.suppliers)) {
-                        req.suppliers.forEach(s => {
-                            if (s.pivot) {
-                                // Identify this pivoting logic
-                                const pivotData = { ...s.pivot };
-                                if (!pivotData.supplier) pivotData.supplier = s; // Ensure supplier info is attached
-                                suppliersList.push(pivotData);
-                            }
-                        });
-                    }
-
-                    // Deduplicate by ID if possible to avoid double counting
-                    const uniqueSuppliers = Array.from(new Map(suppliersList.map(item => [item.id, item])).values());
-
-                    if (uniqueSuppliers.length > 0) {
-                        uniqueSuppliers.forEach(qs => {
-                            // PERMISSIVE: Include all links
-                            const realResponse = qs.response || {};
-                            let totalAmount = realResponse.total_amount || qs.price || qs.total_amount;
-
-                            // Calculate from items if total isn't explicit
-                            if (!totalAmount && (realResponse.items || qs.items)) {
-                                const items = realResponse.items || qs.items;
-                                if (Array.isArray(items)) {
-                                    totalAmount = items.reduce((acc, item) => {
-                                        const val = parseFloat(item.total_price || item.unit_price || item.price || 0);
-                                        // If total_price is missing, assume unit_price * quantity (if available) or just unit_price
-                                        const qty = parseFloat(item.quantity || 1);
-                                        return acc + (item.total_price ? val : val * qty);
-                                    }, 0);
-                                }
-                            }
-                            if (!totalAmount) totalAmount = 0;
-
-                            allResponses.push({
-                                id: realResponse.id || `qs-${qs.id}` || Math.random(),
-                                status: realResponse.status || qs.status || 'pending',
-                                history: [{ total_amount: totalAmount }],
-                                delivery_days: realResponse.delivery_days || qs.delivery_days || realResponse.deadline || qs.deadline || 0,
-
-                                // Map dates correctly for table: Table uses 'submitted_at'
-                                submitted_at: realResponse.created_at || qs.updated_at || qs.created_at || qs.response_date || req.created_at || req.updated_at,
-                                created_at: qs.updated_at || qs.created_at || req.created_at,
-
-                                quotation_supplier: {
-                                    ...qs,
-                                    supplier: qs.supplier || { commercial_name: 'Fornecedor' },
-                                    quotation_request: req
-                                }
-                            });
-                        });
-                    }
-                });
-
-                console.log("Derived Responses from Requests:", allResponses);
-                setRespostas(allResponses);
-
-            } catch (err) {
-                console.error('Error fetching responses:', err);
-                setRespostasError(err.message || 'Failed to load responses');
-            } finally {
-                setIsLoadingRespostas(false);
-            }
-        };
-
-        if (activeMainTab === "cotacoes" && activeCotacaoTab === "respostas") {
-            fetchResponses();
-        }
-    }, [activeMainTab, activeCotacaoTab]);
+    // Handler to open respostas modal for a specific quotation request
+    const handleVerRespostas = (cotacao) => {
+        setSelectedPedidoForRespostas(cotacao);
+        setIsRespostasPedidoModalOpen(true);
+    };
 
     // Close dropdown menu when clicking outside
     useEffect(() => {
@@ -573,6 +467,7 @@ export default function FornecedoresPage() {
                                 <th className="px-6 py-4 text-left text-sm font-semibold text-gray-600">Deadline</th>
                                 <th className="px-6 py-4 text-left text-sm font-semibold text-gray-600">Data de Criação</th>
                                 <th className="px-6 py-4 text-left text-sm font-semibold text-gray-600">Fornecedores</th>
+                                <th className="px-6 py-4 text-left text-sm font-semibold text-gray-600">Respostas</th>
                                 <th className="px-6 py-4 text-left text-sm font-semibold text-gray-600">Status</th>
                                 <th className="px-6 py-4 text-center text-sm font-semibold text-gray-600">Acções</th>
                             </tr>
@@ -643,6 +538,15 @@ export default function FornecedoresPage() {
                                         </td>
                                         <td className="px-6 py-8 text-gray-700">
                                             {cotacao.suppliers?.length > 0 ? `${cotacao.suppliers.length} fornecedor(es)` : 'Nenhum'}
+                                        </td>
+                                        <td className="px-6 py-8">
+                                            <button
+                                                onClick={() => handleVerRespostas(cotacao)}
+                                                className="group relative flex items-center gap-1.5 px-3 py-1.5 text-sm text-[#44B16F] bg-[#44B16F]/8 hover:bg-[#44B16F]/15 border border-[#44B16F]/30 hover:border-[#44B16F] rounded-lg transition-all duration-200 font-medium shadow-sm hover:shadow-md"
+                                            >
+                                                <Eye size={14} className="flex-shrink-0" />
+                                                <span className="text-xs">Ver Respostas</span>
+                                            </button>
                                         </td>
                                         <td className="px-6 py-8">
                                             <span className={`px-4 py-2 rounded-xl text-sm font-medium ${cotacao.status === 'draft' ? 'bg-gray-100 text-gray-800' :
@@ -769,193 +673,7 @@ export default function FornecedoresPage() {
         );
     };
 
-    // Render Respostas Table
-    const renderRespostasTable = () => {
-        const getStatusLabel = (status) => {
-            const labels = {
-                'pending': 'Pendente',
-                'submitted': 'Submetido',
-                'approved': 'Aprovada',
-                'rejected': 'Rejeitada',
-                'revision_requested': 'Revisão Solicitada',
-                'needs_revision': 'Revisão Necessária',
-            };
-            return labels[status] || status;
-        };
 
-        return (
-            <div className="bg-white rounded-xl shadow-sm overflow-hidden">
-                {respostasError && (
-                    <div className="p-4 bg-red-50 border-b border-red-200">
-                        <p className="text-red-600 text-sm">
-                            <strong>Erro:</strong> {respostasError}
-                        </p>
-                    </div>
-                )}
-
-                <div className="overflow-x-auto">
-                    <table className="w-full">
-                        <thead className="bg-gray-50 border-b border-gray-200">
-                            <tr>
-                                <th className="px-6 py-4 text-left">
-                                    <input type="checkbox" className="rounded border-gray-300" />
-                                </th>
-                                <th className="px-6 py-4 text-left text-sm font-semibold text-gray-600">ID</th>
-                                <th className="px-6 py-4 text-left text-sm font-semibold text-gray-600">Cotação</th>
-                                <th className="px-6 py-4 text-left text-sm font-semibold text-gray-600">Fornecedor</th>
-                                <th className="px-6 py-4 text-left text-sm font-semibold text-gray-600">Valor Total</th>
-                                <th className="px-6 py-4 text-left text-sm font-semibold text-gray-600">Prazo Entrega</th>
-                                <th className="px-6 py-4 text-left text-sm font-semibold text-gray-600">Data Resposta</th>
-                                <th className="px-6 py-4 text-left text-sm font-semibold text-gray-600">Status</th>
-                                <th className="px-6 py-4 text-center text-sm font-semibold text-gray-600">Acções</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {isLoadingRespostas ? (
-                                <FornecedorTableSkeleton rows={5} />
-                            ) : respostas.length === 0 ? (
-                                <tr>
-                                    <td colSpan="9" className="px-6 py-12 text-center text-gray-500">
-                                        <div className="flex flex-col items-center gap-2">
-                                            <svg className="w-12 h-12 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2.586a1 1 0 00-.707.293l-2.414 2.414a1 1 0 01-.707.293h-3.172a1 1 0 01-.707-.293l-2.414-2.414A1 1 0 006.586 13H4" />
-                                            </svg>
-                                            <p className="text-lg font-medium">Nenhuma resposta encontrada</p>
-                                            <p className="text-sm">As respostas das cotações aparecerão aqui</p>
-                                        </div>
-                                    </td>
-                                </tr>
-                            ) : (
-                                respostas.map((resposta) => (
-                                    <tr key={resposta.id} className="border-b border-gray-100 hover:bg-gray-50 transition-colors">
-                                        <td className="px-6 py-6">
-                                            <input type="checkbox" className="rounded border-gray-300" />
-                                        </td>
-                                        <td className="px-6 py-6">
-                                            <span className="font-medium text-gray-700">#{resposta.id}</span>
-                                        </td>
-                                        <td className="px-6 py-6">
-                                            <span className="font-semibold text-gray-900">
-                                                {resposta.quotation_supplier?.quotation_request?.title || `Cotação #${resposta.quotation_supplier?.quotation_request_id || 'N/A'}`}
-                                            </span>
-                                        </td>
-                                        <td className="px-6 py-6">
-                                            <div className="flex items-center gap-3">
-                                                <img
-                                                    src={`https://api.dicebear.com/7.x/initials/svg?seed=${resposta.quotation_supplier?.supplier?.commercial_name || 'N/A'}`}
-                                                    alt={resposta.quotation_supplier?.supplier?.commercial_name}
-                                                    className="w-8 h-8 rounded-lg"
-                                                />
-                                                <span className="text-gray-700">
-                                                    {resposta.quotation_supplier?.supplier?.commercial_name ||
-                                                        resposta.quotation_supplier?.supplier?.legal_name ||
-                                                        'Fornecedor N/A'}
-                                                </span>
-                                            </div>
-                                        </td>
-                                        <td className="px-6 py-6 text-gray-700 font-medium">
-                                            {resposta.history && resposta.history.length > 0
-                                                ? `${parseFloat(resposta.history[0].total_amount || 0).toLocaleString('pt-AO', { minimumFractionDigits: 2 })} AOA`
-                                                : 'N/A'}
-                                        </td>
-                                        <td className="px-6 py-6 text-gray-700">
-                                            {resposta.delivery_days ? `${resposta.delivery_days} dias` : 'N/A'}
-                                        </td>
-                                        <td className="px-6 py-6 text-gray-700">
-                                            {resposta.submitted_at ? new Date(resposta.submitted_at).toLocaleDateString('pt-AO', {
-                                                day: '2-digit',
-                                                month: '2-digit',
-                                                year: 'numeric'
-                                            }) : 'N/A'}
-                                        </td>
-                                        <td className="px-6 py-6">
-                                            <span className={`px-4 py-2 rounded-xl text-sm font-medium ${getStatusColor(resposta.status)}`}>
-                                                {getStatusLabel(resposta.status)}
-                                            </span>
-                                        </td>
-                                        <td className="px-6 py-6">
-                                            <div className="relative flex justify-center dropdown-menu">
-                                                <button
-                                                    onClick={() => setOpenMenuId(openMenuId === `resp-${resposta.id}` ? null : `resp-${resposta.id}`)}
-                                                    className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
-                                                >
-                                                    <MoreVertical size={20} className="text-gray-600" />
-                                                </button>
-
-                                                {openMenuId === `resp-${resposta.id}` && (
-                                                    <div className="absolute right-0 top-full mt-2 w-52 bg-white rounded-xl shadow-xl border border-gray-100 py-2 z-50">
-                                                        {/* Revisar */}
-                                                        <button
-                                                            onClick={() => {
-                                                                handleOpenRevisarModal(resposta);
-                                                                setOpenMenuId(null);
-                                                            }}
-                                                            className="w-full px-4 py-2.5 text-left hover:bg-gray-50 text-sm flex items-center gap-3 transition-colors"
-                                                        >
-                                                            <FileText size={16} className="text-gray-400" />
-                                                            <span className="text-gray-700">Revisar</span>
-                                                        </button>
-
-                                                        {/* Rejeitar proposta */}
-                                                        <button
-                                                            onClick={() => {
-                                                                handleRejeitarProposta(resposta.id);
-                                                                setOpenMenuId(null);
-                                                            }}
-                                                            className="w-full px-4 py-2.5 text-left hover:bg-gray-50 text-sm flex items-center gap-3 transition-colors"
-                                                        >
-                                                            <Trash2 size={16} className="text-gray-400" />
-                                                            <span className="text-gray-700">Rejeitar proposta</span>
-                                                        </button>
-
-                                                        {/* Aprovar proposta */}
-                                                        <button
-                                                            onClick={() => {
-                                                                handleAprovarProposta(resposta.id);
-                                                                setOpenMenuId(null);
-                                                            }}
-                                                            className="w-full px-4 py-2.5 text-left hover:bg-gray-50 text-sm flex items-center gap-3 transition-colors"
-                                                        >
-                                                            <CheckCircle size={16} className="text-gray-400" />
-                                                            <span className="text-gray-700">Aprovar proposta</span>
-                                                        </button>
-
-                                                        {/* Solicitar revisão */}
-                                                        <button
-                                                            onClick={() => {
-                                                                handleSolicitarRevisaoProposta(resposta.id);
-                                                                setOpenMenuId(null);
-                                                            }}
-                                                            className="w-full px-4 py-2.5 text-left hover:bg-gray-50 text-sm flex items-center gap-3 transition-colors"
-                                                        >
-                                                            <MessageSquare size={16} className="text-gray-400" />
-                                                            <span className="text-gray-700">Solicitar revisão</span>
-                                                        </button>
-
-                                                        {/* Gerar aquisição */}
-                                                        <button
-                                                            onClick={() => {
-                                                                handleGerarAquisicaoProposta(resposta.id);
-                                                                setOpenMenuId(null);
-                                                            }}
-                                                            className="w-full px-4 py-2.5 text-left hover:bg-gray-50 text-sm flex items-center gap-3 transition-colors"
-                                                        >
-                                                            <RefreshCw size={16} className="text-gray-400" />
-                                                            <span className="text-gray-700">Gerar aquisição</span>
-                                                        </button>
-                                                    </div>
-                                                )}
-                                            </div>
-                                        </td>
-                                    </tr>
-                                ))
-                            )}
-                        </tbody>
-                    </table>
-                </div>
-            </div>
-        );
-    };
 
     return (
         <div className="space-y-6">
@@ -1327,15 +1045,6 @@ export default function FornecedoresPage() {
                             Pedidos enviados
                         </button>
                         <button
-                            onClick={() => setActiveCotacaoTab("respostas")}
-                            className={`pb-3 font-medium text-sm transition-all ${activeCotacaoTab === "respostas"
-                                ? "text-[#44B16F] border-b-2 border-[#44B16F]"
-                                : "text-gray-500 hover:text-gray-700"
-                                }`}
-                        >
-                            Respostas
-                        </button>
-                        <button
                             onClick={() => setActiveCotacaoTab("pedidos-cancelados")}
                             className={`pb-3 font-medium text-sm transition-all ${activeCotacaoTab === "pedidos-cancelados"
                                 ? "text-[#44B16F] border-b-2 border-[#44B16F]"
@@ -1383,8 +1092,8 @@ export default function FornecedoresPage() {
                         </button>
                     </div>
 
-                    {/* Cotações/Respostas Table based on active sub-tab */}
-                    {activeCotacaoTab === "respostas" ? renderRespostasTable() : renderCotacoesTable()}
+                    {/* Cotações Table */}
+                    {renderCotacoesTable()}
                 </>
             )}
 
@@ -1461,6 +1170,20 @@ export default function FornecedoresPage() {
                 onConfirm={confirmDeleteFornecedor}
                 fornecedor={selectedFornecedor}
                 isLoading={isDeleting}
+            />
+            <ModalRespostasPedido
+                isOpen={isRespostasPedidoModalOpen}
+                onClose={() => {
+                    setIsRespostasPedidoModalOpen(false);
+                    setSelectedPedidoForRespostas(null);
+                }}
+                quotationRequestId={selectedPedidoForRespostas?.id}
+                quotationRequestTitle={selectedPedidoForRespostas?.title}
+                onOpenRevisarModal={handleOpenRevisarModal}
+                onAprovar={handleAprovarProposta}
+                onRejeitar={handleRejeitarProposta}
+                onSolicitarRevisao={handleSolicitarRevisaoProposta}
+                onGerarAquisicao={handleGerarAquisicaoProposta}
             />
         </div>
     );

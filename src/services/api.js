@@ -141,8 +141,8 @@ export const quotationRequestsAPI = {
 // Quotation Responses API
 export const quotationResponsesAPI = {
     // Listar todas as respostas de cotação
-    getAll: async () => {
-        const response = await api.get('/quotation-responses');
+    getAll: async (params = {}) => {
+        const response = await api.get('/quotation-responses', { params });
         return response.data;
     },
     // Obter resposta por ID
