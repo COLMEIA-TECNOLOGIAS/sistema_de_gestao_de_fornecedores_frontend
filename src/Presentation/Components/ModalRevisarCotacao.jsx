@@ -238,25 +238,43 @@ export default function ModalRevisarCotacao({
                                 try {
                                     setViewingDoc(true);
 
-                                    // Check if we have a direct URL (from list/snapshot)
-                                    if (cotacao.proposal_document_url) {
-                                        window.open(cotacao.proposal_document_url, '_blank');
-                                        setViewingDoc(false);
-                                        return;
-                                    }
+                                    setViewingDoc(true);
 
-                                    // Determine the correct ID
-                                    // If acquisition, try quotation_response_id first, then fallback to id itself 
-                                    const responseId = (isAcquisition ? cotacao.quotation_response_id : null) || cotacao.id;
+                                    setViewingDoc(true);
+
+                                    // Aggressive ID Resolution Strategy
+                                    // 1. Check strict quotation_response_id (common in Acquisition objects)
+                                    // 2. Check inside quotation_supplier relationship (sometimes nested)
+                                    // 3. Fallback to .id only if it looks like a Response object (or we have no choice)
+                                    const candidateId =
+                                        cotacao.quotation_response_id ||
+                                        cotacao.quotation_supplier?.quotation_response_id ||
+                                        cotacao.quotation_supplier?.id || // Sometimes the pivots share IDs, risky but better than 1
+                                        cotacao.id;
+
+                                    // Refinement: If we are in Acquisition mode (isAcquisition=true), and candidateId is the same as the Acquisition ID (cotacao.id),
+                                    // AND we have a suspicious low number (like 1), it might be wrong. 
+                                    // But we can't be sure. The safest is to rely on the sequence above.
+
+                                    const responseId = candidateId;
+
+                                    console.log('Visualizar Documento Debug:', {
+                                        isAcquisition,
+                                        hasQRId: !!cotacao.quotation_response_id,
+                                        hasQSupp: !!cotacao.quotation_supplier,
+                                        rootId: cotacao.id,
+                                        resolvedId: responseId
+                                    });
 
                                     if (!responseId) {
-                                        alert("ID do documento não encontrado.");
+                                        alert("ID da proposta não encontrado.");
                                         setViewingDoc(false);
                                         return;
                                     }
 
                                     const url = `/quotation-responses/${responseId}/document`;
 
+                                    // Force authenticated fetch via Axios (api instance)
                                     const response = await api.get(url, {
                                         responseType: 'blob',
                                         headers: {
@@ -270,9 +288,17 @@ export default function ModalRevisarCotacao({
                                     setTimeout(() => window.URL.revokeObjectURL(objectUrl), 10000);
                                 } catch (error) {
                                     console.error("Erro ao abrir documento:", error);
-                                    const msg = error.response?.status === 404
-                                        ? "Documento não encontrado."
-                                        : "Erro ao carregar o documento.";
+                                    let msg = "Erro ao carregar o documento.";
+                                    const usedId = cotacao.quotation_response_id || cotacao.id;
+
+                                    if (error.response?.status === 404) {
+                                        msg = `Documento não encontrado (ID: ${usedId}).`;
+                                    } else if (error.response?.status === 400) {
+                                        msg = `Requisição inválida (ID: ${usedId}).`;
+                                    } else if (error.response?.status === 403 || error.response?.status === 401) {
+                                        msg = "Sem permissão para visualizar este documento.";
+                                    }
+
                                     alert(msg);
                                 } finally {
                                     setViewingDoc(false);
