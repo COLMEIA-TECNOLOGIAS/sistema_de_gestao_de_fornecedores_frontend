@@ -266,16 +266,23 @@ export default function FornecedoresPage() {
     const handleOpenDetails = async (resposta, context = 'details') => {
         setIsLoadingDetails(true);
         setModalContext(context);
+
+        console.group('🔍 Opening Details Modal');
+        console.log('1. Original resposta object:', resposta);
+        console.log('2. Context:', context);
+
         try {
             let responseDetails = resposta;
 
             // Strategy: Try to get the richest data source available
             if (resposta.id && !String(resposta.id).startsWith('qs-')) { // Avoid fetching for composite IDs if safely possible, or handle 404
                 try {
+                    console.log('3. Fetching full details for ID:', resposta.id);
                     const res = await quotationResponsesAPI.getById(resposta.id);
                     responseDetails = res.data || res;
+                    console.log('4. Fetched details:', responseDetails);
                 } catch (innerError) {
-                    console.warn("Technician: Failed to load quotation response details, using fallback...", innerError);
+                    console.warn("⚠️ Failed to load quotation response details, using fallback...", innerError);
                 }
             }
 
@@ -304,10 +311,20 @@ export default function FornecedoresPage() {
                 }
             }
 
+            console.log('5. Final cotacao object to be set:', responseDetails);
+            console.log('6. Key IDs check:', {
+                quotation_response_id: responseDetails.quotation_response_id,
+                response_id: responseDetails.response_id,
+                id: responseDetails.id,
+                qs_id: responseDetails.quotation_supplier?.id
+            });
+            console.groupEnd();
+
             setSelectedCotacao(responseDetails);
             setIsRevisarModalOpen(true);
         } catch (e) {
-            console.error("Error fetching details", e);
+            console.error("❌ Error fetching details", e);
+            console.groupEnd();
             showToast("error", "Erro ao carregar detalhes");
         } finally {
             setIsLoadingDetails(false);

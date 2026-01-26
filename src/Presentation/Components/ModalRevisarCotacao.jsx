@@ -238,41 +238,59 @@ export default function ModalRevisarCotacao({
                                 try {
                                     setViewingDoc(true);
 
-                                    setViewingDoc(true);
+                                    // Enhanced ID Resolution Strategy with detailed logging
+                                    console.group('📄 Documento da Proposta - Debug Info');
+                                    console.log('1. Cotacao object:', cotacao);
+                                    console.log('2. Is Acquisition?', isAcquisition);
 
-                                    setViewingDoc(true);
+                                    // Check all possible ID sources
+                                    const idSources = {
+                                        direct_qr_id: cotacao.quotation_response_id,
+                                        qs_qr_id: cotacao.quotation_supplier?.quotation_response_id,
+                                        qs_pivot_id: cotacao.quotation_supplier?.id,
+                                        root_id: cotacao.id,
+                                        response_id: cotacao.response_id // Sometimes responses have this
+                                    };
 
-                                    // Aggressive ID Resolution Strategy
-                                    // 1. Check strict quotation_response_id (common in Acquisition objects)
-                                    // 2. Check inside quotation_supplier relationship (sometimes nested)
-                                    // 3. Fallback to .id only if it looks like a Response object (or we have no choice)
-                                    const candidateId =
-                                        cotacao.quotation_response_id ||
-                                        cotacao.quotation_supplier?.quotation_response_id ||
-                                        cotacao.quotation_supplier?.id || // Sometimes the pivots share IDs, risky but better than 1
-                                        cotacao.id;
+                                    console.log('3. Available ID sources:', idSources);
 
-                                    // Refinement: If we are in Acquisition mode (isAcquisition=true), and candidateId is the same as the Acquisition ID (cotacao.id),
-                                    // AND we have a suspicious low number (like 1), it might be wrong. 
-                                    // But we can't be sure. The safest is to rely on the sequence above.
+                                    // Priority-based ID resolution
+                                    let responseId = null;
+                                    let idSource = null;
 
-                                    const responseId = candidateId;
+                                    if (cotacao.quotation_response_id) {
+                                        responseId = cotacao.quotation_response_id;
+                                        idSource = 'quotation_response_id';
+                                    } else if (cotacao.response_id) {
+                                        responseId = cotacao.response_id;
+                                        idSource = 'response_id';
+                                    } else if (cotacao.quotation_supplier?.quotation_response_id) {
+                                        responseId = cotacao.quotation_supplier.quotation_response_id;
+                                        idSource = 'quotation_supplier.quotation_response_id';
+                                    } else if (!isAcquisition && cotacao.id) {
+                                        // Only use cotacao.id if we're NOT in acquisition mode
+                                        // In acquisition mode, cotacao.id is the acquisition ID, not response ID
+                                        responseId = cotacao.id;
+                                        idSource = 'cotacao.id (fallback)';
+                                    } else if (cotacao.quotation_supplier?.id) {
+                                        // Last resort - this might be a pivot ID
+                                        responseId = cotacao.quotation_supplier.id;
+                                        idSource = 'quotation_supplier.id (pivot - risky)';
+                                    }
 
-                                    console.log('Visualizar Documento Debug:', {
-                                        isAcquisition,
-                                        hasQRId: !!cotacao.quotation_response_id,
-                                        hasQSupp: !!cotacao.quotation_supplier,
-                                        rootId: cotacao.id,
-                                        resolvedId: responseId
-                                    });
+                                    console.log('4. Resolved ID:', responseId);
+                                    console.log('5. ID Source:', idSource);
 
                                     if (!responseId) {
-                                        alert("ID da proposta não encontrado.");
+                                        console.error('❌ No valid response ID found!');
+                                        console.groupEnd();
+                                        alert("Erro: ID da resposta de cotação não encontrado. Verifique se esta proposta tem um documento associado.");
                                         setViewingDoc(false);
                                         return;
                                     }
 
                                     const url = `/quotation-responses/${responseId}/document`;
+                                    console.log('6. API URL:', url);
 
                                     // Force authenticated fetch via Axios (api instance)
                                     const response = await api.get(url, {
@@ -282,21 +300,41 @@ export default function ModalRevisarCotacao({
                                         }
                                     });
 
+                                    console.log('7. Response received:', {
+                                        status: response.status,
+                                        contentType: response.headers['content-type'],
+                                        size: response.data.size
+                                    });
+
                                     const blob = new Blob([response.data], { type: response.headers['content-type'] });
                                     const objectUrl = window.URL.createObjectURL(blob);
+
+                                    console.log('8. Opening document in new tab...');
+                                    console.groupEnd();
+
                                     window.open(objectUrl, '_blank');
                                     setTimeout(() => window.URL.revokeObjectURL(objectUrl), 10000);
                                 } catch (error) {
-                                    console.error("Erro ao abrir documento:", error);
+                                    console.error("❌ Erro ao abrir documento:", error);
+                                    console.log('Error details:', {
+                                        message: error.message,
+                                        response: error.response,
+                                        status: error.response?.status,
+                                        data: error.response?.data
+                                    });
+                                    console.groupEnd();
+
                                     let msg = "Erro ao carregar o documento.";
-                                    const usedId = cotacao.quotation_response_id || cotacao.id;
+                                    const responseId = cotacao.quotation_response_id || cotacao.response_id || cotacao.id;
 
                                     if (error.response?.status === 404) {
-                                        msg = `Documento não encontrado (ID: ${usedId}).`;
+                                        msg = `Documento não encontrado.\n\nID da Resposta: ${responseId}\n\nPossíveis causas:\n- O fornecedor ainda não enviou o documento\n- O documento foi removido\n- ID incorreto (${responseId})`;
                                     } else if (error.response?.status === 400) {
-                                        msg = `Requisição inválida (ID: ${usedId}).`;
+                                        msg = `Requisição inválida.\n\nID usado: ${responseId}\n\nO ID fornecido pode não ser válido para esta operação.`;
                                     } else if (error.response?.status === 403 || error.response?.status === 401) {
-                                        msg = "Sem permissão para visualizar este documento.";
+                                        msg = "Sem permissão para visualizar este documento.\n\nVerifique suas credenciais de acesso.";
+                                    } else if (error.code === 'ERR_NETWORK') {
+                                        msg = "Erro de conexão com o servidor.\n\nVerifique sua conexão com a internet.";
                                     }
 
                                     alert(msg);
