@@ -256,6 +256,10 @@ export const productsAPI = {
         const response = await api.get(`/products?search=${query}&page=${page}`);
         return response.data;
     },
+    getAnalytics: async (id) => {
+        const response = await api.get(`/products/${id}/analytics`);
+        return response.data;
+    },
 };
 
 // Acquisitions API

@@ -1,8 +1,9 @@
 import { useState, useEffect } from "react";
-import { Search, Plus, Filter, RefreshCw, MoreVertical, Edit2, Trash2, Package } from "lucide-react";
+import { Search, Plus, Filter, RefreshCw, MoreVertical, Edit2, Trash2, Package, TrendingUp } from "lucide-react";
 import { productsAPI } from "../../services/api";
 import Toast from "../Components/Toast";
 import ModalCriarProduto from "../Components/ModalCriarProduto";
+import ModalProdutoAnalytics from "../Components/ModalProdutoAnalytics";
 import DashboardTableSkeleton from "../Components/DashboardTableSkeleton";
 
 export default function ProdutosPage() {
@@ -21,8 +22,18 @@ export default function ProdutosPage() {
     const [searchTerm, setSearchTerm] = useState("");
     const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
     const [productToEdit, setProductToEdit] = useState(null);
+
+    // Analytics Modal State
+    const [isAnalyticsModalOpen, setIsAnalyticsModalOpen] = useState(false);
+    const [productForAnalytics, setProductForAnalytics] = useState(null);
+
     const [openMenuId, setOpenMenuId] = useState(null);
     const [toast, setToast] = useState(null);
+
+    const handleShowAnalytics = (product) => {
+        setProductForAnalytics(product);
+        setIsAnalyticsModalOpen(true);
+    };
 
     useEffect(() => {
         fetchProducts();
@@ -152,6 +163,7 @@ export default function ProdutosPage() {
                                 <th className="px-6 py-5 text-left text-xs font-bold text-gray-500 uppercase tracking-widest">Categoria</th>
                                 <th className="px-6 py-5 text-left text-xs font-bold text-gray-500 uppercase tracking-widest">Unidade</th>
                                 <th className="px-6 py-5 text-left text-xs font-bold text-gray-500 uppercase tracking-widest">Data Criação</th>
+                                <th className="px-6 py-5 text-center text-xs font-bold text-gray-500 uppercase tracking-widest">Análise</th>
                                 <th className="px-6 py-5 text-center text-xs font-bold text-gray-500 uppercase tracking-widest">Ações</th>
                             </tr>
                         </thead>
@@ -197,6 +209,16 @@ export default function ProdutosPage() {
                                             {new Date(product.created_at).toLocaleDateString('pt-AO')}
                                         </td>
                                         <td className="px-6 py-6 text-center">
+                                            <button
+                                                onClick={() => handleShowAnalytics(product)}
+                                                className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-blue-50 text-blue-600 hover:bg-blue-100 rounded-lg text-xs font-bold transition-colors border border-blue-100"
+                                                title="Ver Histórico de Preços"
+                                            >
+                                                <TrendingUp size={14} />
+                                                Ver Histórico
+                                            </button>
+                                        </td>
+                                        <td className="px-6 py-6 text-center">
                                             <div className="relative inline-block text-left dropdown-menu">
                                                 <button
                                                     onClick={() => setOpenMenuId(openMenuId === product.id ? null : product.id)}
@@ -207,6 +229,17 @@ export default function ProdutosPage() {
 
                                                 {openMenuId === product.id && (
                                                     <div className="absolute right-0 mt-2 w-48 bg-white rounded-xl shadow-lg border border-gray-100 py-1 z-10 animate-fadeIn">
+                                                        <button
+                                                            onClick={async () => {
+                                                                setOpenMenuId(null);
+                                                                // Open analytics modal
+                                                                handleShowAnalytics(product);
+                                                            }}
+                                                            className="flex items-center gap-2 w-full px-4 py-2.5 text-sm text-blue-600 hover:bg-blue-50 transition-colors"
+                                                        >
+                                                            <TrendingUp size={16} />
+                                                            Ver Análise
+                                                        </button>
                                                         <button
                                                             onClick={() => {
                                                                 setProductToEdit(product);
@@ -274,12 +307,19 @@ export default function ProdutosPage() {
                 )}
             </div>
 
-            {/* Modal */}
+            {/* Modal - Create/Edit */}
             <ModalCriarProduto
                 isOpen={isCreateModalOpen}
                 onClose={() => setIsCreateModalOpen(false)}
                 onSuccess={handleCreateSuccess}
                 productToEdit={productToEdit}
+            />
+
+            {/* Modal - Analytics */}
+            <ModalProdutoAnalytics
+                isOpen={isAnalyticsModalOpen}
+                onClose={() => setIsAnalyticsModalOpen(false)}
+                product={productForAnalytics}
             />
 
             {/* Toast */}
