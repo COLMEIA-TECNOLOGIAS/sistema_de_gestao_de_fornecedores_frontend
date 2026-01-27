@@ -1,7 +1,7 @@
 function Fornecedores() {
 
 
-  
+
   const fornecedores = [
     { id: 1, nome: "Empresa 01", avatars: ["👤", "👤", "👤", "👤"], itens: 34, progresso: 45, cor: "text-red-500" },
     { id: 2, nome: "Empresa 02", avatars: ["👤", "👤", "👤"], itens: 24, progresso: 100, cor: "text-green-500" },
@@ -24,7 +24,6 @@ function Fornecedores() {
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">MEMBROS</th>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">PRODUTOS</th>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">AVALIAÇÃO DE QUALIDADE</th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">ATIVIDADES</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-200">
@@ -52,11 +51,10 @@ function Fornecedores() {
                   <div className="flex items-center gap-3">
                     <div className="flex-1 bg-gray-200 rounded-full h-2 max-w-[120px]">
                       <div
-                        className={`h-2 rounded-full ${
-                          fornecedor.progresso === 100 ? "bg-green-500" :
-                          fornecedor.progresso >= 25 ? "bg-yellow-500" :
-                          fornecedor.progresso > 0 ? "bg-red-500" : "bg-gray-300"
-                        }`}
+                        className={`h-2 rounded-full ${fornecedor.progresso === 100 ? "bg-green-500" :
+                            fornecedor.progresso >= 25 ? "bg-yellow-500" :
+                              fornecedor.progresso > 0 ? "bg-red-500" : "bg-gray-300"
+                          }`}
                         style={{ width: `${fornecedor.progresso}%` }}
                       ></div>
                     </div>
@@ -64,11 +62,6 @@ function Fornecedores() {
                       {fornecedor.progresso}%
                     </span>
                   </div>
-                </td>
-                <td className="px-6 py-4">
-                  <button className="bg-[#44B16F] text-white px-4 py-1.5 rounded-lg text-sm font-medium hover:bg-[#3a9860] transition-colors">
-                    Ver atividade
-                  </button>
                 </td>
               </tr>
             ))}
