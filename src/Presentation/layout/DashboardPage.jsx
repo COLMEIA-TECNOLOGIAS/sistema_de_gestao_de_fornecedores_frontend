@@ -1,5 +1,6 @@
 import { useAuth } from "../../context/AuthContext";
 import { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 import {
     dashboardAPI,
     quotationRequestsAPI,
@@ -11,6 +12,7 @@ import { Package, AlertCircle, Users, FileText } from "lucide-react";
 
 export default function DashboardPage() {
     const { user } = useAuth();
+    const navigate = useNavigate();
     const userName = user?.nome || user?.name || "Usuário";
     const [isLoading, setIsLoading] = useState(true);
     const [dashboardData, setDashboardData] = useState(null);
@@ -165,7 +167,11 @@ export default function DashboardPage() {
                 </div>
             ) : dashboardData?.counts ? (
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-                    <div className="bg-white rounded-xl shadow-sm p-6 border-l-4 border-blue-500">
+                    {/* Card 1: Cotações Ativas - Navega para tabela de cotações */}
+                    <div
+                        onClick={() => navigate('/fornecedores?tab=cotacoes')}
+                        className="bg-white rounded-xl shadow-sm p-6 border-l-4 border-blue-500 cursor-pointer hover:shadow-lg transition-shadow"
+                    >
                         <div className="flex items-center justify-between mb-2">
                             <h3 className="text-sm font-medium text-gray-600">Cotações Ativas</h3>
                             <Package className="text-blue-500" size={24} />
@@ -173,7 +179,11 @@ export default function DashboardPage() {
                         <p className="text-3xl font-bold text-gray-900">{dashboardData.counts.active_quotations}</p>
                     </div>
 
-                    <div className="bg-white rounded-xl shadow-sm p-6 border-l-4 border-yellow-500">
+                    {/* Card 2: Revisões Pendentes - Navega para tabela de revisões */}
+                    <div
+                        onClick={() => navigate('/fornecedores?tab=cotacoes&subtab=respostas')}
+                        className="bg-white rounded-xl shadow-sm p-6 border-l-4 border-yellow-500 cursor-pointer hover:shadow-lg transition-shadow"
+                    >
                         <div className="flex items-center justify-between mb-2">
                             <h3 className="text-sm font-medium text-gray-600">Revisões Pendentes</h3>
                             <AlertCircle className="text-yellow-500" size={24} />
@@ -181,7 +191,11 @@ export default function DashboardPage() {
                         <p className="text-3xl font-bold text-gray-900">{dashboardData.counts.pending_reviews}</p>
                     </div>
 
-                    <div className="bg-white rounded-xl shadow-sm p-6 border-l-4 border-green-500">
+                    {/* Card 3: Fornecedores Ativos - Navega para página de fornecedores */}
+                    <div
+                        onClick={() => navigate('/fornecedores')}
+                        className="bg-white rounded-xl shadow-sm p-6 border-l-4 border-green-500 cursor-pointer hover:shadow-lg transition-shadow"
+                    >
                         <div className="flex items-center justify-between mb-2">
                             <h3 className="text-sm font-medium text-gray-600">Fornecedores Ativos</h3>
                             <Users className="text-green-500" size={24} />
@@ -189,7 +203,11 @@ export default function DashboardPage() {
                         <p className="text-3xl font-bold text-gray-900">{dashboardData.counts.active_suppliers}</p>
                     </div>
 
-                    <div className="bg-white rounded-xl shadow-sm p-6 border-l-4 border-purple-500">
+                    {/* Card 4: Total de Cotações - Navega para tabela de cotações */}
+                    <div
+                        onClick={() => navigate('/fornecedores?tab=cotacoes')}
+                        className="bg-white rounded-xl shadow-sm p-6 border-l-4 border-purple-500 cursor-pointer hover:shadow-lg transition-shadow"
+                    >
                         <div className="flex items-center justify-between mb-2">
                             <h3 className="text-sm font-medium text-gray-600">Total de Cotações</h3>
                             <FileText className="text-purple-500" size={24} />

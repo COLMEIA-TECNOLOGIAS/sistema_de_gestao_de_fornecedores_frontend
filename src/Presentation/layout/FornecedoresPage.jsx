@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { useLocation, useSearchParams } from "react-router-dom";
 import { Search, SlidersHorizontal, MoreVertical, RefreshCw, FileText, Trash2, CheckCircle, MessageSquare, Send, Eye } from "lucide-react";
 import ModalCadastroFornecedor from "../Components/ModalCadastroFornecedor";
 import ModalPedirCotacao from "../Components/ModalPedirCotacao";
@@ -12,6 +13,8 @@ import FornecedorTableSkeleton from "../Components/FornecedorTableSkeleton";
 import { suppliersAPI, quotationRequestsAPI, quotationResponsesAPI, categoriesAPI } from "../../services/api"; // Added categoriesAPI
 
 export default function FornecedoresPage() {
+    const [searchParams] = useSearchParams();
+
     // Main tabs state
     const [activeMainTab, setActiveMainTab] = useState("fornecedores");
 
@@ -90,6 +93,26 @@ export default function FornecedoresPage() {
             fetchSuppliersAndCategories();
         }
     }, [activeMainTab]);
+
+    // Handle URL query parameters for tab navigation
+    useEffect(() => {
+        const tab = searchParams.get('tab');
+        const subtab = searchParams.get('subtab');
+
+        if (tab === 'cotacoes') {
+            setActiveMainTab('cotacoes');
+
+            if (subtab === 'respostas') {
+                setActiveCotacaoTab('respostas');
+            } else if (subtab === 'pedidos-cancelados') {
+                setActiveCotacaoTab('pedidos-cancelados');
+            } else {
+                setActiveCotacaoTab('pedidos-enviados');
+            }
+        } else if (tab === 'fornecedores') {
+            setActiveMainTab('fornecedores');
+        }
+    }, [searchParams]);
 
     // Filtering Logic
     useEffect(() => {
