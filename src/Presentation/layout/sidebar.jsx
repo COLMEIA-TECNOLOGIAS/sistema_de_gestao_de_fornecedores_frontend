@@ -16,7 +16,6 @@ function Sidebar({ activeItem, onItemClick }) {
     {
       id: "fornecedores",
       label: "Fornecedores",
-      sublabel: "Cotações",
       icon: Package,
       permission: PERMISSIONS.FORNECEDORES
     },

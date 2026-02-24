@@ -118,6 +118,14 @@ export const quotationRequestsAPI = {
         const response = await api.post('/quotation-requests', quotationData);
         return response.data;
     },
+    createWithDocuments: async (formData) => {
+        const response = await api.post('/quotation-requests', formData, {
+            headers: {
+                'Content-Type': 'multipart/form-data',
+            },
+        });
+        return response.data;
+    },
     update: async (id, quotationData) => {
         const response = await api.put(`/quotation-requests/${id}`, quotationData);
         return response.data;
@@ -266,6 +274,10 @@ export const productsAPI = {
 export const acquisitionsAPI = {
     getAll: async (page = 1) => {
         const response = await api.get(`/acquisitions?page=${page}`);
+        return response.data;
+    },
+    getById: async (id) => {
+        const response = await api.get(`/acquisitions/${id}`);
         return response.data;
     },
     getStatsProducts: async () => {

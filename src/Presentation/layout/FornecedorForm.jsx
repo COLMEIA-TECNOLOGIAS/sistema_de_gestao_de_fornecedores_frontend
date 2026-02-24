@@ -1,8 +1,10 @@
-import { ArrowLeft, AlertCircle, FileText, CheckCircle, Upload, X } from "lucide-react";
-import { useState, useEffect } from "react";
+import { ArrowLeft, AlertCircle, FileText, CheckCircle, Upload, X, Eye } from "lucide-react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { suppliersAPI, categoriesAPI } from "../../services/api";
 import Toast from "../Components/Toast";
+
+// Categories are now fetched from the API
 
 export default function FornecedorFormWrapper() {
   const [currentStep, setCurrentStep] = useState(1);
@@ -10,9 +12,11 @@ export default function FornecedorFormWrapper() {
   const [categories, setCategories] = useState([]);
   const [isLoadingCategories, setIsLoadingCategories] = useState(false);
   const [toast, setToast] = useState(null);
+  const [previewFile, setPreviewFile] = useState(null);
   const navigate = useNavigate();
   const location = useLocation();
   const editingFornecedor = location.state?.fornecedor || null;
+  const submitRef = useRef(false); // Prevent double-submit
 
   useEffect(() => {
     const fetchCategories = async () => {
@@ -36,14 +40,19 @@ export default function FornecedorFormWrapper() {
     email: editingFornecedor?.email || "",
     phone: editingFornecedor?.phone || "",
     nif: editingFornecedor?.nif || "",
-    activity_type: editingFornecedor?.activity_type || "product",
+    activity_type: editingFornecedor?.activity_type || "",
     province: editingFornecedor?.province || "Luanda",
     municipality: editingFornecedor?.municipality || "Viana",
     address: editingFornecedor?.address || "",
-    categories: editingFornecedor?.categories?.map(c => c.id) || [], // Assuming it comes populated or we need strict IDs if it's a relation
-    commercial_certificate: null,
-    commercial_license: null,
+    categories: editingFornecedor?.categories?.map(c => c.id) || [],
+    // New category multi-select (Bens, Obras, etc.)
+    selectedCategorias: editingFornecedor?.selectedCategorias || [],
+    // Document uploads
+    pacto_social: null,
+    certificado_nao_devedor_agt: null,
+    certificado_nao_devedor_inss: null,
     nif_proof: null,
+    alvaras_comerciais: [], // Multiple files
   });
 
   const [errors, setErrors] = useState({});
@@ -67,6 +76,23 @@ export default function FornecedorFormWrapper() {
     }
   };
 
+  const handleMultipleFileChange = (e) => {
+    const { files } = e.target;
+    if (files.length > 0) {
+      setFormData((prev) => ({
+        ...prev,
+        alvaras_comerciais: [...prev.alvaras_comerciais, ...Array.from(files)],
+      }));
+    }
+  };
+
+  const handleRemoveAlvara = (index) => {
+    setFormData((prev) => ({
+      ...prev,
+      alvaras_comerciais: prev.alvaras_comerciais.filter((_, i) => i !== index),
+    }));
+  };
+
   const handleCategoryToggle = (id) => {
     setFormData((prev) => {
       const categories = [...prev.categories];
@@ -80,25 +106,63 @@ export default function FornecedorFormWrapper() {
     });
   };
 
+  const handleCategoriaFixaToggle = (catId) => {
+    setFormData((prev) => {
+      const selectedCategorias = [...prev.selectedCategorias];
+      const index = selectedCategorias.indexOf(catId);
+      if (index === -1) {
+        selectedCategorias.push(catId);
+      } else {
+        selectedCategorias.splice(index, 1);
+      }
+      return { ...prev, selectedCategorias };
+    });
+    if (errors.selectedCategorias) {
+      setErrors((prev) => {
+        const newErrors = { ...prev };
+        delete newErrors.selectedCategorias;
+        return newErrors;
+      });
+    }
+  };
+
+  const handlePreviewFile = (file) => {
+    if (!file) return;
+    const url = URL.createObjectURL(file);
+    setPreviewFile({ name: file.name, url, type: file.type });
+  };
+
+  const closePreview = () => {
+    if (previewFile?.url) {
+      URL.revokeObjectURL(previewFile.url);
+    }
+    setPreviewFile(null);
+  };
+
   const validateStep = (step) => {
     const newErrors = {};
     if (step === 1) {
       if (!formData.legal_name) newErrors.legal_name = "Nome legal é obrigatório";
       if (!formData.commercial_name) newErrors.commercial_name = "Nome comercial é obrigatório";
-      if (!formData.email) newErrors.email = "Email é obrigatório";
+      if (!formData.email) {
+        newErrors.email = "Email é obrigatório";
+      } else if (!formData.email.includes("@")) {
+        newErrors.email = "Email deve conter '@' (ex: email@exemplo.ao)";
+      }
       if (!formData.phone) newErrors.phone = "Telefone é obrigatório";
       if (!formData.nif) newErrors.nif = "NIF é obrigatório";
+      if (formData.selectedCategorias.length === 0) {
+        newErrors.selectedCategorias = "Selecione pelo menos uma categoria";
+      }
     } else if (step === 2) {
       if (!formData.province) newErrors.province = "Província é obrigatória";
       if (!formData.municipality) newErrors.municipality = "Município é obrigatório";
       if (!formData.address) newErrors.address = "Endereço é obrigatório";
     } else if (step === 3) {
-      // Documents are mandatory only for new registrations
       if (!editingFornecedor) {
-        if (!formData.commercial_certificate) newErrors.commercial_certificate = "Certificado comercial é obrigatório";
         if (!formData.nif_proof) newErrors.nif_proof = "Comprovativo NIF é obrigatório";
       }
-      if (formData.categories.length === 0) newErrors.categories = "Selecione pelo menos uma categoria";
+      if (formData.categories.length === 0) newErrors.categories = "Selecione pelo menos uma categoria de fornecimento";
     }
 
     setErrors(newErrors);
@@ -115,12 +179,14 @@ export default function FornecedorFormWrapper() {
     setCurrentStep((prev) => prev - 1);
   };
 
-  const handleSubmit = async () => {
+  // Debounced submit to prevent double-clicks and improve performance
+  const handleSubmit = useCallback(async () => {
+    if (submitRef.current) return; // Prevent double-submit
     if (!validateStep(3)) return;
 
+    submitRef.current = true;
     setIsLoading(true);
     try {
-      // Use FormData for file uploads
       const data = new FormData();
 
       // Append all text fields
@@ -129,32 +195,42 @@ export default function FornecedorFormWrapper() {
       data.append("email", formData.email);
       data.append("phone", formData.phone);
       data.append("nif", formData.nif);
-      data.append("activity_type", formData.activity_type);
+      data.append("activity_type", formData.selectedCategorias.join(","));
       data.append("province", formData.province);
       data.append("municipality", formData.municipality);
       data.append("address", formData.address);
 
-      // Append files only if they exist
-      if (formData.commercial_certificate) {
-        data.append("commercial_certificate", formData.commercial_certificate);
+      // Append document files only if they exist
+      if (formData.pacto_social) {
+        data.append("pacto_social", formData.pacto_social);
       }
-      if (formData.commercial_license) {
-        data.append("commercial_license", formData.commercial_license);
+      if (formData.certificado_nao_devedor_agt) {
+        data.append("certificado_nao_devedor_agt", formData.certificado_nao_devedor_agt);
+      }
+      if (formData.certificado_nao_devedor_inss) {
+        data.append("certificado_nao_devedor_inss", formData.certificado_nao_devedor_inss);
       }
       if (formData.nif_proof) {
         data.append("nif_proof", formData.nif_proof);
       }
+      // Multiple alvarás
+      formData.alvaras_comerciais.forEach((file, index) => {
+        data.append(`alvaras_comerciais[${index}]`, file);
+      });
 
       // Append categories as array
       formData.categories.forEach((id) => {
         data.append("categories[]", id);
       });
 
+      // Append selected categorias (Bens, Obras, etc.)
+      formData.selectedCategorias.forEach((cat) => {
+        data.append("categorias[]", cat);
+      });
+
       console.log("Submitting formData...");
 
       if (editingFornecedor) {
-        // If editing, we uses specialized updateMultipart method which sends POST with _method=PUT
-        // This is required for PHP/Laravel backends to correctly handle file uploads in updates
         data.append("_method", "PUT");
         await suppliersAPI.updateMultipart(editingFornecedor.id, data);
       } else {
@@ -176,11 +252,12 @@ export default function FornecedorFormWrapper() {
       }
     } finally {
       setIsLoading(false);
+      submitRef.current = false;
     }
-  };
+  }, [formData, editingFornecedor]);
 
-  const provinces = ["Luanda", "Benguela", "Huambo", "Huíla", "Cabinda", "Namibe"];
-  const municipalities = ["Viana", "Luanda", "Cazenga", "Belas", "Talatona", "Lobito"];
+  const provinces = ["Luanda", "Benguela", "Huambo", "Huíla", "Cabinda", "Namibe", "Lunda Norte", "Lunda Sul", "Malanje", "Moxico", "Bié", "Cunene", "Cuando Cubango", "Kwanza Norte", "Kwanza Sul", "Uíge", "Zaire", "Bengo"];
+  const municipalities = ["Viana", "Luanda", "Cazenga", "Belas", "Talatona", "Lobito", "Benguela", "Kilamba Kiaxi", "Cacuaco", "Icolo e Bengo"];
 
   if (currentStep === 4) {
     return (
@@ -217,6 +294,35 @@ export default function FornecedorFormWrapper() {
           message={toast.message}
           onClose={() => setToast(null)}
         />
+      )}
+
+      {/* File Preview Modal */}
+      {previewFile && (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50">
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-3xl mx-4 overflow-hidden">
+            <div className="flex items-center justify-between p-4 border-b border-gray-100">
+              <h3 className="font-bold text-gray-800">{previewFile.name}</h3>
+              <button onClick={closePreview} className="p-2 hover:bg-gray-100 rounded-lg transition-colors">
+                <X size={20} className="text-gray-500" />
+              </button>
+            </div>
+            <div className="p-4 max-h-[70vh] overflow-auto flex items-center justify-center bg-gray-50">
+              {previewFile.type.startsWith("image/") ? (
+                <img src={previewFile.url} alt={previewFile.name} className="max-w-full max-h-[60vh] object-contain rounded-lg" />
+              ) : previewFile.type === "application/pdf" ? (
+                <iframe src={previewFile.url} title={previewFile.name} className="w-full h-[60vh] rounded-lg" />
+              ) : (
+                <div className="text-center py-12">
+                  <FileText size={64} className="text-gray-300 mx-auto mb-4" />
+                  <p className="text-gray-500">Pré-visualização não disponível para este tipo de ficheiro.</p>
+                  <a href={previewFile.url} download={previewFile.name} className="mt-4 inline-block px-6 py-2 bg-[#44B16F] text-white rounded-lg hover:bg-[#3a9d5f] transition-colors font-medium">
+                    Descarregar ficheiro
+                  </a>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
       )}
 
       {/* Header */}
@@ -284,25 +390,41 @@ export default function FornecedorFormWrapper() {
                       onChange={handleInputChange}
                       error={errors.commercial_name}
                     />
+
+                    {/* Categoria (from API categories table) */}
                     <div>
                       <label className="block text-sm font-bold text-gray-700 mb-2 uppercase tracking-wider">
-                        Tipo de Atividade *
+                        Categoria *
                       </label>
-                      <div className="flex gap-4 p-1 bg-gray-50 rounded-xl">
-                        {["product", "service"].map((type) => (
-                          <button
-                            key={type}
-                            type="button"
-                            onClick={() => setFormData({ ...formData, activity_type: type })}
-                            className={`flex-1 py-3 rounded-lg text-sm font-bold transition-all ${formData.activity_type === type
-                              ? "bg-white text-[#44B16F] shadow-sm"
-                              : "text-gray-400 hover:text-gray-600"
-                              }`}
-                          >
-                            {type === "product" ? "Produto" : "Serviço"}
-                          </button>
-                        ))}
+                      <p className="text-xs text-gray-500 mb-3">Selecione uma ou mais categorias</p>
+                      <div className="flex flex-wrap gap-3">
+                        {isLoadingCategories ? (
+                          <p className="text-sm text-gray-400">Carregando categorias...</p>
+                        ) : (
+                          categories.map((cat) => (
+                            <button
+                              key={cat.id}
+                              type="button"
+                              onClick={() => handleCategoriaFixaToggle(cat.id)}
+                              className={`px-4 py-2.5 rounded-xl border-2 font-semibold text-sm transition-all ${formData.selectedCategorias.includes(cat.id)
+                                ? "bg-[#44B16F]/10 border-[#44B16F] text-[#44B16F] shadow-sm"
+                                : "border-gray-200 bg-gray-50 text-gray-500 hover:border-gray-300 hover:text-gray-700"
+                                }`}
+                            >
+                              {formData.selectedCategorias.includes(cat.id) && (
+                                <CheckCircle size={14} className="inline-block mr-1.5 -mt-0.5" />
+                              )}
+                              {cat.name}
+                            </button>
+                          ))
+                        )}
                       </div>
+                      {errors.selectedCategorias && (
+                        <div className="flex items-center gap-1 mt-2 text-red-500 font-bold">
+                          <AlertCircle size={14} />
+                          <span className="text-xs">{errors.selectedCategorias}</span>
+                        </div>
+                      )}
                     </div>
                   </div>
                   <div className="space-y-6">
@@ -407,6 +529,7 @@ export default function FornecedorFormWrapper() {
                 </div>
 
                 <div className="space-y-6">
+                  {/* Categories from API */}
                   <div>
                     <label className="block text-sm font-bold text-gray-700 mb-4 uppercase tracking-wider">
                       Categorias de Fornecimento *
@@ -437,28 +560,89 @@ export default function FornecedorFormWrapper() {
                     )}
                   </div>
 
-                  <div className="grid grid-cols-2 gap-8 pt-4">
-                    <FileUploadField
-                      label={`Certificado Comercial ${editingFornecedor ? "" : "*"}`}
-                      name="commercial_certificate"
-                      file={formData.commercial_certificate}
-                      onChange={handleFileChange}
-                      error={errors.commercial_certificate}
-                    />
-                    <FileUploadField
-                      label="Alvará Comercial"
-                      name="commercial_license"
-                      file={formData.commercial_license}
-                      onChange={handleFileChange}
-                      error={errors.commercial_license}
-                    />
-                    <FileUploadField
-                      label={`Comprovativo NIF ${editingFornecedor ? "" : "*"}`}
-                      name="nif_proof"
-                      file={formData.nif_proof}
-                      onChange={handleFileChange}
-                      error={errors.nif_proof}
-                    />
+                  {/* Document Uploads */}
+                  <div className="pt-4">
+                    <label className="block text-sm font-bold text-gray-700 mb-4 uppercase tracking-wider">
+                      Documentos (Anexos)
+                    </label>
+                    <div className="grid grid-cols-2 gap-6">
+                      <FileUploadField
+                        label="Pacto Social"
+                        name="pacto_social"
+                        file={formData.pacto_social}
+                        onChange={handleFileChange}
+                        error={errors.pacto_social}
+                        onPreview={handlePreviewFile}
+                      />
+                      <FileUploadField
+                        label="Certificado de Não Devedor AGT"
+                        name="certificado_nao_devedor_agt"
+                        file={formData.certificado_nao_devedor_agt}
+                        onChange={handleFileChange}
+                        error={errors.certificado_nao_devedor_agt}
+                        onPreview={handlePreviewFile}
+                      />
+                      <FileUploadField
+                        label="Certificado de Não Devedor INSS"
+                        name="certificado_nao_devedor_inss"
+                        file={formData.certificado_nao_devedor_inss}
+                        onChange={handleFileChange}
+                        error={errors.certificado_nao_devedor_inss}
+                        onPreview={handlePreviewFile}
+                      />
+                      <FileUploadField
+                        label={`NIF ${editingFornecedor ? "" : "*"}`}
+                        name="nif_proof"
+                        file={formData.nif_proof}
+                        onChange={handleFileChange}
+                        error={errors.nif_proof}
+                        onPreview={handlePreviewFile}
+                      />
+                    </div>
+
+                    {/* Alvará Comercial - Multiple uploads */}
+                    <div className="mt-6">
+                      <label className="block text-sm font-bold text-gray-700 mb-2 uppercase tracking-wider">
+                        Alvará Comercial
+                      </label>
+                      <p className="text-xs text-gray-500 mb-3">Pode anexar mais de um alvará comercial</p>
+
+                      <div className="flex flex-wrap gap-3 mb-3">
+                        {formData.alvaras_comerciais.map((file, index) => (
+                          <div key={index} className="flex items-center gap-2 bg-emerald-50 border border-[#44B16F]/30 px-3 py-2 rounded-xl">
+                            <FileText size={16} className="text-[#44B16F]" />
+                            <span className="text-xs font-bold text-[#44B16F] max-w-[150px] truncate">{file.name}</span>
+                            <button
+                              type="button"
+                              onClick={() => handlePreviewFile(file)}
+                              className="p-1 hover:bg-[#44B16F]/10 rounded transition-colors"
+                              title="Pré-visualizar"
+                            >
+                              <Eye size={14} className="text-[#44B16F]" />
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => handleRemoveAlvara(index)}
+                              className="p-1 hover:bg-red-50 rounded transition-colors"
+                            >
+                              <X size={14} className="text-red-500" />
+                            </button>
+                          </div>
+                        ))}
+                      </div>
+
+                      <label className="relative flex flex-col items-center justify-center p-6 border-2 border-dashed rounded-2xl cursor-pointer transition-all bg-gray-50 border-gray-200 hover:border-[#44B16F]">
+                        <input
+                          type="file"
+                          multiple
+                          className="hidden"
+                          onChange={handleMultipleFileChange}
+                          accept=".pdf,.jpg,.jpeg,.png,.doc,.docx"
+                        />
+                        <Upload className="text-gray-400 mb-3" size={28} />
+                        <p className="text-xs font-bold text-gray-500">Clique para carregar alvará(s)</p>
+                      </label>
+                    </div>
                   </div>
                 </div>
               </div>
@@ -515,7 +699,7 @@ function InputField({ label, name, type = "text", placeholder, value, onChange, 
   );
 }
 
-function FileUploadField({ label, name, file, onChange, error }) {
+function FileUploadField({ label, name, file, onChange, error, onPreview }) {
   return (
     <div>
       <label className="block text-sm font-bold text-gray-700 mb-2 uppercase tracking-wider">
@@ -529,7 +713,7 @@ function FileUploadField({ label, name, file, onChange, error }) {
             : "bg-gray-50 border-gray-200 hover:border-[#44B16F]"
           }`}
       >
-        <input type="file" name={name} className="hidden" onChange={onChange} />
+        <input type="file" name={name} className="hidden" onChange={onChange} accept=".pdf,.jpg,.jpeg,.png,.doc,.docx" />
         {file ? (
           <>
             <div className="w-12 h-12 bg-[#44B16F] text-white rounded-full flex items-center justify-center mb-3">
@@ -548,6 +732,16 @@ function FileUploadField({ label, name, file, onChange, error }) {
           </>
         )}
       </label>
+      {file && onPreview && (
+        <button
+          type="button"
+          onClick={() => onPreview(file)}
+          className="mt-2 flex items-center gap-1.5 text-xs font-bold text-[#44B16F] hover:text-[#3a9d5f] transition-colors"
+        >
+          <Eye size={14} />
+          Pré-visualizar
+        </button>
+      )}
       {error && <p className="text-red-500 text-[10px] mt-1 font-bold">{error}</p>}
     </div>
   );

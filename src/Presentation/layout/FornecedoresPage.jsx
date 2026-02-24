@@ -830,12 +830,6 @@ export default function FornecedoresPage() {
 
                         {/* Action Buttons */}
                         <button
-                            onClick={() => setIsCotacaoModalOpen(true)}
-                            className="px-6 py-3 text-[#44B16F] border border-[#44B16F] rounded-lg hover:bg-[#44B16F]/5 transition-colors font-medium"
-                        >
-                            + Solicitar cotação
-                        </button>
-                        <button
                             onClick={() => setIsModalOpen(true)}
                             className="px-6 py-3 bg-[#44B16F] text-white rounded-lg hover:bg-[#3a9d5f] transition-colors font-medium"
                         >
@@ -867,7 +861,7 @@ export default function FornecedoresPage() {
                                         <th className="px-6 py-4 text-left text-sm font-semibold text-gray-600">Telefone</th>
                                         <th className="px-6 py-4 text-left text-sm font-semibold text-gray-600">Email</th>
                                         <th className="px-6 py-4 text-left text-sm font-semibold text-gray-600">Avaliação</th>
-                                        <th className="px-6 py-4 text-left text-sm font-semibold text-gray-600">Tipo de Atividade</th>
+                                        <th className="px-6 py-4 text-left text-sm font-semibold text-gray-600">Categoria</th>
                                         <th className="px-6 py-4 text-left text-sm font-semibold text-gray-600">Província</th>
                                         <th className="px-6 py-4 text-left text-sm font-semibold text-gray-600">Município</th>
                                         <th className="px-6 py-4 text-left text-sm font-semibold text-gray-600">Data de Registo</th>
@@ -929,12 +923,33 @@ export default function FornecedoresPage() {
                                                     </div>
                                                 </td>
                                                 <td className="px-6 py-8">
-                                                    <span className={`px-4 py-2 rounded-xl text-sm font-medium ${f.activity_type === 'service' ? 'bg-blue-50 text-blue-900' :
-                                                        f.activity_type === 'product' ? 'bg-purple-50 text-purple-900' :
-                                                            'bg-gray-100 text-gray-800'
-                                                        }`}>
-                                                        {f.activity_type === 'service' ? 'Serviço' : f.activity_type === 'product' ? 'Produto' : f.activity_type || 'N/A'}
-                                                    </span>
+                                                    <div className="flex flex-wrap gap-1">
+                                                        {(f.activity_type || '').split(',').filter(Boolean).map((cat, idx) => {
+                                                            const catName = cat.trim();
+                                                            const catColors = {
+                                                                'bens': 'bg-blue-50 text-blue-900',
+                                                                'obras': 'bg-orange-50 text-orange-900',
+                                                                'servicos_consultoria': 'bg-purple-50 text-purple-900',
+                                                                'servicos_nao_consultoria': 'bg-teal-50 text-teal-900',
+                                                                'product': 'bg-purple-50 text-purple-900',
+                                                                'service': 'bg-blue-50 text-blue-900',
+                                                            };
+                                                            const catLabels = {
+                                                                'bens': 'Bens',
+                                                                'obras': 'Obras',
+                                                                'servicos_consultoria': 'Serv. Consultoria',
+                                                                'servicos_nao_consultoria': 'Serv. Não Consultoria',
+                                                                'product': 'Produto',
+                                                                'service': 'Serviço',
+                                                            };
+                                                            return (
+                                                                <span key={idx} className={`px-2 py-1 rounded-lg text-xs font-medium ${catColors[catName] || 'bg-gray-100 text-gray-800'}`}>
+                                                                    {catLabels[catName] || catName}
+                                                                </span>
+                                                            );
+                                                        })}
+                                                        {!f.activity_type && <span className="text-xs text-gray-400">N/A</span>}
+                                                    </div>
                                                 </td>
                                                 <td className="px-6 py-8 text-gray-700">{f.province || 'N/A'}</td>
                                                 <td className="px-6 py-8 text-gray-700">{f.municipality || 'N/A'}</td>

@@ -1,10 +1,11 @@
 import { useState, useEffect } from "react";
-import { Search, SlidersHorizontal, Eye, FileText, CheckCircle, Clock, AlertCircle, TrendingUp, Truck } from "lucide-react";
+import { Search, SlidersHorizontal, Eye, FileText, CheckCircle, Clock, AlertCircle, TrendingUp, Truck, Plus, X, Package } from "lucide-react";
 import { quotationResponsesAPI, quotationRequestsAPI, acquisitionsAPI } from "../../services/api";
 import Toast from "../Components/Toast";
 import DashboardTableSkeleton from "../Components/DashboardTableSkeleton";
 import ModalRevisarCotacao from "../Components/ModalRevisarCotacao";
 import ModalSolicitarRevisao from "../Components/ModalSolicitarRevisao";
+import ModalPedirCotacao from "../Components/ModalPedirCotacao";
 
 export default function AquisicoesPage() {
     const [isLoading, setIsLoading] = useState(true);
@@ -19,6 +20,13 @@ export default function AquisicoesPage() {
     const [isRevisarModalOpen, setIsRevisarModalOpen] = useState(false);
     const [isSolicitarRevisaoModalOpen, setIsSolicitarRevisaoModalOpen] = useState(false);
     const [isSubmittingReview, setIsSubmittingReview] = useState(false);
+
+    // Activity modal states
+    const [isActivityModalOpen, setIsActivityModalOpen] = useState(false);
+    const [activityName, setActivityName] = useState("");
+    const [activityDescription, setActivityDescription] = useState("");
+    const [isCotacaoModalOpen, setIsCotacaoModalOpen] = useState(false);
+    const [currentActivityName, setCurrentActivityName] = useState("");
 
     useEffect(() => {
         fetchResponses();
@@ -39,7 +47,6 @@ export default function AquisicoesPage() {
             setIsLoading(true);
             setError(null);
 
-            // Use the correct API endpoint for acquisitions
             const data = await acquisitionsAPI.getAll();
 
             if (data.data) {
@@ -97,27 +104,22 @@ export default function AquisicoesPage() {
         try {
             let responseDetails = aquisicao;
 
-            // Strategy: Try to get the richest data source available
             if (aquisicao.quotation_response_id) {
                 try {
-                    // 1. Try getting the full Quotation Response (preferred for formatting)
                     const res = await quotationResponsesAPI.getById(aquisicao.quotation_response_id);
                     responseDetails = res.data || res;
                 } catch (innerError) {
-                    console.warn("Technician: Failed to load quotation response details, fallback to Acquisition details", innerError);
-
-                    // 2. Fallback: Get Acquisition details (technician definitely has access)
+                    console.warn("Failed to load quotation response details, fallback to Acquisition details", innerError);
                     try {
                         if (acquisitionsAPI.getById) {
                             const acqRes = await acquisitionsAPI.getById(aquisicao.id);
                             responseDetails = acqRes.data || acqRes;
                         }
                     } catch (acqErr) {
-                        console.warn("Technician: Failed fallback to acquisition details", acqErr);
+                        console.warn("Failed fallback to acquisition details", acqErr);
                     }
                 }
             } else {
-                // Direct acquisition: Get details
                 try {
                     if (acquisitionsAPI.getById) {
                         const acqRes = await acquisitionsAPI.getById(aquisicao.id);
@@ -128,9 +130,7 @@ export default function AquisicoesPage() {
                 }
             }
 
-            // 3. Data Normalization for Modal
-
-            // Ensure quotation_supplier structure exists (Modal relies on it for Supplier Info)
+            // Data normalization
             if (!responseDetails.quotation_supplier && responseDetails.supplier) {
                 responseDetails.quotation_supplier = {
                     supplier: responseDetails.supplier,
@@ -138,19 +138,14 @@ export default function AquisicoesPage() {
                 };
             }
 
-            // Preservation of Acquisition Data
-            // If the fetched response doesn't have the delivery date but the acquisition does, preserve it.
             if (!responseDetails.expected_delivery_date && aquisicao.expected_delivery_date) {
                 responseDetails.expected_delivery_date = aquisicao.expected_delivery_date;
             }
 
-            // Patch 'Data' (submitted_at) using created_at if missing
             if (!responseDetails.submitted_at) {
                 responseDetails.submitted_at = aquisicao.submitted_at || aquisicao.created_at || responseDetails.created_at;
             }
 
-            // Preservation of Title
-            // If responseDetails doesn't have the title deep down, try to patch it from acquisition
             if (aquisicao.quotation_request?.title &&
                 (!responseDetails.quotation_supplier?.quotation_request?.title && !responseDetails.quotation_request?.title)) {
                 if (!responseDetails.quotation_request) responseDetails.quotation_request = {};
@@ -160,13 +155,10 @@ export default function AquisicoesPage() {
                 }
             }
 
-            // Ensure proposal_document_url is preserved if missing in details but present in list/acquisition
             if (!responseDetails.proposal_document_url && aquisicao.proposal_document_url) {
                 responseDetails.proposal_document_url = aquisicao.proposal_document_url;
             }
 
-            // Ensure items exist. Some endpoints might return 'products', 'acquisition_items' or just 'items'
-            // If the fetched details have no items, try to recover from the list object 'aquisicao'
             if (!responseDetails.items || responseDetails.items.length === 0) {
                 const potentialItems = responseDetails.products || responseDetails.acquisition_items ||
                     aquisicao.items || aquisicao.products || aquisicao.acquisition_items;
@@ -174,36 +166,28 @@ export default function AquisicoesPage() {
                 if (potentialItems && potentialItems.length > 0) {
                     responseDetails.items = potentialItems;
                 } else {
-                    // LAST RESORT: Try fetching the Quotation REQUEST to get the requested items
-                    // This is useful for Technicians who can't see Response details but can see Requests.
-                    // The items will lack pricing (response data), but at least we show what was ordered.
                     try {
                         const reqId = aquisicao.quotation_request_id || aquisicao.quotation_supplier?.quotation_request_id;
                         if (reqId) {
                             const reqRes = await quotationRequestsAPI.getById(reqId);
                             const reqData = reqRes.data || reqRes;
                             if (reqData.items && reqData.items.length > 0) {
-                                // Map request items to structure expected by Modal
-                                // We flag them as 'request_fallback' so Modal knows they might lack specific response data
                                 responseDetails.items = reqData.items.map(i => ({
                                     ...i,
-                                    name: i.name, // Ensure top-level name
+                                    name: i.name,
                                     quantity: i.quantity,
-                                    // Map description fields to 'notes' which the modal uses
                                     notes: i.specifications || i.description || i.notes || '-',
-                                    // Try to preserve price if available (unlikely in request, but good for safety)
                                     unit_price: i.unit_price || i.estimated_price || 0,
                                     is_request_fallback: true
                                 }));
                             }
                         }
                     } catch (reqErr) {
-                        console.warn("Technician: Failed to fetch fallback Quotation Request items", reqErr);
+                        console.warn("Failed to fetch fallback Quotation Request items", reqErr);
                     }
                 }
             }
 
-            // Preserve total amount if available in list object but missing in details
             if (!responseDetails.total_amount && (aquisicao.total_amount || aquisicao.amount || aquisicao.value)) {
                 responseDetails.total_amount = aquisicao.total_amount || aquisicao.amount || aquisicao.value;
             }
@@ -231,7 +215,6 @@ export default function AquisicoesPage() {
 
     const handleRejeitarProposta = async (responseObj) => {
         try {
-            // If we are in acquisitions, we might need the response ID
             const idToReject = responseObj.quotation_response_id || responseObj.id;
             await quotationResponsesAPI.reject(idToReject, "Rejeitado via Aquisições");
             showToast("success", "Proposta rejeitada!");
@@ -261,7 +244,6 @@ export default function AquisicoesPage() {
     };
 
     const handleConfirmDelivery = async (aquisicao) => {
-        // Use window.confirm properly or a custom modal. For now window.confirm as requested implicitly by quick action.
         if (!window.confirm("Tem certeza que deseja confirmar a entrega desta aquisição?")) return;
 
         try {
@@ -274,6 +256,14 @@ export default function AquisicoesPage() {
         }
     };
 
+    // Handle creating activity and opening quotation
+    const handleCreateActivity = () => {
+        if (!activityName.trim()) return;
+        setCurrentActivityName(activityName);
+        setIsActivityModalOpen(false);
+        setIsCotacaoModalOpen(true);
+    };
+
     return (
         <div className="space-y-8 animate-fadeIn">
             {/* Header */}
@@ -282,6 +272,13 @@ export default function AquisicoesPage() {
                     <h1 className="text-3xl font-bold text-gray-900 tracking-tight">Aquisições</h1>
                     <p className="text-gray-500 mt-1">Gerencie as respostas e aquisições de fornecedores</p>
                 </div>
+                <button
+                    onClick={() => setIsActivityModalOpen(true)}
+                    className="flex items-center gap-2 px-6 py-3 bg-[#44B16F] text-white rounded-xl hover:bg-[#3a9d5f] transition-all font-bold shadow-lg hover:shadow-xl transform hover:scale-[1.02]"
+                >
+                    <Plus size={20} />
+                    Registar nova actividade
+                </button>
             </div>
 
             {/* Stats Section */}
@@ -393,7 +390,7 @@ export default function AquisicoesPage() {
                                             {formatDate(resp.expected_delivery_date)}
                                         </td>
                                         <td className="px-6 py-6 text-sm text-gray-500">
-                                            {formatDate(resp.created_at)}
+                                            {formatDate(resp.submitted_at || resp.created_at)}
                                         </td>
                                         <td className="px-6 py-6">
                                             {getStatusBadge(resp.status)}
@@ -426,6 +423,93 @@ export default function AquisicoesPage() {
                     </table>
                 </div>
             </div>
+
+            {/* Activity Registration Modal */}
+            {isActivityModalOpen && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center">
+                    <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={() => setIsActivityModalOpen(false)} />
+                    <div className="relative bg-white rounded-2xl shadow-2xl w-full max-w-lg mx-4 overflow-hidden animate-fadeIn">
+                        {/* Header */}
+                        <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100">
+                            <h2 className="text-xl font-bold text-gray-900">Registar Nova Actividade</h2>
+                            <button onClick={() => setIsActivityModalOpen(false)} className="p-2 hover:bg-gray-100 rounded-lg transition-colors">
+                                <X size={20} className="text-gray-500" />
+                            </button>
+                        </div>
+
+                        {/* Body */}
+                        <div className="p-6 space-y-5">
+                            <div>
+                                <label className="block text-sm font-bold text-gray-700 mb-2">
+                                    Nome da Actividade *
+                                </label>
+                                <input
+                                    type="text"
+                                    value={activityName}
+                                    onChange={(e) => setActivityName(e.target.value)}
+                                    placeholder="Ex: Aquisição de materiais de escritório"
+                                    className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#44B16F] focus:border-transparent"
+                                />
+                            </div>
+                            <div>
+                                <label className="block text-sm font-bold text-gray-700 mb-2">
+                                    Descrição
+                                </label>
+                                <textarea
+                                    value={activityDescription}
+                                    onChange={(e) => setActivityDescription(e.target.value)}
+                                    placeholder="Descreva a actividade..."
+                                    rows={3}
+                                    className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#44B16F] focus:border-transparent resize-none"
+                                />
+                            </div>
+
+                            {/* Info box */}
+                            <div className="bg-blue-50 border border-blue-100 rounded-xl p-4 flex items-start gap-3">
+                                <Package size={20} className="text-blue-500 mt-0.5 shrink-0" />
+                                <div>
+                                    <p className="text-sm font-semibold text-blue-800">Solicitar cotação</p>
+                                    <p className="text-xs text-blue-600 mt-1">Após registar a actividade, poderá solicitar cotações aos fornecedores.</p>
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* Footer */}
+                        <div className="px-6 py-4 bg-gray-50 flex items-center justify-end gap-3 border-t border-gray-100">
+                            <button
+                                onClick={() => {
+                                    setIsActivityModalOpen(false);
+                                    setActivityName("");
+                                    setActivityDescription("");
+                                }}
+                                className="px-6 py-2.5 text-gray-600 font-medium hover:text-gray-800 transition-colors"
+                            >
+                                Cancelar
+                            </button>
+                            <button
+                                onClick={handleCreateActivity}
+                                disabled={!activityName.trim()}
+                                className="flex items-center gap-2 px-6 py-2.5 bg-[#44B16F] text-white rounded-xl font-bold hover:bg-[#3a9d5f] transition-all disabled:bg-gray-300 disabled:cursor-not-allowed shadow-sm"
+                            >
+                                <FileText size={16} />
+                                Solicitar Cotação
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* Quotation Modal (opened from activity) */}
+            <ModalPedirCotacao
+                isOpen={isCotacaoModalOpen}
+                onClose={() => {
+                    setIsCotacaoModalOpen(false);
+                    setCurrentActivityName("");
+                    setActivityName("");
+                    setActivityDescription("");
+                }}
+                activityName={currentActivityName}
+            />
 
             <ModalRevisarCotacao
                 isOpen={isRevisarModalOpen}

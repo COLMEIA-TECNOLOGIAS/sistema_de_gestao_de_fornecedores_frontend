@@ -1,8 +1,16 @@
-import { useState, useEffect } from 'react';
-import { X, Package, Clock, Plus, Trash2, Search } from 'lucide-react';
-import { quotationRequestsAPI, suppliersAPI, productsAPI } from '../../services/api';
+import { useState, useEffect, useMemo } from 'react';
+import { X, Package, Clock, Plus, Trash2, Search, Upload, FileText, Eye, Paperclip } from 'lucide-react';
+import { quotationRequestsAPI, suppliersAPI, productsAPI, categoriesAPI } from '../../services/api';
 
-export default function ModalPedirCotacao({ isOpen, onClose, fornecedor }) {
+const CATEGORIAS_FILTRO = [
+    { id: "", name: "Todas as categorias" },
+    { id: "bens", name: "Bens" },
+    { id: "obras", name: "Obras" },
+    { id: "servicos_consultoria", name: "Serviços de Consultoria" },
+    { id: "servicos_nao_consultoria", name: "Serviços de Não Consultoria" },
+];
+
+export default function ModalPedirCotacao({ isOpen, onClose, fornecedor, activityName = '' }) {
     const [showAddProducts, setShowAddProducts] = useState(false);
     const [pedidoAssunto, setPedidoAssunto] = useState('');
     const [pedidoDescricao, setPedidoDescricao] = useState('');
@@ -21,10 +29,34 @@ export default function ModalPedirCotacao({ isOpen, onClose, fornecedor }) {
     const [fornecedoresList, setFornecedoresList] = useState([]);
     const [selectedFornecedores, setSelectedFornecedores] = useState([]);
     const [isLoadingFornecedores, setIsLoadingFornecedores] = useState(false);
+    const [fornecedorSearchQuery, setFornecedorSearchQuery] = useState('');
+    const [categoriaFiltro, setCategoriaFiltro] = useState('');
 
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [submitError, setSubmitError] = useState(null);
     const [submitSuccess, setSubmitSuccess] = useState(false);
+
+    // Document attachment states
+    const [attachedDocuments, setAttachedDocuments] = useState([]);
+    const [previewDoc, setPreviewDoc] = useState(null);
+
+    // User session for auto-signature
+    const [currentUser, setCurrentUser] = useState(null);
+
+    useEffect(() => {
+        // Get current user from localStorage
+        const storedUser = localStorage.getItem('user');
+        if (storedUser) {
+            setCurrentUser(JSON.parse(storedUser));
+        }
+    }, []);
+
+    // If activityName is given, pre-fill subject
+    useEffect(() => {
+        if (activityName && isOpen) {
+            setPedidoAssunto(activityName);
+        }
+    }, [activityName, isOpen]);
 
     // Fetch fornecedores when modal opens
     useEffect(() => {
@@ -55,23 +87,16 @@ export default function ModalPedirCotacao({ isOpen, onClose, fornecedor }) {
         const searchProducts = async () => {
             if (productName.trim().length >= 2) {
                 try {
-                    // Search using the API
                     const res = await productsAPI.search(productName);
-
-                    // Helper to safely extract array from response
                     let items = [];
                     if (res.data && Array.isArray(res.data)) {
                         items = res.data;
                     } else if (Array.isArray(res)) {
                         items = res;
                     }
-
-                    // Client-side filtering as fallback/refinement
-                    // This ensures that if the backend ignores the ?search= param, we still show relevant results
                     const filtered = items.filter(p =>
                         p.name.toLowerCase().includes(productName.toLowerCase())
                     );
-
                     setFilteredProducts(filtered);
                     setShowSuggestions(true);
                 } catch (error) {
@@ -86,6 +111,44 @@ export default function ModalPedirCotacao({ isOpen, onClose, fornecedor }) {
         const timer = setTimeout(searchProducts, 300);
         return () => clearTimeout(timer);
     }, [productName]);
+
+    // Filter fornecedores by category and search
+    const filteredFornecedores = useMemo(() => {
+        let result = fornecedoresList;
+
+        // Filter by category
+        if (categoriaFiltro) {
+            result = result.filter(f => {
+                const actType = (f.activity_type || '').toLowerCase();
+                // Match against the category filter
+                if (categoriaFiltro === 'bens') {
+                    return actType.includes('bens') || actType.includes('product');
+                }
+                if (categoriaFiltro === 'obras') {
+                    return actType.includes('obras');
+                }
+                if (categoriaFiltro === 'servicos_consultoria') {
+                    return actType.includes('consultoria') || actType.includes('service');
+                }
+                if (categoriaFiltro === 'servicos_nao_consultoria') {
+                    return actType.includes('nao_consultoria') || actType.includes('não consultoria');
+                }
+                return true;
+            });
+        }
+
+        // Filter by search
+        if (fornecedorSearchQuery.trim()) {
+            const q = fornecedorSearchQuery.toLowerCase();
+            result = result.filter(f =>
+                (f.commercial_name || '').toLowerCase().includes(q) ||
+                (f.legal_name || '').toLowerCase().includes(q) ||
+                (f.email || '').toLowerCase().includes(q)
+            );
+        }
+
+        return result;
+    }, [fornecedoresList, categoriaFiltro, fornecedorSearchQuery]);
 
     if (!isOpen) return null;
 
@@ -109,14 +172,16 @@ export default function ModalPedirCotacao({ isOpen, onClose, fornecedor }) {
         setProductDescription('');
         setProductQuantity(1);
         setProductUnit('un');
-        setProductQuantity(1);
-        setProductUnit('un');
         setProductsList([]);
         setFilteredProducts([]);
         setShowSuggestions(false);
         setSelectedFornecedores([]);
         setSubmitError(null);
         setSubmitSuccess(false);
+        setAttachedDocuments([]);
+        setPreviewDoc(null);
+        setCategoriaFiltro('');
+        setFornecedorSearchQuery('');
         onClose();
     };
 
@@ -157,46 +222,99 @@ export default function ModalPedirCotacao({ isOpen, onClose, fornecedor }) {
         ));
     };
 
+    const handleDocumentAttach = (e) => {
+        const files = Array.from(e.target.files);
+        setAttachedDocuments(prev => [...prev, ...files]);
+        e.target.value = ''; // Reset input
+    };
+
+    const handleRemoveDocument = (index) => {
+        setAttachedDocuments(prev => prev.filter((_, i) => i !== index));
+    };
+
+    const handlePreviewDocument = (file) => {
+        const url = URL.createObjectURL(file);
+        setPreviewDoc({ name: file.name, url, type: file.type });
+    };
+
+    const closePreview = () => {
+        if (previewDoc?.url) URL.revokeObjectURL(previewDoc.url);
+        setPreviewDoc(null);
+    };
+
+    // Build description with auto-signature
+    const getDescriptionWithSignature = () => {
+        const userName = currentUser?.name || 'Valdemar de Oliveira';
+        const signature = `\n\n---\n${userName}\nContacto: procurement@mosap3.ao`;
+        return (pedidoDescricao || pedidoAssunto) + signature;
+    };
+
     const handleSendExternalLink = async () => {
         try {
             setIsSubmitting(true);
             setSubmitError(null);
 
-            // Format deadline to MySQL format (YYYY-MM-DD HH:MM:SS)
+            // Format deadline
             let formattedDeadline;
             if (deadline) {
-                // deadline comes from datetime-local input in format: YYYY-MM-DDTHH:MM
                 formattedDeadline = deadline.replace('T', ' ') + ':00';
             } else {
-                // Default 30 days from now
                 const defaultDate = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000);
                 formattedDeadline = defaultDate.toISOString().slice(0, 19).replace('T', ' ');
             }
 
-            // Prepare data in the format expected by the API
-            const quotationData = {
-                title: pedidoAssunto,
-                description: pedidoDescricao || pedidoAssunto,
-                deadline: formattedDeadline,
-                items: productsList.map(product => ({
-                    name: product.name,
-                    quantity: product.quantity,
-                    unit: product.unit,
-                    specifications: product.specifications || ''
-                })),
-                suppliers: selectedFornecedores
-            };
+            // Build description with signature
+            const descriptionWithSignature = getDescriptionWithSignature();
 
-            console.log('Enviando pedido de cotação:', quotationData);
-            const response = await quotationRequestsAPI.create(quotationData);
-            console.log('Resposta da API:', response);
+            // Prepare FormData if there are attachments
+            const hasAttachments = attachedDocuments.length > 0;
+
+            if (hasAttachments) {
+                const formData = new FormData();
+                formData.append('title', pedidoAssunto);
+                formData.append('description', descriptionWithSignature);
+                formData.append('deadline', formattedDeadline);
+
+                productsList.forEach((product, index) => {
+                    formData.append(`items[${index}][name]`, product.name);
+                    formData.append(`items[${index}][quantity]`, product.quantity);
+                    formData.append(`items[${index}][unit]`, product.unit);
+                    formData.append(`items[${index}][specifications]`, product.specifications || '');
+                });
+
+                selectedFornecedores.forEach((id, index) => {
+                    formData.append(`suppliers[${index}]`, id);
+                });
+
+                attachedDocuments.forEach((file, index) => {
+                    formData.append(`documents[${index}]`, file);
+                });
+
+                console.log('Enviando pedido de cotação com documentos...');
+                const response = await quotationRequestsAPI.createWithDocuments(formData);
+                console.log('Resposta da API:', response);
+            } else {
+                const quotationData = {
+                    title: pedidoAssunto,
+                    description: descriptionWithSignature,
+                    deadline: formattedDeadline,
+                    items: productsList.map(product => ({
+                        name: product.name,
+                        quantity: product.quantity,
+                        unit: product.unit,
+                        specifications: product.specifications || ''
+                    })),
+                    suppliers: selectedFornecedores
+                };
+
+                console.log('Enviando pedido de cotação:', quotationData);
+                const response = await quotationRequestsAPI.create(quotationData);
+                console.log('Resposta da API:', response);
+            }
 
             setSubmitSuccess(true);
-
-            // Close modal after 2 seconds
             setTimeout(() => {
                 handleCancel();
-                // Optionally reload the page or update the list
                 window.location.reload();
             }, 2000);
 
@@ -208,6 +326,12 @@ export default function ModalPedirCotacao({ isOpen, onClose, fornecedor }) {
         }
     };
 
+    const toggleFornecedor = (id) => {
+        setSelectedFornecedores(prev =>
+            prev.includes(id) ? prev.filter(f => f !== id) : [...prev, id]
+        );
+    };
+
     return (
         <div className="fixed inset-0 z-50 flex items-center justify-center">
             {/* Backdrop */}
@@ -215,6 +339,32 @@ export default function ModalPedirCotacao({ isOpen, onClose, fornecedor }) {
                 className="absolute inset-0 bg-black/50 backdrop-blur-sm"
                 onClick={handleCancel}
             />
+
+            {/* Document Preview Modal */}
+            {previewDoc && (
+                <div className="absolute inset-0 z-[60] bg-black/70 flex items-center justify-center">
+                    <div className="bg-white rounded-2xl shadow-2xl w-full max-w-3xl mx-4 overflow-hidden">
+                        <div className="flex items-center justify-between p-4 border-b border-gray-100">
+                            <h3 className="font-bold text-gray-800">{previewDoc.name}</h3>
+                            <button onClick={closePreview} className="p-2 hover:bg-gray-100 rounded-lg">
+                                <X size={20} className="text-gray-500" />
+                            </button>
+                        </div>
+                        <div className="p-4 max-h-[70vh] overflow-auto bg-gray-50 flex items-center justify-center">
+                            {previewDoc.type.startsWith("image/") ? (
+                                <img src={previewDoc.url} alt={previewDoc.name} className="max-w-full max-h-[60vh] object-contain rounded-lg" />
+                            ) : previewDoc.type === "application/pdf" ? (
+                                <iframe src={previewDoc.url} title={previewDoc.name} className="w-full h-[60vh] rounded-lg" />
+                            ) : (
+                                <div className="text-center py-12">
+                                    <FileText size={64} className="text-gray-300 mx-auto mb-4" />
+                                    <p className="text-gray-500">Pré-visualização não disponível</p>
+                                </div>
+                            )}
+                        </div>
+                    </div>
+                </div>
+            )}
 
             {/* Modal */}
             <div className="relative bg-white rounded-2xl shadow-2xl w-full max-w-4xl mx-4 animate-fadeIn max-h-[90vh] overflow-hidden flex flex-col">
@@ -248,7 +398,7 @@ export default function ModalPedirCotacao({ isOpen, onClose, fornecedor }) {
 
                             {/* Title */}
                             <h2 className="text-3xl font-bold text-gray-900 mb-3">
-                                pedir cotação
+                                Solicitar cotação
                             </h2>
 
                             {/* Subtitle */}
@@ -280,7 +430,7 @@ export default function ModalPedirCotacao({ isOpen, onClose, fornecedor }) {
                                 Adicionar produtos
                             </h2>
                             <p className="text-gray-500 text-center mb-8">
-                                Vamos terminar o processo de cadastro
+                                Complete o pedido de cotação
                             </p>
 
                             {/* Two Column Layout */}
@@ -314,6 +464,12 @@ export default function ModalPedirCotacao({ isOpen, onClose, fornecedor }) {
                                             rows={3}
                                             className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#44B16F] focus:border-transparent resize-none"
                                         />
+                                        {/* Auto-signature preview */}
+                                        <div className="mt-2 p-3 bg-gray-50 rounded-lg border border-gray-200">
+                                            <p className="text-xs text-gray-500 mb-1 font-medium">Assinatura automática:</p>
+                                            <p className="text-xs text-gray-700 font-semibold">{currentUser?.name || 'Valdemar de Oliveira'}</p>
+                                            <p className="text-xs text-gray-600">Contacto: procurement@mosap3.ao</p>
+                                        </div>
                                     </div>
 
                                     {/* Deadline */}
@@ -330,36 +486,126 @@ export default function ModalPedirCotacao({ isOpen, onClose, fornecedor }) {
                                         <p className="text-xs text-gray-500 mt-1">Se não especificar, será definido 30 dias a partir de hoje</p>
                                     </div>
 
-                                    {/* Fornecedores */}
+                                    {/* Document Attachment */}
+                                    <div>
+                                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                                            <Paperclip size={14} className="inline-block mr-1 -mt-0.5" />
+                                            Anexar documentos
+                                        </label>
+                                        {attachedDocuments.length > 0 && (
+                                            <div className="mb-2 space-y-2">
+                                                {attachedDocuments.map((doc, index) => (
+                                                    <div key={index} className="flex items-center justify-between bg-emerald-50 border border-[#44B16F]/20 rounded-lg px-3 py-2">
+                                                        <div className="flex items-center gap-2">
+                                                            <FileText size={14} className="text-[#44B16F]" />
+                                                            <span className="text-xs font-medium text-gray-700 truncate max-w-[180px]">{doc.name}</span>
+                                                        </div>
+                                                        <div className="flex items-center gap-1">
+                                                            <button
+                                                                type="button"
+                                                                onClick={() => handlePreviewDocument(doc)}
+                                                                className="p-1 hover:bg-[#44B16F]/10 rounded transition-colors"
+                                                                title="Pré-visualizar"
+                                                            >
+                                                                <Eye size={14} className="text-[#44B16F]" />
+                                                            </button>
+                                                            <button
+                                                                type="button"
+                                                                onClick={() => handleRemoveDocument(index)}
+                                                                className="p-1 hover:bg-red-50 rounded transition-colors"
+                                                            >
+                                                                <X size={14} className="text-red-500" />
+                                                            </button>
+                                                        </div>
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        )}
+                                        <label className="flex items-center justify-center gap-2 px-4 py-3 border-2 border-dashed border-gray-300 rounded-lg cursor-pointer hover:border-[#44B16F] transition-colors bg-gray-50 hover:bg-emerald-50/50">
+                                            <input
+                                                type="file"
+                                                multiple
+                                                className="hidden"
+                                                onChange={handleDocumentAttach}
+                                                accept=".pdf,.jpg,.jpeg,.png,.doc,.docx,.xls,.xlsx"
+                                            />
+                                            <Upload size={16} className="text-gray-400" />
+                                            <span className="text-xs text-gray-500 font-medium">Clique para anexar documentos</span>
+                                        </label>
+                                    </div>
+
+                                    {/* Fornecedores with Category Filter */}
                                     <div>
                                         <label className="block text-sm font-medium text-gray-700 mb-2">
                                             Fornecedores *
                                         </label>
+
+                                        {/* Category Filter */}
+                                        <div className="flex flex-wrap gap-2 mb-3">
+                                            {CATEGORIAS_FILTRO.map((cat) => (
+                                                <button
+                                                    key={cat.id}
+                                                    type="button"
+                                                    onClick={() => setCategoriaFiltro(cat.id)}
+                                                    className={`px-3 py-1.5 rounded-full text-xs font-semibold transition-all ${categoriaFiltro === cat.id
+                                                        ? 'bg-[#44B16F] text-white shadow-sm'
+                                                        : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                                                        }`}
+                                                >
+                                                    {cat.name}
+                                                </button>
+                                            ))}
+                                        </div>
+
+                                        {/* Search fornecedores */}
+                                        <div className="relative mb-2">
+                                            <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={14} />
+                                            <input
+                                                type="text"
+                                                value={fornecedorSearchQuery}
+                                                onChange={(e) => setFornecedorSearchQuery(e.target.value)}
+                                                placeholder="Pesquisar fornecedores..."
+                                                className="w-full pl-8 pr-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#44B16F] focus:border-transparent text-sm"
+                                            />
+                                        </div>
+
                                         {isLoadingFornecedores ? (
                                             <div className="w-full px-4 py-3 border border-gray-300 rounded-lg bg-gray-50 text-gray-500 text-sm">
                                                 Carregando fornecedores...
                                             </div>
                                         ) : (
-                                            <select
-                                                multiple
-                                                value={selectedFornecedores.map(String)}
-                                                onChange={(e) => {
-                                                    const selected = Array.from(e.target.selectedOptions, option => parseInt(option.value));
-                                                    setSelectedFornecedores(selected);
-                                                }}
-                                                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#44B16F] focus:border-transparent min-h-[120px]"
-                                                required
-                                            >
-                                                {fornecedoresList.map((forn) => (
-                                                    <option key={forn.id} value={forn.id}>
-                                                        {forn.commercial_name || forn.legal_name || `Fornecedor #${forn.id}`}
-                                                    </option>
-                                                ))}
-                                            </select>
+                                            <div className="border border-gray-300 rounded-lg max-h-[150px] overflow-y-auto">
+                                                {filteredFornecedores.length === 0 ? (
+                                                    <div className="p-3 text-sm text-gray-500 text-center">Nenhum fornecedor encontrado</div>
+                                                ) : (
+                                                    filteredFornecedores.map((forn) => (
+                                                        <label
+                                                            key={forn.id}
+                                                            className={`flex items-center gap-3 px-3 py-2.5 hover:bg-gray-50 cursor-pointer border-b border-gray-50 last:border-0 transition-colors ${selectedFornecedores.includes(forn.id) ? 'bg-emerald-50' : ''
+                                                                }`}
+                                                        >
+                                                            <input
+                                                                type="checkbox"
+                                                                checked={selectedFornecedores.includes(forn.id)}
+                                                                onChange={() => toggleFornecedor(forn.id)}
+                                                                className="rounded border-gray-300 text-[#44B16F] focus:ring-[#44B16F]"
+                                                            />
+                                                            <div className="flex-1 min-w-0">
+                                                                <p className="text-sm font-medium text-gray-800 truncate">
+                                                                    {forn.commercial_name || forn.legal_name || `#${forn.id}`}
+                                                                </p>
+                                                                <p className="text-xs text-gray-500 truncate">{forn.email || ''}</p>
+                                                            </div>
+                                                            {forn.activity_type && (
+                                                                <span className="text-[10px] px-2 py-0.5 bg-gray-100 text-gray-500 rounded-full shrink-0">
+                                                                    {forn.activity_type}
+                                                                </span>
+                                                            )}
+                                                        </label>
+                                                    ))
+                                                )}
+                                            </div>
                                         )}
-                                        <p className="text-xs text-gray-500 mt-1">
-                                            Segure Ctrl (Windows) ou Cmd (Mac) para selecionar múltiplos fornecedores
-                                        </p>
                                         {selectedFornecedores.length > 0 && (
                                             <div className="mt-2 flex flex-wrap gap-2">
                                                 {selectedFornecedores.map(id => {
@@ -391,7 +637,7 @@ export default function ModalPedirCotacao({ isOpen, onClose, fornecedor }) {
                                             value={productName}
                                             onChange={(e) => setProductName(e.target.value)}
                                             onFocus={() => { if (productName.length >= 2) setShowSuggestions(true); }}
-                                            onBlur={() => setTimeout(() => setShowSuggestions(false), 200)} // Delay to allow click
+                                            onBlur={() => setTimeout(() => setShowSuggestions(false), 200)}
                                             placeholder="Computador portátil"
                                             className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#44B16F] focus:border-transparent"
                                         />
@@ -546,7 +792,7 @@ export default function ModalPedirCotacao({ isOpen, onClose, fornecedor }) {
 
                             {/* Error Message */}
                             {submitError && (
-                                <div className="bg-red-50 border border-red-200 rounded-lg p-4 flex items-start gap-3">
+                                <div className="bg-red-50 border border-red-200 rounded-lg p-4 flex items-start gap-3 mt-6">
                                     <svg className="w-5 h-5 text-red-600 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                                     </svg>
@@ -556,7 +802,7 @@ export default function ModalPedirCotacao({ isOpen, onClose, fornecedor }) {
 
                             {/* Success Message */}
                             {submitSuccess && (
-                                <div className="bg-green-50 border border-green-200 rounded-lg p-4 flex items-start gap-3">
+                                <div className="bg-green-50 border border-green-200 rounded-lg p-4 flex items-start gap-3 mt-6">
                                     <svg className="w-5 h-5 text-green-600 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
                                     </svg>
