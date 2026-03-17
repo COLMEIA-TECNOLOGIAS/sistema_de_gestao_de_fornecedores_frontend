@@ -49,10 +49,10 @@ export default function FornecedorFormWrapper() {
     selectedCategorias: editingFornecedor?.selectedCategorias || [],
     // Document uploads
     pacto_social: null,
-    certificado_nao_devedor_agt: null,
-    certificado_nao_devedor_inss: null,
+    commercial_certificate: null,
+    non_debtor_certificate: null,
     nif_proof: null,
-    alvaras_comerciais: [], // Multiple files
+    commercial_licenses: [], // Multiple files
   });
 
   const [errors, setErrors] = useState({});
@@ -81,7 +81,7 @@ export default function FornecedorFormWrapper() {
     if (files.length > 0) {
       setFormData((prev) => ({
         ...prev,
-        alvaras_comerciais: [...prev.alvaras_comerciais, ...Array.from(files)],
+        commercial_licenses: [...prev.commercial_licenses, ...Array.from(files)],
       }));
     }
   };
@@ -89,7 +89,7 @@ export default function FornecedorFormWrapper() {
   const handleRemoveAlvara = (index) => {
     setFormData((prev) => ({
       ...prev,
-      alvaras_comerciais: prev.alvaras_comerciais.filter((_, i) => i !== index),
+      commercial_licenses: prev.commercial_licenses.filter((_, i) => i !== index),
     }));
   };
 
@@ -161,6 +161,7 @@ export default function FornecedorFormWrapper() {
     } else if (step === 3) {
       if (!editingFornecedor) {
         if (!formData.nif_proof) newErrors.nif_proof = "Comprovativo NIF é obrigatório";
+        if (!formData.commercial_certificate) newErrors.commercial_certificate = "Certificado Comercial é obrigatório";
       }
       if (formData.categories.length === 0) newErrors.categories = "Selecione pelo menos uma categoria de fornecimento";
     }
@@ -204,19 +205,23 @@ export default function FornecedorFormWrapper() {
       if (formData.pacto_social) {
         data.append("pacto_social", formData.pacto_social);
       }
-      if (formData.certificado_nao_devedor_agt) {
-        data.append("certificado_nao_devedor_agt", formData.certificado_nao_devedor_agt);
+      if (formData.commercial_certificate) {
+        data.append("commercial_certificate", formData.commercial_certificate);
       }
-      if (formData.certificado_nao_devedor_inss) {
-        data.append("certificado_nao_devedor_inss", formData.certificado_nao_devedor_inss);
+      if (formData.non_debtor_certificate) {
+        data.append("non_debtor_certificate", formData.non_debtor_certificate);
       }
-      if (formData.nif_proof) {
+      if (formData.nif_proof instanceof File) {
         data.append("nif_proof", formData.nif_proof);
       }
-      // Multiple alvarás
-      formData.alvaras_comerciais.forEach((file, index) => {
-        data.append(`alvaras_comerciais[${index}]`, file);
-      });
+      // Multiple alvarás - Some backends expect repeated keys without []
+      if (formData.commercial_licenses && formData.commercial_licenses.length > 0) {
+        formData.commercial_licenses.forEach((file) => {
+          if (file instanceof File) {
+            data.append("commercial_license", file);
+          }
+        });
+      }
 
       // Append categories as array
       formData.categories.forEach((id) => {
@@ -567,6 +572,14 @@ export default function FornecedorFormWrapper() {
                     </label>
                     <div className="grid grid-cols-2 gap-6">
                       <FileUploadField
+                        label="Certificado Comercial *"
+                        name="commercial_certificate"
+                        file={formData.commercial_certificate}
+                        onChange={handleFileChange}
+                        error={errors.commercial_certificate}
+                        onPreview={handlePreviewFile}
+                      />
+                      <FileUploadField
                         label="Pacto Social"
                         name="pacto_social"
                         file={formData.pacto_social}
@@ -575,23 +588,15 @@ export default function FornecedorFormWrapper() {
                         onPreview={handlePreviewFile}
                       />
                       <FileUploadField
-                        label="Certificado de Não Devedor AGT"
-                        name="certificado_nao_devedor_agt"
-                        file={formData.certificado_nao_devedor_agt}
+                        label="Certificado de Não Devedor (AGT/INSS)"
+                        name="non_debtor_certificate"
+                        file={formData.non_debtor_certificate}
                         onChange={handleFileChange}
-                        error={errors.certificado_nao_devedor_agt}
+                        error={errors.non_debtor_certificate}
                         onPreview={handlePreviewFile}
                       />
                       <FileUploadField
-                        label="Certificado de Não Devedor INSS"
-                        name="certificado_nao_devedor_inss"
-                        file={formData.certificado_nao_devedor_inss}
-                        onChange={handleFileChange}
-                        error={errors.certificado_nao_devedor_inss}
-                        onPreview={handlePreviewFile}
-                      />
-                      <FileUploadField
-                        label={`NIF ${editingFornecedor ? "" : "*"}`}
+                        label="Comprovativo NIF *"
                         name="nif_proof"
                         file={formData.nif_proof}
                         onChange={handleFileChange}
@@ -608,7 +613,7 @@ export default function FornecedorFormWrapper() {
                       <p className="text-xs text-gray-500 mb-3">Pode anexar mais de um alvará comercial</p>
 
                       <div className="flex flex-wrap gap-3 mb-3">
-                        {formData.alvaras_comerciais.map((file, index) => (
+                        {formData.commercial_licenses.map((file, index) => (
                           <div key={index} className="flex items-center gap-2 bg-emerald-50 border border-[#44B16F]/30 px-3 py-2 rounded-xl">
                             <FileText size={16} className="text-[#44B16F]" />
                             <span className="text-xs font-bold text-[#44B16F] max-w-[150px] truncate">{file.name}</span>

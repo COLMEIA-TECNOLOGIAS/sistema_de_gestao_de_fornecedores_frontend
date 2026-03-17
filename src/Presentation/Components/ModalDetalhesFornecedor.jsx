@@ -26,14 +26,22 @@ export default function ModalDetalhesFornecedor({
 
         setViewingDoc(documentType);
         try {
-            // Construct the URL based on the API definition: /suppliers/{id}/documents/{documentType}
-            const url = `/suppliers/${fornecedor.id}/documents/${documentType}`;
+            // Extract type and index if present (e.g. "commercial_license&index=0")
+            const [type, query] = documentType.split('&');
+            const params = {};
+            if (query && query.startsWith('index=')) {
+                params.index = query.split('=')[1];
+            }
+
+            // Construct the URL based on the API definition
+            const url = `/suppliers/${fornecedor.id}/documents/${type}`;
 
             // Request with authentication and blob response type
             const response = await api.get(url, {
+                params,
                 responseType: 'blob',
                 headers: {
-                    'Accept': 'application/pdf, image/*', // Accept PDF or images
+                    'Accept': 'application/pdf, image/*',
                 }
             });
 
@@ -41,7 +49,7 @@ export default function ModalDetalhesFornecedor({
             const blob = new Blob([response.data], { type: response.headers['content-type'] });
             const objectUrl = window.URL.createObjectURL(blob);
 
-            // Open in new tab
+            // Open in new tab (matches Image 0 behavior)
             window.open(objectUrl, '_blank');
 
             // Cleanup after a delay (browser needs time to open)
@@ -49,7 +57,6 @@ export default function ModalDetalhesFornecedor({
 
         } catch (error) {
             console.error("Error viewing document:", error);
-            // Fallback handling or detailed error message
             const msg = error.response?.status === 404
                 ? "Documento não encontrado no servidor."
                 : "Erro ao carregar o documento.";
@@ -58,6 +65,7 @@ export default function ModalDetalhesFornecedor({
             setViewingDoc(null);
         }
     };
+
 
     const StatusBadge = ({ isActive }) => (
         <span className={`px-3 py-1 rounded-full text-xs font-bold flex items-center gap-1 ${isActive ? 'bg-emerald-50 text-emerald-700' : 'bg-red-50 text-red-700'
@@ -234,41 +242,78 @@ export default function ModalDetalhesFornecedor({
                                     Documentação
                                 </h3>
                                 <div className="space-y-3">
-                                    {fornecedor.commercial_certificate && (
+                                    {(fornecedor.commercial_certificate || fornecedor.commercial_certificate_url) && (
                                         <DocumentItem
                                             type="commercial_certificate"
                                             label="Certificado Comercial"
-                                            subLabel="Documento PDF/Imagem"
+                                            subLabel="Documento Principal (Obrigatório)"
                                             iconColorClass="bg-red-50 text-red-600"
                                             icon={FileText}
                                         />
                                     )}
 
-                                    {fornecedor.commercial_license && (
+                                    {(fornecedor.pacto_social || fornecedor.pacto_social_url) && (
                                         <DocumentItem
-                                            type="commercial_license"
-                                            label="Alvará Comercial"
+                                            type="pacto_social"
+                                            label="Pacto Social"
                                             subLabel="Documento PDF/Imagem"
                                             iconColorClass="bg-blue-50 text-blue-600"
                                             icon={FileText}
                                         />
                                     )}
 
-                                    {fornecedor.nif_proof && (
+                                    {(fornecedor.non_debtor_certificate || fornecedor.non_debtor_certificate_url) && (
+                                        <DocumentItem
+                                            type="non_debtor_certificate"
+                                            label="Certificado de Não Devedor"
+                                            subLabel="Documento PDF/Imagem"
+                                            iconColorClass="bg-emerald-50 text-emerald-600"
+                                            icon={FileText}
+                                        />
+                                    )}
+
+                                    {(fornecedor.nif_proof || fornecedor.nif_proof_url) && (
                                         <DocumentItem
                                             type="nif_proof"
                                             label="Comprovativo NIF"
-                                            subLabel="Documento PDF/Imagem"
+                                            subLabel="Identificação Fiscal"
                                             iconColorClass="bg-purple-50 text-purple-600"
                                             icon={FileText}
                                         />
                                     )}
 
-                                    {!fornecedor.commercial_certificate && !fornecedor.commercial_license && !fornecedor.nif_proof && (
-                                        <div className="p-8 text-center bg-gray-50 rounded-xl border border-dashed border-gray-200">
-                                            <p className="text-gray-500 text-sm">Nenhum documento disponível.</p>
-                                        </div>
+                                    {(fornecedor.commercial_license || fornecedor.commercial_license_url) && (
+                                        Array.isArray(fornecedor.commercial_license) ? (
+                                            fornecedor.commercial_license.map((license, index) => (
+                                                <DocumentItem
+                                                    key={index}
+                                                    type={`commercial_license&index=${index}`}
+                                                    label={`Alvará Comercial ${index + 1}`}
+                                                    subLabel="Documento Licenciamento"
+                                                    iconColorClass="bg-amber-50 text-amber-600"
+                                                    icon={FileText}
+                                                />
+                                            ))
+                                        ) : (
+                                            <DocumentItem
+                                                type="commercial_license"
+                                                label="Alvará Comercial"
+                                                subLabel="Documento Licenciamento"
+                                                iconColorClass="bg-amber-50 text-amber-600"
+                                                icon={FileText}
+                                            />
+                                        )
                                     )}
+
+                                    {!(fornecedor.commercial_certificate || fornecedor.commercial_certificate_url) &&
+                                        !(fornecedor.pacto_social || fornecedor.pacto_social_url) &&
+                                        !(fornecedor.non_debtor_certificate || fornecedor.non_debtor_certificate_url) &&
+                                        !(fornecedor.nif_proof || fornecedor.nif_proof_url) &&
+                                        !(fornecedor.commercial_license || fornecedor.commercial_license_url) && (
+                                            <div className="p-8 text-center bg-gray-50 rounded-xl border border-dashed border-gray-200">
+                                                <p className="text-gray-500 text-sm">Nenhum documento disponível.</p>
+                                            </div>
+                                        )}
                                 </div>
                             </section>
                         </div>
