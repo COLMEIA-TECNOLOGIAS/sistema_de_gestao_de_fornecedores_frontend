@@ -251,6 +251,11 @@ export default function ModalPedirCotacao({ isOpen, onClose, fornecedor, activit
 
     const handleSendExternalLink = async () => {
         try {
+            if (selectedFornecedores.length < 3) {
+                setSubmitError('É obrigatório selecionar no mínimo 3 fornecedores para enviar o pedido de cotação.');
+                return;
+            }
+
             setIsSubmitting(true);
             setSubmitError(null);
 
@@ -625,6 +630,11 @@ export default function ModalPedirCotacao({ isOpen, onClose, fornecedor, activit
                                                 })}
                                             </div>
                                         )}
+                                        {selectedFornecedores.length < 3 && selectedFornecedores.length > 0 && (
+                                            <p className="mt-1 text-xs text-amber-600 font-medium">
+                                                Selecione mais {3 - selectedFornecedores.length} {3 - selectedFornecedores.length === 1 ? 'fornecedor' : 'fornecedores'} (mínimo 3).
+                                            </p>
+                                        )}
                                     </div>
 
                                     {/* Product Name */}
@@ -814,7 +824,7 @@ export default function ModalPedirCotacao({ isOpen, onClose, fornecedor, activit
                             <div className="flex justify-end pt-6 mt-6 border-t border-gray-100">
                                 <button
                                     onClick={handleSendExternalLink}
-                                    disabled={productsList.length === 0 || !pedidoAssunto.trim() || selectedFornecedores.length === 0 || isSubmitting}
+                                    disabled={productsList.length === 0 || !pedidoAssunto.trim() || selectedFornecedores.length < 3 || isSubmitting}
                                     className="px-8 py-3 bg-[#44B16F] text-white rounded-lg hover:bg-[#3a9d5f] transition-colors font-medium shadow-sm disabled:bg-gray-300 disabled:cursor-not-allowed flex items-center gap-2"
                                 >
                                     {isSubmitting ? (
