@@ -135,8 +135,9 @@ export default function ModalDetalhesFornecedor({
                             <div className="flex items-center gap-4 mt-2 text-sm text-gray-500">
                                 <span className="flex items-center gap-1.5">
                                     <Building2 size={14} />
-                                    {fornecedor.activity_type === 'product' ? 'Fornecedor de Produtos' :
-                                        fornecedor.activity_type === 'service' ? 'Prestador de Serviços' : fornecedor.activity_type}
+                                    {fornecedor.categories && fornecedor.categories.length > 0
+                                        ? fornecedor.categories[0].name
+                                        : (fornecedor.activity_type || 'Fornecedor')}
                                 </span>
                                 <span className="flex items-center gap-1.5">
                                     <Calendar size={14} />

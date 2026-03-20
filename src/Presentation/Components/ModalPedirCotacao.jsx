@@ -2,13 +2,7 @@ import { useState, useEffect, useMemo } from 'react';
 import { X, Package, Clock, Plus, Trash2, Search, Upload, FileText, Eye, Paperclip } from 'lucide-react';
 import { quotationRequestsAPI, suppliersAPI, productsAPI, categoriesAPI } from '../../services/api';
 
-const CATEGORIAS_FILTRO = [
-    { id: "", name: "Todas as categorias" },
-    { id: "bens", name: "Bens" },
-    { id: "obras", name: "Obras" },
-    { id: "servicos_consultoria", name: "Serviços de Consultoria" },
-    { id: "servicos_nao_consultoria", name: "Serviços de Não Consultoria" },
-];
+// CATEGORIAS_FILTRO will be fetched from API now
 
 export default function ModalPedirCotacao({ isOpen, onClose, fornecedor, activityName = '' }) {
     const [showAddProducts, setShowAddProducts] = useState(false);
@@ -31,6 +25,8 @@ export default function ModalPedirCotacao({ isOpen, onClose, fornecedor, activit
     const [isLoadingFornecedores, setIsLoadingFornecedores] = useState(false);
     const [fornecedorSearchQuery, setFornecedorSearchQuery] = useState('');
     const [categoriaFiltro, setCategoriaFiltro] = useState('');
+    const [categories, setCategories] = useState([]);
+    const [isLoadingCategories, setIsLoadingCategories] = useState(false);
 
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [submitError, setSubmitError] = useState(null);
@@ -58,28 +54,36 @@ export default function ModalPedirCotacao({ isOpen, onClose, fornecedor, activit
         }
     }, [activityName, isOpen]);
 
-    // Fetch fornecedores when modal opens
+    // Fetch fornecedores and categories when modal opens
     useEffect(() => {
-        const fetchFornecedores = async () => {
+        const fetchInitialData = async () => {
             if (!isOpen) return;
 
             try {
                 setIsLoadingFornecedores(true);
-                const response = await suppliersAPI.getAll();
-                setFornecedoresList(response.data || []);
+                setIsLoadingCategories(true);
+
+                const [suppliersRes, categoriesRes] = await Promise.all([
+                    suppliersAPI.getAll(),
+                    categoriesAPI.getAll()
+                ]);
+
+                setFornecedoresList(suppliersRes.data || []);
+                setCategories(categoriesRes || []);
 
                 // Se um fornecedor foi passado como prop, seleciona-o automaticamente
                 if (fornecedor) {
                     setSelectedFornecedores([fornecedor.id]);
                 }
             } catch (error) {
-                console.error('Erro ao buscar fornecedores:', error);
+                console.error('Erro ao buscar dados iniciais:', error);
             } finally {
                 setIsLoadingFornecedores(false);
+                setIsLoadingCategories(false);
             }
         };
 
-        fetchFornecedores();
+        fetchInitialData();
     }, [isOpen, fornecedor]);
 
     // Search products when user types
@@ -118,23 +122,9 @@ export default function ModalPedirCotacao({ isOpen, onClose, fornecedor, activit
 
         // Filter by category
         if (categoriaFiltro) {
-            result = result.filter(f => {
-                const actType = (f.activity_type || '').toLowerCase();
-                // Match against the category filter
-                if (categoriaFiltro === 'bens') {
-                    return actType.includes('bens') || actType.includes('product');
-                }
-                if (categoriaFiltro === 'obras') {
-                    return actType.includes('obras');
-                }
-                if (categoriaFiltro === 'servicos_consultoria') {
-                    return actType.includes('consultoria') || actType.includes('service');
-                }
-                if (categoriaFiltro === 'servicos_nao_consultoria') {
-                    return actType.includes('nao_consultoria') || actType.includes('não consultoria');
-                }
-                return true;
-            });
+            result = result.filter(f =>
+                f.categories && f.categories.some(cat => String(cat.id) === String(categoriaFiltro))
+            );
         }
 
         // Filter by search
@@ -547,12 +537,22 @@ export default function ModalPedirCotacao({ isOpen, onClose, fornecedor, activit
 
                                         {/* Category Filter */}
                                         <div className="flex flex-wrap gap-2 mb-3">
-                                            {CATEGORIAS_FILTRO.map((cat) => (
+                                            <button
+                                                type="button"
+                                                onClick={() => setCategoriaFiltro("")}
+                                                className={`px-3 py-1.5 rounded-full text-xs font-semibold transition-all ${categoriaFiltro === ""
+                                                    ? 'bg-[#44B16F] text-white shadow-sm'
+                                                    : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                                                    }`}
+                                            >
+                                                Todas as categorias
+                                            </button>
+                                            {categories.map((cat) => (
                                                 <button
                                                     key={cat.id}
                                                     type="button"
                                                     onClick={() => setCategoriaFiltro(cat.id)}
-                                                    className={`px-3 py-1.5 rounded-full text-xs font-semibold transition-all ${categoriaFiltro === cat.id
+                                                    className={`px-3 py-1.5 rounded-full text-xs font-semibold transition-all ${String(categoriaFiltro) === String(cat.id)
                                                         ? 'bg-[#44B16F] text-white shadow-sm'
                                                         : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
                                                         }`}
@@ -601,10 +601,19 @@ export default function ModalPedirCotacao({ isOpen, onClose, fornecedor, activit
                                                                 </p>
                                                                 <p className="text-xs text-gray-500 truncate">{forn.email || ''}</p>
                                                             </div>
-                                                            {forn.activity_type && (
-                                                                <span className="text-[10px] px-2 py-0.5 bg-gray-100 text-gray-500 rounded-full shrink-0">
-                                                                    {forn.activity_type}
-                                                                </span>
+                                                            {forn.categories && forn.categories.length > 0 && (
+                                                                <div className="flex flex-wrap gap-1 shrink-0">
+                                                                    {forn.categories.slice(0, 2).map((cat, idx) => (
+                                                                        <span key={idx} className="text-[10px] px-2 py-0.5 bg-emerald-50 text-emerald-700 rounded-full">
+                                                                            {cat.name}
+                                                                        </span>
+                                                                    ))}
+                                                                    {forn.categories.length > 2 && (
+                                                                        <span className="text-[10px] px-2 py-0.5 bg-gray-100 text-gray-500 rounded-full">
+                                                                            +{forn.categories.length - 2}
+                                                                        </span>
+                                                                    )}
+                                                                </div>
                                                             )}
                                                         </label>
                                                     ))

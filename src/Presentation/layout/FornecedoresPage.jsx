@@ -924,31 +924,15 @@ export default function FornecedoresPage() {
                                                 </td>
                                                 <td className="px-6 py-8">
                                                     <div className="flex flex-wrap gap-1">
-                                                        {(f.activity_type || '').split(',').filter(Boolean).map((cat, idx) => {
-                                                            const catName = cat.trim();
-                                                            const catColors = {
-                                                                'bens': 'bg-blue-50 text-blue-900',
-                                                                'obras': 'bg-orange-50 text-orange-900',
-                                                                'servicos_consultoria': 'bg-purple-50 text-purple-900',
-                                                                'servicos_nao_consultoria': 'bg-teal-50 text-teal-900',
-                                                                'product': 'bg-purple-50 text-purple-900',
-                                                                'service': 'bg-blue-50 text-blue-900',
-                                                            };
-                                                            const catLabels = {
-                                                                'bens': 'Bens',
-                                                                'obras': 'Obras',
-                                                                'servicos_consultoria': 'Serv. Consultoria',
-                                                                'servicos_nao_consultoria': 'Serv. Não Consultoria',
-                                                                'product': 'Produto',
-                                                                'service': 'Serviço',
-                                                            };
-                                                            return (
-                                                                <span key={idx} className={`px-2 py-1 rounded-lg text-xs font-medium ${catColors[catName] || 'bg-gray-100 text-gray-800'}`}>
-                                                                    {catLabels[catName] || catName}
+                                                        {f.categories && f.categories.length > 0 ? (
+                                                            f.categories.map((cat, idx) => (
+                                                                <span key={idx} className="px-2 py-1 rounded-lg text-xs font-bold bg-emerald-50 text-emerald-700 border border-emerald-100">
+                                                                    {cat.name}
                                                                 </span>
-                                                            );
-                                                        })}
-                                                        {!f.activity_type && <span className="text-xs text-gray-400">N/A</span>}
+                                                            ))
+                                                        ) : (
+                                                            <span className="text-xs text-gray-400">Geral</span>
+                                                        )}
                                                     </div>
                                                 </td>
                                                 <td className="px-6 py-8 text-gray-700">{f.province || 'N/A'}</td>
