@@ -6,7 +6,6 @@ import DashboardTableSkeleton from "../Components/DashboardTableSkeleton";
 import ModalRevisarCotacao from "../Components/ModalRevisarCotacao";
 import ModalSolicitarRevisao from "../Components/ModalSolicitarRevisao";
 import ModalPedirCotacao from "../Components/ModalPedirCotacao";
-import ModalRespostasPedido from "../Components/ModalRespostasPedido";
 
 export default function AquisicoesPage() {
     const [isLoading, setIsLoading] = useState(true);
@@ -22,9 +21,7 @@ export default function AquisicoesPage() {
     const [isSolicitarRevisaoModalOpen, setIsSolicitarRevisaoModalOpen] = useState(false);
     const [isSubmittingReview, setIsSubmittingReview] = useState(false);
 
-    // Activity response tracking
-    const [isRespostasModalOpen, setIsRespostasModalOpen] = useState(false);
-    const [selectedPedidoForAtividade, setSelectedPedidoForAtividade] = useState(null);
+
 
     // Activity modal states
     const [isActivityModalOpen, setIsActivityModalOpen] = useState(false);
@@ -32,9 +29,7 @@ export default function AquisicoesPage() {
     const [activityDescription, setActivityDescription] = useState("");
     const [isCotacaoModalOpen, setIsCotacaoModalOpen] = useState(false);
     const [currentActivityName, setCurrentActivityName] = useState("");
-    const [viewMode, setViewMode] = useState("activity"); // "list" or "activity"
-    const [cotacoes, setCotacoes] = useState([]); // For activity view
-    const [isLoadingCotacoes, setIsLoadingCotacoes] = useState(false);
+
 
     useEffect(() => {
         fetchResponses();
@@ -73,23 +68,9 @@ export default function AquisicoesPage() {
         }
     };
 
-    const fetchQuotations = async () => {
-        try {
-            setIsLoadingCotacoes(true);
-            const response = await quotationRequestsAPI.getAll();
-            setCotacoes(response.data || []);
-        } catch (err) {
-            console.error('Error fetching quotations:', err);
-        } finally {
-            setIsLoadingCotacoes(false);
-        }
-    };
 
-    useEffect(() => {
-        if (viewMode === "activity") {
-            fetchQuotations();
-        }
-    }, [viewMode]);
+
+
 
     const showToast = (type, message) => {
         setToast({ type, message });
@@ -226,31 +207,7 @@ export default function AquisicoesPage() {
         }
     };
 
-    const handleAprovarProposta = async (responseObj) => {
-        try {
-            const idToApprove = responseObj.quotation_response_id || responseObj.id;
-            await quotationResponsesAPI.approve(idToApprove, "Aprovado via Aquisições");
-            showToast("success", "Proposta aprovada!");
-            setIsRevisarModalOpen(false);
-            fetchResponses();
-        } catch (e) {
-            console.error("Error approving", e);
-            showToast("error", "Erro ao aprovar proposta");
-        }
-    };
 
-    const handleRejeitarProposta = async (responseObj) => {
-        try {
-            const idToReject = responseObj.quotation_response_id || responseObj.id;
-            await quotationResponsesAPI.reject(idToReject, "Rejeitado via Aquisições");
-            showToast("success", "Proposta rejeitada!");
-            setIsRevisarModalOpen(false);
-            fetchResponses();
-        } catch (e) {
-            console.error("Error rejecting", e);
-            showToast("error", "Erro ao rejeitar proposta");
-        }
-    };
 
     const confirmSolicitarRevisao = async ({ reason, message }) => {
         if (!selectedResponse) return;
@@ -299,20 +256,7 @@ export default function AquisicoesPage() {
                     <p className="text-gray-500 mt-1">Gerencie as respostas e aquisições de fornecedores</p>
                 </div>
                 <div className="flex items-center gap-3">
-                    <div className="flex bg-gray-100 p-1 rounded-xl mr-4 border border-gray-200">
-                        <button
-                            onClick={() => setViewMode("list")}
-                            className={`px-4 py-2 rounded-lg text-xs font-bold transition-all ${viewMode === "list" ? "bg-white text-[#44B16F] shadow-sm" : "text-gray-500 hover:text-gray-700"}`}
-                        >
-                            Lista Geral
-                        </button>
-                        <button
-                            onClick={() => setViewMode("activity")}
-                            className={`px-4 py-2 rounded-lg text-xs font-bold transition-all ${viewMode === "activity" ? "bg-white text-[#44B16F] shadow-sm" : "text-gray-500 hover:text-gray-700"}`}
-                        >
-                            Por Atividade
-                        </button>
-                    </div>
+
                     <button
                         onClick={() => setIsActivityModalOpen(true)}
                         className="flex items-center gap-2 px-6 py-3 bg-[#44B16F] text-white rounded-xl hover:bg-[#3a9d5f] transition-all font-bold shadow-lg hover:shadow-xl transform hover:scale-[1.02]"
@@ -323,8 +267,8 @@ export default function AquisicoesPage() {
                 </div>
             </div>
 
-            {/* Stats Section - only on list view */}
-            {viewMode === "list" && stats.length > 0 && (
+            {/* Stats Section */}
+            {stats.length > 0 && (
                 <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
                     <h2 className="text-lg font-bold text-gray-800 mb-4 flex items-center gap-2">
                         <TrendingUp size={20} className="text-[#44B16F]" />
@@ -351,212 +295,100 @@ export default function AquisicoesPage() {
             )}
 
             {/* Content Area */}
-            {viewMode === "activity" ? (
-                <div className="grid grid-cols-1 gap-6 mt-4">
-                    {isLoadingCotacoes ? (
-                        <DashboardTableSkeleton rows={3} />
-                    ) : (cotacoes || []).length === 0 ? (
-                        <div className="flex flex-col items-center justify-center py-20 bg-white rounded-2xl border-2 border-dashed border-gray-100 shadow-sm animate-fadeIn">
-                            <div className="w-24 h-24 bg-gray-50 rounded-full flex items-center justify-center mb-8">
-                                <Package size={48} className="text-gray-200" />
-                            </div>
-                            <h3 className="text-lg font-bold text-gray-500 uppercase tracking-tight">Nenhuma atividade registada</h3>
-                            <p className="text-gray-400 mt-3 text-sm font-bold max-w-sm text-center px-6">Comece organizando seus processos de compra criando uma nova atividade estratégica.</p>
+
+            <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden mt-6">
+                <div className="flex flex-col md:flex-row md:items-center justify-between p-6 gap-4 border-b border-gray-50">
+                    <div className="flex items-center gap-4 flex-1">
+                        <div className="relative flex-1 max-w-md">
+                            <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
+                            <input
+                                type="text"
+                                placeholder="Pesquisar por ID, fornecedor ou referência..."
+                                value={searchTerm}
+                                onChange={(e) => setSearchTerm(e.target.value)}
+                                className="w-full pl-12 pr-4 py-3 bg-gray-50 border border-transparent rounded-xl focus:outline-none focus:bg-white focus:ring-2 focus:ring-[#44B16F]/20 focus:border-[#44B16F] transition-all text-sm"
+                            />
                         </div>
-                    ) : (
-                        Object.entries(
-                            (cotacoes || []).reduce((acc, cot) => {
-                                const title = cot.title || 'Solicitação Sem Título';
-                                if (!acc[title]) acc[title] = [];
-                                acc[title].push(cot);
-                                return acc;
-                            }, {})
-                        ).map(([title, group], idx) => (
-                            <div key={idx} className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden hover:shadow-md transition-shadow animate-fadeIn" style={{ animationDelay: `${idx * 50}ms` }}>
-
-
-                                <div className="bg-gray-50/50 px-6 py-5 border-b border-gray-100 flex flex-col md:flex-row md:items-center justify-between gap-4">
-                                    <div className="flex items-center gap-8">
-                                        <div className="w-12 h-12 bg-[#44B16F]/10 rounded-2xl flex items-center justify-center text-[#44B16F] shrink-0">
-                                            <FileText size={24} />
-                                        </div>
-                                        <div>
-                                            <p className="text-sm text-gray-500">{group.length} {group.length === 1 ? 'pedido de cotação' : 'pedidos de cotação'}</p>
-                                            <h3 className="text-lg font-bold text-gray-900 leading-tight">{title}</h3>
-
-                                        </div>
-                                    </div>
-                                    <div className="flex items-center gap-2">
-                                        <span className="bg-[#44B16F]/10 text-[#44B16F] text-[10px] uppercase font-bold px-3 py-1 rounded-full">
-                                            Histórico de Atividade
-                                        </span>
-                                    </div>
-                                </div>
-
-                                <div className="p-0 bg-white">
-                                    <div className="overflow-x-auto">
-                                        <table className="w-full border-collapse">
-                                            <thead>
-                                                <tr className="bg-gray-50/20">
-                                                    <th className="px-6 py-4 text-left text-xs font-bold text-gray-400 uppercase tracking-widest">ID / Data</th>
-                                                    <th className="px-6 py-4 text-left text-xs font-bold text-gray-400 uppercase tracking-widest">Participantes</th>
-                                                    <th className="px-6 py-4 text-left text-xs font-bold text-gray-400 uppercase tracking-widest">Estado</th>
-                                                    <th className="px-6 py-4 text-center text-xs font-bold text-gray-400 uppercase tracking-widest">Ações</th>
-                                                </tr>
-                                            </thead>
-                                            <tbody className="divide-y divide-gray-50">
-                                                {group.map((cot) => (
-                                                    <tr key={cot.id} className="group/row hover:bg-emerald-50/10 transition-all duration-300">
-                                                        <td className="px-6 py-5">
-                                                            <div className="flex flex-col">
-                                                                <span className="text-sm font-black text-gray-800 tracking-tight group-hover/row:text-emerald-600 transition-colors">Solicitação #{cot.id}</span>
-                                                                <span className="text-[10px] text-gray-400 font-bold mt-2 flex items-center gap-2 uppercase tracking-wide">
-                                                                    {formatDate(cot.created_at)}
-                                                                </span>
-                                                            </div>
-                                                        </td>
-                                                        <td className="px-6 py-5">
-                                                            <div className="flex items-center gap-4">
-                                                                <div className="flex items-center justify-center w-10 h-10 rounded-xl bg-gray-50 text-emerald-600 border border-emerald-100 shrink-0">
-                                                                    <Package size={18} />
-                                                                </div>
-                                                                <div className="flex flex-col">
-                                                                    <span className="text-[11px] font-black text-gray-800 uppercase tracking-tight">{(cot.suppliers || []).length} Fornecedores</span>
-                                                                    <span className="text-[9px] font-bold text-gray-400 uppercase tracking-widest mt-0.5">Convocados via Sistema</span>
-                                                                </div>
-                                                            </div>
-                                                        </td>
-                                                        <td className="px-6 py-5">
-                                                            <span className={`px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider inline-flex items-center gap-1.5 border ${cot.status === 'draft' ? 'bg-gray-50 text-gray-400 border-gray-200' :
-                                                                cot.status === 'sent' ? 'bg-amber-50 text-amber-600 border-amber-200' :
-                                                                    cot.status === 'in_progress' ? 'bg-blue-50 text-blue-600 border-blue-200' :
-                                                                        cot.status === 'completed' ? 'bg-emerald-50 text-emerald-600 border-emerald-200 shadow-emerald-100/20' :
-                                                                            'bg-red-50 text-red-600 border-red-200'
-                                                                }`}>
-                                                                <div className={`w-1.5 h-1.5 rounded-full ${cot.status === 'completed' ? 'bg-[#44B16F]' : 'bg-current opacity-40'}`}></div>
-                                                                {cot.status === 'draft' ? 'Rascunho' :
-                                                                    cot.status === 'sent' ? 'Pendente' :
-                                                                        cot.status === 'in_progress' ? 'Análise' :
-                                                                            cot.status === 'completed' ? 'Finalizado' :
-                                                                                cot.status}
-                                                            </span>
-                                                        </td>
-                                                        <td className="px-6 py-5 text-center">
-                                                            <button
-                                                                onClick={() => {
-                                                                    setSelectedPedidoForAtividade(cot);
-                                                                    setIsRespostasModalOpen(true);
-                                                                }}
-                                                                className="inline-flex items-center gap-2 px-4 py-2 bg-gray-900 text-white rounded-xl text-[10px] font-bold uppercase tracking-wider hover:bg-[#44B16F] transition-all transform active:scale-95 group/btn"
-                                                            >
-                                                                <Eye size={16} />
-                                                                Auditar
-                                                            </button>
-                                                        </td>
-                                                    </tr>
-                                                ))}
-                                            </tbody>
-                                        </table>
-                                    </div>
-                                </div>
-                            </div>
-                        ))
-                    )}
-                </div>
-            ) : (
-                <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden mt-6">
-                    <div className="flex flex-col md:flex-row md:items-center justify-between p-6 gap-4 border-b border-gray-50">
-                        <div className="flex items-center gap-4 flex-1">
-                            <div className="relative flex-1 max-w-md">
-                                <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
-                                <input
-                                    type="text"
-                                    placeholder="Pesquisar por ID, fornecedor ou referência..."
-                                    value={searchTerm}
-                                    onChange={(e) => setSearchTerm(e.target.value)}
-                                    className="w-full pl-12 pr-4 py-3 bg-gray-50 border border-transparent rounded-xl focus:outline-none focus:bg-white focus:ring-2 focus:ring-[#44B16F]/20 focus:border-[#44B16F] transition-all text-sm"
-                                />
-                            </div>
-                            <button className="p-3 bg-gray-50 text-gray-500 rounded-xl hover:bg-gray-100 transition-all">
-                                <SlidersHorizontal size={20} />
-                            </button>
-                        </div>
-                        <div className="flex items-center gap-3 text-xs font-bold text-gray-400 uppercase tracking-widest">
-                            Mostrando <span className="text-[#44B16F]">{filteredResponses.length}</span> resultados
-                        </div>
+                        <button className="p-3 bg-gray-50 text-gray-500 rounded-xl hover:bg-gray-100 transition-all">
+                            <SlidersHorizontal size={20} />
+                        </button>
                     </div>
+                    <div className="flex items-center gap-3 text-xs font-bold text-gray-400 uppercase tracking-widest">
+                        Mostrando <span className="text-[#44B16F]">{filteredResponses.length}</span> resultados
+                    </div>
+                </div>
 
-                    <div className="overflow-x-auto">
-                        <table className="w-full">
-                            <thead className="bg-gray-50/50 border-b border-gray-100">
+                <div className="overflow-x-auto">
+                    <table className="w-full">
+                        <thead className="bg-gray-50/50 border-b border-gray-100">
+                            <tr>
+                                <th className="px-6 py-5 text-left text-[10px] font-black text-gray-400 uppercase tracking-widest">ID</th>
+                                <th className="px-6 py-5 text-left text-[10px] font-black text-gray-400 uppercase tracking-widest">Procedência</th>
+                                <th className="px-6 py-5 text-left text-[10px] font-black text-gray-400 uppercase tracking-widest">Fornecedor</th>
+                                <th className="px-6 py-5 text-left text-[10px] font-black text-gray-400 uppercase tracking-widest">Data Entrega</th>
+                                <th className="px-6 py-5 text-left text-[10px] font-black text-gray-400 uppercase tracking-widest">Estado</th>
+                                <th className="px-6 py-5 text-center text-[10px] font-black text-gray-400 uppercase tracking-widest">Acções</th>
+                            </tr>
+                        </thead>
+                        <tbody className="divide-y divide-gray-50">
+                            {isLoading ? (
+                                <DashboardTableSkeleton rows={5} />
+                            ) : error ? (
                                 <tr>
-                                    <th className="px-6 py-5 text-left text-[10px] font-black text-gray-400 uppercase tracking-widest">ID</th>
-                                    <th className="px-6 py-5 text-left text-[10px] font-black text-gray-400 uppercase tracking-widest">Procedência</th>
-                                    <th className="px-6 py-5 text-left text-[10px] font-black text-gray-400 uppercase tracking-widest">Fornecedor</th>
-                                    <th className="px-6 py-5 text-left text-[10px] font-black text-gray-400 uppercase tracking-widest">Data Entrega</th>
-                                    <th className="px-6 py-5 text-left text-[10px] font-black text-gray-400 uppercase tracking-widest">Estado</th>
-                                    <th className="px-6 py-5 text-center text-[10px] font-black text-gray-400 uppercase tracking-widest">Acções</th>
+                                    <td colSpan="6" className="px-6 py-12 text-center text-red-500 font-bold">{error}</td>
                                 </tr>
-                            </thead>
-                            <tbody className="divide-y divide-gray-50">
-                                {isLoading ? (
-                                    <DashboardTableSkeleton rows={5} />
-                                ) : error ? (
-                                    <tr>
-                                        <td colSpan="6" className="px-6 py-12 text-center text-red-500 font-bold">{error}</td>
-                                    </tr>
-                                ) : filteredResponses.length === 0 ? (
-                                    <tr>
-                                        <td colSpan="6" className="px-6 py-12 text-center text-gray-400 font-bold uppercase tracking-widest text-[10px]">
-                                            Nenhuma aquisição encontrada
+                            ) : filteredResponses.length === 0 ? (
+                                <tr>
+                                    <td colSpan="6" className="px-6 py-12 text-center text-gray-400 font-bold uppercase tracking-widest text-[10px]">
+                                        Nenhuma aquisição encontrada
+                                    </td>
+                                </tr>
+                            ) : (
+                                filteredResponses.map((resp) => (
+                                    <tr key={resp.id} className="hover:bg-gray-50/50 transition-colors group">
+                                        <td className="px-6 py-6 text-sm font-bold text-gray-900">#{resp.id}</td>
+                                        <td className="px-6 py-6 font-bold text-gray-800 text-sm">
+                                            Cotação #{resp.quotation_request_id}
+                                        </td>
+                                        <td className="px-6 py-6">
+                                            <span className="text-sm font-semibold text-gray-700">
+                                                {resp.supplier?.commercial_name || resp.supplier?.legal_name || "N/A"}
+                                            </span>
+                                        </td>
+                                        <td className="px-6 py-6 text-sm text-gray-600 font-medium">
+                                            {formatDate(resp.expected_delivery_date)}
+                                        </td>
+                                        <td className="px-6 py-6">
+                                            {getStatusBadge(resp.status)}
+                                        </td>
+                                        <td className="px-6 py-6 font-medium">
+                                            <div className="flex items-center justify-center gap-2">
+                                                <button
+                                                    onClick={() => handleOpenDetails(resp)}
+                                                    className="p-2 hover:bg-emerald-50 text-emerald-600 rounded-lg transition-all"
+                                                    title="Ver Detalhes"
+                                                >
+                                                    <Eye size={18} />
+                                                </button>
+                                                {resp.status !== 'completed' && (
+                                                    <button
+                                                        onClick={() => handleConfirmDelivery(resp)}
+                                                        className="p-2 hover:bg-blue-50 text-blue-600 rounded-lg transition-all"
+                                                        title="Confirmar Entrega"
+                                                    >
+                                                        <Truck size={18} />
+                                                    </button>
+                                                )}
+                                            </div>
                                         </td>
                                     </tr>
-                                ) : (
-                                    filteredResponses.map((resp) => (
-                                        <tr key={resp.id} className="hover:bg-gray-50/50 transition-colors group">
-                                            <td className="px-6 py-6 text-sm font-bold text-gray-900">#{resp.id}</td>
-                                            <td className="px-6 py-6 font-bold text-gray-800 text-sm">
-                                                Cotação #{resp.quotation_request_id}
-                                            </td>
-                                            <td className="px-6 py-6">
-                                                <span className="text-sm font-semibold text-gray-700">
-                                                    {resp.supplier?.commercial_name || resp.supplier?.legal_name || "N/A"}
-                                                </span>
-                                            </td>
-                                            <td className="px-6 py-6 text-sm text-gray-600 font-medium">
-                                                {formatDate(resp.expected_delivery_date)}
-                                            </td>
-                                            <td className="px-6 py-6">
-                                                {getStatusBadge(resp.status)}
-                                            </td>
-                                            <td className="px-6 py-6 font-medium">
-                                                <div className="flex items-center justify-center gap-2">
-                                                    <button
-                                                        onClick={() => handleOpenDetails(resp)}
-                                                        className="p-2 hover:bg-emerald-50 text-emerald-600 rounded-lg transition-all"
-                                                        title="Ver Detalhes"
-                                                    >
-                                                        <Eye size={18} />
-                                                    </button>
-                                                    {resp.status !== 'completed' && (
-                                                        <button
-                                                            onClick={() => handleConfirmDelivery(resp)}
-                                                            className="p-2 hover:bg-blue-50 text-blue-600 rounded-lg transition-all"
-                                                            title="Confirmar Entrega"
-                                                        >
-                                                            <Truck size={18} />
-                                                        </button>
-                                                    )}
-                                                </div>
-                                            </td>
-                                        </tr>
-                                    ))
-                                )}
-                            </tbody>
-                        </table>
-                    </div>
+                                ))
+                            )}
+                        </tbody>
+                    </table>
                 </div>
-            )}
+            </div>
+
 
             {/* Modals Section */}
 
@@ -637,7 +469,7 @@ export default function AquisicoesPage() {
                     setCurrentActivityName("");
                     setActivityName("");
                     setActivityDescription("");
-                    if (viewMode === "activity") fetchQuotations();
+                    fetchResponses();
                 }}
                 activityName={currentActivityName}
             />
@@ -656,22 +488,7 @@ export default function AquisicoesPage() {
                 isLoading={isSubmittingReview}
             />
 
-            <ModalRespostasPedido
-                isOpen={isRespostasModalOpen}
-                onClose={() => {
-                    setIsRespostasModalOpen(false);
-                    setSelectedPedidoForAtividade(null);
-                }}
-                quotationRequestId={selectedPedidoForAtividade?.id}
-                quotationRequestTitle={selectedPedidoForAtividade?.title}
-                onOpenRevisarModal={(resp) => handleOpenDetails(resp)}
-                onAprovar={handleAprovarProposta}
-                onRejeitar={handleRejeitarProposta}
-                onSolicitarRevisao={(resp) => {
-                    setSelectedResponse(resp);
-                    setIsSolicitarRevisaoModalOpen(true);
-                }}
-            />
+
 
             {toast && <Toast type={toast.type} message={toast.message} onClose={() => setToast(null)} />}
         </div>
