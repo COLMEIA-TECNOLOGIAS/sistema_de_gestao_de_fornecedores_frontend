@@ -713,6 +713,126 @@ export default function FornecedoresPage() {
         );
     };
 
+    const renderAtividadesView = () => {
+        if (isLoadingCotacoes) return (
+            <div className="flex flex-col items-center justify-center py-20">
+                <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-[#44B16F]"></div>
+                <p className="text-gray-500 mt-4 font-medium animate-pulse">Carregando atividades...</p>
+            </div>
+        );
+
+        // Group by title (Activity)
+        const groups = (cotacoes || []).reduce((acc, cot) => {
+            const title = cot.title || 'Solicitação sem Título';
+            if (!acc[title]) acc[title] = [];
+            acc[title].push(cot);
+            return acc;
+        }, {});
+
+        const titles = Object.keys(groups).sort();
+
+        if (titles.length === 0) {
+            return (
+                <div className="flex flex-col items-center justify-center py-20 bg-white rounded-2xl border-2 border-dashed border-gray-100">
+                    <FileText size={48} className="text-gray-200 mb-4" />
+                    <p className="text-gray-500 font-medium">Nenhuma atividade registrada ainda</p>
+                </div>
+            );
+        }
+
+        return (
+            <div className="grid grid-cols-1 gap-6 mt-4">
+                {titles.map((title) => (
+                    <div key={title} className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden hover:shadow-md transition-shadow">
+                        <div className="bg-gray-50/50 px-6 py-5 border-b border-gray-100 flex items-center justify-between">
+                            <div className="flex items-center gap-4">
+                                <div className="w-12 h-12 bg-[#44B16F]/10 rounded-2xl flex items-center justify-center text-[#44B16F]">
+                                    <FileText size={24} />
+                                </div>
+                                <div>
+                                    <h3 className="text-lg font-bold text-gray-900">{title}</h3>
+                                    <p className="text-sm text-gray-500">{groups[title].length} {groups[title].length === 1 ? 'pedido de cotação' : 'pedidos de cotação'}</p>
+                                </div>
+                            </div>
+                            <div className="flex items-center gap-2">
+                                <span className="bg-[#44B16F]/10 text-[#44B16F] text-[10px] uppercase font-bold px-3 py-1 rounded-full">
+                                    Histórico de Atividade
+                                </span>
+                            </div>
+                        </div>
+                        <div className="overflow-x-auto">
+                            <table className="w-full">
+                                <thead className="bg-gray-50/30 border-b border-gray-100">
+                                    <tr>
+                                        <th className="px-6 py-4 text-left text-xs font-bold text-gray-400">ID / DATA</th>
+                                        <th className="px-6 py-4 text-left text-xs font-bold text-gray-400">PART_CONVIDADOS</th>
+                                        <th className="px-6 py-4 text-left text-xs font-bold text-gray-400">ESTADO</th>
+                                        <th className="px-6 py-4 text-center text-xs font-bold text-gray-400">AÇÕES</th>
+                                    </tr>
+                                </thead>
+                                <tbody className="divide-y divide-gray-50 font-medium">
+                                    {groups[title].map((cot) => (
+                                        <tr key={cot.id} className="group hover:bg-emerald-50/30 transition-colors">
+                                            <td className="px-6 py-5">
+                                                <div className="flex flex-col">
+                                                    <span className="text-gray-900 font-bold">COD-#{cot.id}</span>
+                                                    <span className="text-[11px] text-gray-400 italic">
+                                                        Criado em: {new Date(cot.created_at).toLocaleDateString()}
+                                                    </span>
+                                                </div>
+                                            </td>
+                                            <td className="px-6 py-5">
+                                                <div className="flex items-center gap-2">
+                                                    <div className="flex -space-x-3 overflow-hidden p-1">
+                                                        {(cot.suppliers || []).slice(0, 4).map((s, idx) => (
+                                                            <img
+                                                                key={idx}
+                                                                className="inline-block h-8 w-8 rounded-xl ring-2 ring-white object-cover"
+                                                                src={`https://api.dicebear.com/7.x/initials/svg?seed=${(s.commercial_name || s.name || 'F')}`}
+                                                                alt=""
+                                                            />
+                                                        ))}
+                                                        {(cot.suppliers || []).length > 4 && (
+                                                            <div className="flex items-center justify-center h-8 w-8 rounded-xl bg-gray-100 ring-2 ring-white text-[10px] text-gray-500 font-bold">
+                                                                +{(cot.suppliers || []).length - 4}
+                                                            </div>
+                                                        )}
+                                                    </div>
+                                                    <span className="text-[10px] font-bold bg-[#44B16F]/10 text-[#44B16F] px-2 py-1 rounded-lg">
+                                                        {(cot.suppliers || []).length} Fornecedores
+                                                    </span>
+                                                </div>
+                                            </td>
+                                            <td className="px-6 py-5">
+                                                <span className={`px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider ${cot.status === 'draft' ? 'bg-gray-100 text-gray-500' :
+                                                    cot.status === 'sent' ? 'bg-amber-100 text-amber-700' :
+                                                        cot.status === 'in_progress' ? 'bg-blue-100 text-blue-700' :
+                                                            cot.status === 'completed' ? 'bg-emerald-100 text-emerald-700' :
+                                                                'bg-red-100 text-red-700'
+                                                    }`}>
+                                                    {cot.status}
+                                                </span>
+                                            </td>
+                                            <td className="px-6 py-5 text-center">
+                                                <button
+                                                    onClick={() => handleVerRespostas(cot)}
+                                                    className="inline-flex items-center gap-2 px-4 py-2 bg-[#44B16F] text-white rounded-xl text-xs font-bold hover:bg-[#3a9d5f] shadow-sm transform active:scale-95 transition-all"
+                                                >
+                                                    <Eye size={14} />
+                                                    Acompanhar Processo
+                                                </button>
+                                            </td>
+                                        </tr>
+                                    ))}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                ))}
+            </div>
+        );
+    };
+
 
 
     return (
@@ -1078,6 +1198,15 @@ export default function FornecedoresPage() {
                             Pedidos enviados
                         </button>
                         <button
+                            onClick={() => setActiveCotacaoTab("por-atividade")}
+                            className={`pb-3 font-medium text-sm transition-all ${activeCotacaoTab === "por-atividade"
+                                ? "text-[#44B16F] border-b-2 border-[#44B16F]"
+                                : "text-gray-500 hover:text-gray-700"
+                                }`}
+                        >
+                            Por atividade
+                        </button>
+                        <button
                             onClick={() => setActiveCotacaoTab("pedidos-cancelados")}
                             className={`pb-3 font-medium text-sm transition-all ${activeCotacaoTab === "pedidos-cancelados"
                                 ? "text-[#44B16F] border-b-2 border-[#44B16F]"
@@ -1126,7 +1255,7 @@ export default function FornecedoresPage() {
                     </div>
 
                     {/* Cotações Table */}
-                    {renderCotacoesTable()}
+                    {activeCotacaoTab === "por-atividade" ? renderAtividadesView() : renderCotacoesTable()}
                 </>
             )}
 
