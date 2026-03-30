@@ -6,6 +6,7 @@ import ModalRevisarCotacao from "../Components/ModalRevisarCotacao";
 import ModalSolicitarRevisao from "../Components/ModalSolicitarRevisao";
 import ModalDetalhesFornecedor from "../Components/ModalDetalhesFornecedor";
 import ModalConfirmarExclusaoFornecedor from "../Components/ModalConfirmarExclusaoFornecedor";
+import ModalRespostasPedido from "../Components/ModalRespostasPedido";
 import Toast from "../Components/Toast";
 import FornecedorTableSkeleton from "../Components/FornecedorTableSkeleton";
 import { suppliersAPI, quotationRequestsAPI, quotationResponsesAPI, categoriesAPI } from "../../services/api"; // Added categoriesAPI
@@ -23,6 +24,9 @@ export default function FornecedoresPage() {
     const [isRevisarModalOpen, setIsRevisarModalOpen] = useState(false);
     const [isSolicitarRevisaoModalOpen, setIsSolicitarRevisaoModalOpen] = useState(false);
     const [isDetalhesModalOpen, setIsDetalhesModalOpen] = useState(false);
+    const [isRespostasPedidoModalOpen, setIsRespostasPedidoModalOpen] = useState(false);
+    const [selectedRequestId, setSelectedRequestId] = useState(null);
+    const [selectedRequestTitle, setSelectedRequestTitle] = useState("");
     const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
     const [selectedFornecedor, setSelectedFornecedor] = useState(null);
     const [selectedCotacao, setSelectedCotacao] = useState(null);
@@ -707,6 +711,20 @@ export default function FornecedoresPage() {
                                                         >
                                                             <Trash2 size={16} className="text-gray-400" />
                                                             <span className="text-gray-700">Cancelar/Remover</span>
+                                                        </button>
+
+                                                        {/* Acompanhar Respostas */}
+                                                        <button
+                                                            onClick={() => {
+                                                                setSelectedRequestId(cotacao.id);
+                                                                setSelectedRequestTitle(cotacao.title);
+                                                                setIsRespostasPedidoModalOpen(true);
+                                                                setOpenMenuId(null);
+                                                            }}
+                                                            className="w-full px-4 py-2.5 text-left hover:bg-gray-50 text-sm flex items-center gap-3 transition-colors text-emerald-600 font-medium"
+                                                        >
+                                                            <Eye size={16} className="text-emerald-500" />
+                                                            <span className="">Acompanhar Respostas</span>
                                                         </button>
 
                                                         {/* Enviar para fornecedores - Apenas para Rascunho */}
@@ -1461,6 +1479,21 @@ export default function FornecedoresPage() {
                 onConfirm={confirmDeleteFornecedor}
                 fornecedor={selectedFornecedor}
                 isLoading={isDeleting}
+            />
+            <ModalRespostasPedido
+                isOpen={isRespostasPedidoModalOpen}
+                onClose={() => {
+                    setIsRespostasPedidoModalOpen(false);
+                    setSelectedRequestId(null);
+                    setSelectedRequestTitle("");
+                }}
+                quotationRequestId={selectedRequestId}
+                quotationRequestTitle={selectedRequestTitle}
+                onOpenRevisarModal={handleOpenDetails}
+                onAprovar={handleAprovarProposta}
+                onRejeitar={handleRejeitarProposta}
+                onSolicitarRevisao={handleSolicitarRevisaoProposta}
+                onGerarAquisicao={handleGerarAquisicaoProposta}
             />
         </div>
     );
