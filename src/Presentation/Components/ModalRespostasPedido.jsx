@@ -270,37 +270,22 @@ export default function ModalRespostasPedido({
                                                 </td>
                                                 <td className="px-6 py-6">
                                                     <span className={`px-4 py-2 rounded-xl text-sm font-semibold inline-flex items-center gap-2 ${getStatusColor(resposta.status)}`}>
-                                                        {resposta.is_placeholder && <Bell size={14} />}
                                                         {getStatusLabel(resposta.status)}
                                                     </span>
                                                 </td>
                                                 <td className="px-6 py-6">
                                                     <div className="relative flex justify-center dropdown-menu">
-                                                        <button
-                                                            onClick={() => setOpenMenuId(openMenuId === `resp-${resposta.id}` ? null : `resp-${resposta.id}`)}
-                                                            className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
-                                                        >
-                                                            <MoreVertical size={20} className="text-gray-600" />
-                                                        </button>
+                                                        {!resposta.is_placeholder && (
+                                                            <>
+                                                                <button
+                                                                    onClick={() => setOpenMenuId(openMenuId === `resp-${resposta.id}` ? null : `resp-${resposta.id}`)}
+                                                                    className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+                                                                >
+                                                                    <MoreVertical size={20} className="text-gray-600" />
+                                                                </button>
 
-                                                        {openMenuId === `resp-${resposta.id}` && (
-                                                            <div className="absolute right-0 top-full mt-2 w-56 bg-white rounded-xl shadow-xl border border-gray-100 py-2 z-50">
-                                                                {resposta.is_placeholder ? (
-                                                                    <>
-                                                                        <button
-                                                                            onClick={() => {
-                                                                                // TODO: Send reminder
-                                                                                alert('Lembrete enviado ao fornecedor!');
-                                                                                setOpenMenuId(null);
-                                                                            }}
-                                                                            className="w-full px-4 py-2.5 text-left hover:bg-gray-50 text-sm flex items-center gap-3 transition-colors text-blue-600 font-medium"
-                                                                        >
-                                                                            <Bell size={16} />
-                                                                            <span>Enviar Lembrete</span>
-                                                                        </button>
-                                                                    </>
-                                                                ) : (
-                                                                    <>
+                                                                {openMenuId === `resp-${resposta.id}` && (
+                                                                    <div className="absolute right-0 top-full mt-2 w-56 bg-white rounded-xl shadow-xl border border-gray-100 py-2 z-50">
                                                                         {/* Revisar */}
                                                                         <button
                                                                             onClick={() => {
@@ -365,9 +350,9 @@ export default function ModalRespostasPedido({
                                                                             <RefreshCw size={16} className="text-gray-400" />
                                                                             <span className="text-gray-700">Gerar Aquisição</span>
                                                                         </button>
-                                                                    </>
+                                                                    </div>
                                                                 )}
-                                                            </div>
+                                                            </>
                                                         )}
                                                     </div>
                                                 </td>
