@@ -173,10 +173,12 @@ export default function RelatoriosPage() {
       currentY += 5;
 
       const metricsData = [
-        ['Total Gasto', formatCurrency(reportData.metrics?.total_spent)],
+        ['Total de Cotações', reportData.metrics?.total_quotations || 0],
+        ['Cotações Enviadas', reportData.metrics?.sent_quotations || 0],
+        ['Licitantes Registrados', reportData.metrics?.total_suppliers || 0],
         ['Total Aquisições', reportData.metrics?.total_acquisitions || 0],
-        ['Ticket Médio', formatCurrency(reportData.metrics?.avg_ticket)],
-        ['Pendentes', reportData.metrics?.pending_count || 0]
+        ['Pendentes', reportData.metrics?.pending_count || 0],
+        ['Concluídas', reportData.metrics?.completed_count || 0]
       ];
 
       autoTable(doc, {
@@ -194,7 +196,8 @@ export default function RelatoriosPage() {
 
       currentY = doc.lastAutoTable.finalY + 15;
 
-      // --- Top Products Table ---
+      // --- Top Products Table hidden to match screen layout ---
+      /*
       doc.setFontSize(14);
       doc.setTextColor(brandDark);
       doc.text("Top Produtos Adquiridos", 14, currentY);
@@ -227,6 +230,7 @@ export default function RelatoriosPage() {
         doc.text("Nenhum produto registrado neste período.", 14, currentY + 10);
         currentY += 20;
       }
+      */
 
       // --- Footer ---
       const pageHeight = doc.internal.pageSize.height;
@@ -366,23 +370,51 @@ export default function RelatoriosPage() {
       {!isLoading && reportData && (
         <div className="space-y-8 bg-transparent">
           {/* Metrics Grid */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            {/* Total Gasto hidden as requested */}
-            {/* <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
-              <div className="flex items-start justify-between mb-4">
-                <div className="p-3 bg-blue-50 text-blue-600 rounded-xl">
-                  <TrendingUp size={24} />
-                </div>
-              </div>
-              <p className="text-sm text-gray-500 font-medium">Total Gasto</p>
-              <h3 className="text-2xl font-bold text-gray-900 mt-1">
-                {formatCurrency(reportData.metrics?.total_spent)}
-              </h3>
-            </div> */}
-
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            
+            {/* Total de Cotações */}
             <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
               <div className="flex items-start justify-between mb-4">
                 <div className="p-3 bg-purple-50 text-purple-600 rounded-xl">
+                  <FileText size={24} />
+                </div>
+              </div>
+              <p className="text-sm text-gray-500 font-medium">Total de Cotações</p>
+              <h3 className="text-2xl font-bold text-gray-900 mt-1">
+                {reportData.metrics?.total_quotations || 0}
+              </h3>
+            </div>
+
+            {/* Cotações Enviadas */}
+            <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
+              <div className="flex items-start justify-between mb-4">
+                <div className="p-3 bg-blue-50 text-blue-600 rounded-xl">
+                  <RefreshCw size={24} />
+                </div>
+              </div>
+              <p className="text-sm text-gray-500 font-medium">Cotações Enviadas</p>
+              <h3 className="text-2xl font-bold text-gray-900 mt-1">
+                {reportData.metrics?.sent_quotations || 0}
+              </h3>
+            </div>
+
+            {/* Licitantes Registrados */}
+            <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
+              <div className="flex items-start justify-between mb-4">
+                <div className="p-3 bg-emerald-50 text-emerald-600 rounded-xl">
+                  <Users size={24} />
+                </div>
+              </div>
+              <p className="text-sm text-gray-500 font-medium">Licitantes Registrados</p>
+              <h3 className="text-2xl font-bold text-gray-900 mt-1">
+                {reportData.metrics?.total_suppliers || 0}
+              </h3>
+            </div>
+
+            {/* Total Aquisições */}
+            <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
+              <div className="flex items-start justify-between mb-4">
+                <div className="p-3 bg-indigo-50 text-indigo-600 rounded-xl">
                   <ShoppingCart size={24} />
                 </div>
               </div>
@@ -392,23 +424,11 @@ export default function RelatoriosPage() {
               </h3>
             </div>
 
-            {/* Ticket Médio hidden as requested */}
-            {/* <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
-              <div className="flex items-start justify-between mb-4">
-                <div className="p-3 bg-green-50 text-green-600 rounded-xl">
-                  <Zap size={24} />
-                </div>
-              </div>
-              <p className="text-sm text-gray-500 font-medium">Ticket Médio</p>
-              <h3 className="text-2xl font-bold text-gray-900 mt-1">
-                {formatCurrency(reportData.metrics?.avg_ticket)}
-              </h3>
-            </div> */}
-
+            {/* Pendentes */}
             <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
               <div className="flex items-start justify-between mb-4">
                 <div className="p-3 bg-orange-50 text-orange-600 rounded-xl">
-                  <FileText size={24} />
+                  <Calendar size={24} />
                 </div>
               </div>
               <p className="text-sm text-gray-500 font-medium">Pendentes</p>
@@ -416,6 +436,20 @@ export default function RelatoriosPage() {
                 {reportData.metrics?.pending_count || 0}
               </h3>
             </div>
+
+            {/* Concluídas */}
+            <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
+              <div className="flex items-start justify-between mb-4">
+                <div className="p-3 bg-green-50 text-green-600 rounded-xl">
+                  <Zap size={24} />
+                </div>
+              </div>
+              <p className="text-sm text-gray-500 font-medium">Concluídas</p>
+              <h3 className="text-2xl font-bold text-gray-900 mt-1">
+                {reportData.metrics?.completed_count || 0}
+              </h3>
+            </div>
+
           </div>
 
           {/* Evolução de Gastos and Top Produtos hidden as requested */}

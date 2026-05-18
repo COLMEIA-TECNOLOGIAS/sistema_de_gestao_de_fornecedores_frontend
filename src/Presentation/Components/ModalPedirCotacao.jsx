@@ -311,6 +311,7 @@ export default function ModalPedirCotacao({ isOpen, onClose, fornecedor, activit
             // Prepare FormData if there are attachments
             const hasAttachments = attachedDocuments.length > 0;
 
+            let response;
             if (hasAttachments) {
                 const formData = new FormData();
                 formData.append('title', pedidoAssunto);
@@ -340,7 +341,7 @@ export default function ModalPedirCotacao({ isOpen, onClose, fornecedor, activit
                 });
 
                 console.log('Enviando pedido de cotação com documentos...');
-                const response = await quotationRequestsAPI.createWithDocuments(formData);
+                response = await quotationRequestsAPI.createWithDocuments(formData);
                 console.log('Resposta da API:', response);
             } else {
                 const quotationData = {
@@ -364,8 +365,15 @@ export default function ModalPedirCotacao({ isOpen, onClose, fornecedor, activit
                 };
 
                 console.log('Enviando pedido de cotação:', quotationData);
-                const response = await quotationRequestsAPI.create(quotationData);
+                response = await quotationRequestsAPI.create(quotationData);
                 console.log('Resposta da API:', response);
+            }
+
+            // Envia automaticamente o pedido criado por email aos fornecedores (mudando status para enviado)
+            const createdId = response?.id || response?.data?.id;
+            if (createdId) {
+                console.log('Enviando cotação criada automaticamente para os fornecedores:', createdId);
+                await quotationRequestsAPI.send(createdId);
             }
 
             setSubmitSuccess(true);
