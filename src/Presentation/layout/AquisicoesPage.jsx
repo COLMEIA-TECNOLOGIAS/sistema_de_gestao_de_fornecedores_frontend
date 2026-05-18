@@ -259,7 +259,7 @@ export default function AquisicoesPage() {
                 <div className="flex items-center gap-3">
 
                     <button
-                        onClick={() => setIsActivityModalOpen(true)}
+                        onClick={() => setIsCotacaoModalOpen(true)}
                         className="flex items-center gap-2 px-6 py-3 bg-[#44B16F] text-white rounded-xl hover:bg-[#3a9d5f] transition-all font-bold shadow-lg hover:shadow-xl transform hover:scale-[1.02]"
                     >
                         <Plus size={20} />
@@ -268,8 +268,8 @@ export default function AquisicoesPage() {
                 </div>
             </div>
 
-            {/* Stats Section */}
-            {stats.length > 0 && (
+            {/* Stats Section hidden as requested */}
+            {/* stats.length > 0 && (
                 <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
                     <h2 className="text-lg font-bold text-gray-800 mb-4 flex items-center gap-2">
                         <TrendingUp size={20} className="text-[#44B16F]" />
@@ -293,7 +293,7 @@ export default function AquisicoesPage() {
                         ))}
                     </div>
                 </div>
-            )}
+            ) */}
 
             {/* Content Area */}
 

@@ -279,7 +279,7 @@ export default function ModalPedirCotacao({ isOpen, onClose, fornecedor, activit
     const handleSendExternalLink = async () => {
         try {
             if (selectedFornecedores.length < 3) {
-                setSubmitError('É obrigatório selecionar no mínimo 3 fornecedores para enviar o pedido de cotação.');
+                setSubmitError('É obrigatório selecionar no mínimo 3 licitantes para enviar o pedido de cotação.');
                 return;
             }
 
@@ -298,6 +298,16 @@ export default function ModalPedirCotacao({ isOpen, onClose, fornecedor, activit
             // Build description with signature
             const descriptionWithSignature = getDescriptionWithSignature();
 
+            // If productsList is empty, prefill with a single placeholder representing the cotação
+            const finalProductsList = productsList.length > 0 ? productsList : [
+                {
+                    name: pedidoAssunto || 'Solicitação de Cotação',
+                    quantity: 1,
+                    unit: 'un',
+                    specifications: pedidoDescricao || 'Conforme especificações anexas.'
+                }
+            ];
+
             // Prepare FormData if there are attachments
             const hasAttachments = attachedDocuments.length > 0;
 
@@ -314,7 +324,7 @@ export default function ModalPedirCotacao({ isOpen, onClose, fornecedor, activit
                 formData.append('description', descriptionWithSignature);
                 formData.append('deadline', formattedDeadline);
 
-                productsList.forEach((product, index) => {
+                finalProductsList.forEach((product, index) => {
                     formData.append(`items[${index}][name]`, product.name);
                     formData.append(`items[${index}][quantity]`, product.quantity);
                     formData.append(`items[${index}][unit]`, product.unit);
@@ -344,7 +354,7 @@ export default function ModalPedirCotacao({ isOpen, onClose, fornecedor, activit
                     hide_auto_reference: true,
                     description: descriptionWithSignature,
                     deadline: formattedDeadline,
-                    items: productsList.map(product => ({
+                    items: finalProductsList.map(product => ({
                         name: product.name,
                         quantity: product.quantity,
                         unit: product.unit,
@@ -473,478 +483,252 @@ export default function ModalPedirCotacao({ isOpen, onClose, fornecedor, activit
                         <div>
                             {/* Title */}
                             <h2 className="text-3xl font-bold text-gray-900 mb-2 text-center">
-                                Adicionar produtos
+                                Solicitar Cotação
                             </h2>
                             <p className="text-gray-500 text-center mb-8">
                                 Complete o pedido de cotação
                             </p>
 
-                            {/* Two Column Layout */}
-                            <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-                                {/* Left Column - Form */}
-                                <div className="space-y-6">
-                                    {/* Assunto do Pedido */}
-                                    <div>
-                                        <label className="block text-sm font-medium text-gray-700 mb-2">
-                                            Assunto do pedido *
-                                        </label>
-                                        <input
-                                            type="text"
-                                            value={pedidoAssunto}
-                                            onChange={(e) => setPedidoAssunto(e.target.value)}
-                                            placeholder="Materiais para trabalho"
-                                            className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#44B16F] focus:border-transparent"
-                                            required
-                                        />
-                                    </div>
+                            {/* Single Column Layout */}
+                            <div className="max-w-3xl mx-auto space-y-6">
+                                {/* Assunto do Pedido */}
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                                        Descrição de atividade *
+                                    </label>
+                                    <input
+                                        type="text"
+                                        value={pedidoAssunto}
+                                        onChange={(e) => setPedidoAssunto(e.target.value)}
+                                        placeholder="Materiais para trabalho"
+                                        className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#44B16F] focus:border-transparent"
+                                        required
+                                    />
+                                </div>
 
-                                    {/* Referência Manual */}
-                                    <div>
-                                        <label className="block text-sm font-medium text-gray-700 mb-2">
-                                            Referência *
-                                        </label>
-                                        <input
-                                            type="text"
-                                            value={pedidoReferencia}
-                                            onChange={(e) => setPedidoReferencia(e.target.value)}
-                                            placeholder="Ex: REF-2026-001"
-                                            className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#44B16F] focus:border-transparent"
-                                            required
-                                        />
-                                        <p className="text-xs text-gray-500 mt-1">A referência é gerada manualmente e identifica este pedido.</p>
-                                    </div>
+                                {/* Referência Manual */}
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                                        Referência PP *
+                                    </label>
+                                    <input
+                                        type="text"
+                                        value={pedidoReferencia}
+                                        onChange={(e) => setPedidoReferencia(e.target.value)}
+                                        placeholder="Ex: REF-2026-001"
+                                        className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#44B16F] focus:border-transparent"
+                                        required
+                                    />
+                                    <p className="text-xs text-gray-500 mt-1">A referência é gerada manualmente e identifica este pedido.</p>
+                                </div>
 
-                                    {/* Corpo da Mensagem */}
-                                    <div>
-                                        <label className="block text-sm font-medium text-gray-700 mb-2">
-                                            Corpo da mensagem
-                                        </label>
-                                        <textarea
-                                            value={pedidoDescricao}
-                                            onChange={(e) => setPedidoDescricao(e.target.value)}
-                                            placeholder="Descreva detalhes adicionais sobre o pedido..."
-                                            rows={3}
-                                            className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#44B16F] focus:border-transparent resize-none"
-                                        />
-                                    </div>
+                                {/* Corpo da Mensagem */}
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                                        Corpo da mensagem
+                                    </label>
+                                    <textarea
+                                        value={pedidoDescricao}
+                                        onChange={(e) => setPedidoDescricao(e.target.value)}
+                                        placeholder="Descreva detalhes adicionais sobre o pedido..."
+                                        rows={3}
+                                        className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#44B16F] focus:border-transparent resize-none"
+                                    />
+                                </div>
 
-                                    {/* Prazo de Resposta */}
-                                    <div>
-                                        <label className="block text-sm font-medium text-gray-700 mb-2">
-                                            Data de resposta
-                                        </label>
-                                        <input
-                                            type="datetime-local"
-                                            value={deadline}
-                                            min={getMinDeadline()}
-                                            onChange={(e) => setDeadline(e.target.value)}
-                                            className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#44B16F] focus:border-transparent"
-                                        />
-                                        <p className="text-xs text-gray-500 mt-1">O prazo mínimo é de 15 dias úteis a partir de hoje.</p>
-                                    </div>
+                                {/* Prazo de Resposta */}
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                                        Data de entrega
+                                    </label>
+                                    <input
+                                        type="datetime-local"
+                                        value={deadline}
+                                        min={getMinDeadline()}
+                                        onChange={(e) => setDeadline(e.target.value)}
+                                        className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#44B16F] focus:border-transparent"
+                                    />
+                                    <p className="text-xs text-gray-500 mt-1">O prazo mínimo é de 15 dias úteis a partir de hoje.</p>
+                                </div>
 
-                                    {/* Convite ao Comprador Final */}
-                                    <div>
-                                        <label className="block text-sm font-medium text-gray-700 mb-2">
-                                            Convite ao comprador final
-                                        </label>
-                                        <input
-                                            type="email"
-                                            value={pedidoBuyerEmail}
-                                            onChange={(e) => setPedidoBuyerEmail(e.target.value)}
-                                            placeholder="email@comprador.ao"
-                                            className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#44B16F] focus:border-transparent"
-                                        />
-                                        <p className="text-xs text-gray-500 mt-1">O comprador final receberá um convite por email para acompanhar este pedido.</p>
-                                    </div>
+                                {/* Convite ao Comprador Final */}
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                                        Convite ao comprador final
+                                    </label>
+                                    <input
+                                        type="email"
+                                        value={pedidoBuyerEmail}
+                                        onChange={(e) => setPedidoBuyerEmail(e.target.value)}
+                                        placeholder="email@comprador.ao"
+                                        className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#44B16F] focus:border-transparent"
+                                    />
+                                    <p className="text-xs text-gray-500 mt-1">O comprador final receberá um convite por email para acompanhar este pedido.</p>
+                                </div>
 
-                                    {/* Document Attachment */}
-                                    <div>
-                                        <label className="block text-sm font-medium text-gray-700 mb-2">
-                                            <Paperclip size={14} className="inline-block mr-1 -mt-0.5" />
-                                            Anexar documentos
-                                        </label>
-                                        {attachedDocuments.length > 0 && (
-                                            <div className="mb-2 space-y-2">
-                                                {attachedDocuments.map((doc, index) => (
-                                                    <div key={index} className="flex items-center justify-between bg-emerald-50 border border-[#44B16F]/20 rounded-lg px-3 py-2">
-                                                        <div className="flex items-center gap-2">
-                                                            <FileText size={14} className="text-[#44B16F]" />
-                                                            <span className="text-xs font-medium text-gray-700 truncate max-w-[180px]">{doc.name}</span>
-                                                        </div>
-                                                        <div className="flex items-center gap-1">
-                                                            <button
-                                                                type="button"
-                                                                onClick={() => handlePreviewDocument(doc)}
-                                                                className="p-1 hover:bg-[#44B16F]/10 rounded transition-colors"
-                                                                title="Pré-visualizar"
-                                                            >
-                                                                <Eye size={14} className="text-[#44B16F]" />
-                                                            </button>
-                                                            <button
-                                                                type="button"
-                                                                onClick={() => handleRemoveDocument(index)}
-                                                                className="p-1 hover:bg-red-50 rounded transition-colors"
-                                                            >
-                                                                <X size={14} className="text-red-500" />
-                                                            </button>
-                                                        </div>
+                                {/* Document Attachment */}
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                                        <Paperclip size={14} className="inline-block mr-1 -mt-0.5" />
+                                        Anexar documentos
+                                    </label>
+                                    {attachedDocuments.length > 0 && (
+                                        <div className="mb-2 space-y-2">
+                                            {attachedDocuments.map((doc, index) => (
+                                                <div key={index} className="flex items-center justify-between bg-emerald-50 border border-[#44B16F]/20 rounded-lg px-3 py-2">
+                                                    <div className="flex items-center gap-2">
+                                                        <FileText size={14} className="text-[#44B16F]" />
+                                                        <span className="text-xs font-medium text-gray-700 truncate max-w-[180px]">{doc.name}</span>
                                                     </div>
-                                                ))}
-                                            </div>
-                                        )}
-                                        <label className="flex items-center justify-center gap-2 px-4 py-3 border-2 border-dashed border-gray-300 rounded-lg cursor-pointer hover:border-[#44B16F] transition-colors bg-gray-50 hover:bg-emerald-50/50">
-                                            <input
-                                                type="file"
-                                                multiple
-                                                className="hidden"
-                                                onChange={handleDocumentAttach}
-                                                accept=".pdf,.jpg,.jpeg,.png,.doc,.docx,.xls,.xlsx"
-                                            />
-                                            <Upload size={16} className="text-gray-400" />
-                                            <span className="text-xs text-gray-500 font-medium">Clique para anexar documentos</span>
-                                        </label>
-                                    </div>
+                                                    <div className="flex items-center gap-1">
+                                                        <button
+                                                            type="button"
+                                                            onClick={() => handlePreviewDocument(doc)}
+                                                            className="p-1 hover:bg-[#44B16F]/10 rounded transition-colors"
+                                                            title="Pré-visualizar"
+                                                        >
+                                                            <Eye size={14} className="text-[#44B16F]" />
+                                                        </button>
+                                                        <button
+                                                            type="button"
+                                                            onClick={() => handleRemoveDocument(index)}
+                                                            className="p-1 hover:bg-red-50 rounded transition-colors"
+                                                        >
+                                                            <X size={14} className="text-red-500" />
+                                                        </button>
+                                                    </div>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    )}
+                                    <label className="flex items-center justify-center gap-2 px-4 py-3 border-2 border-dashed border-gray-300 rounded-lg cursor-pointer hover:border-[#44B16F] transition-colors bg-gray-50 hover:bg-emerald-50/50">
+                                        <input
+                                            type="file"
+                                            multiple
+                                            className="hidden"
+                                            onChange={handleDocumentAttach}
+                                            accept=".pdf,.jpg,.jpeg,.png,.doc,.docx,.xls,.xlsx"
+                                        />
+                                        <Upload size={16} className="text-gray-400" />
+                                        <span className="text-xs text-gray-500 font-medium">Clique para anexar documentos</span>
+                                    </label>
+                                </div>
 
-                                    {/* Fornecedores with Category Filter */}
-                                    <div>
-                                        <label className="block text-sm font-medium text-gray-700 mb-2">
-                                            Fornecedores *
-                                        </label>
+                                {/* Licitantes with Category Filter */}
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                                        Licitantes *
+                                    </label>
 
-                                        {/* Category Filter */}
-                                        <div className="flex flex-wrap gap-2 mb-3">
+                                    {/* Category Filter */}
+                                    <div className="flex flex-wrap gap-2 mb-3">
+                                        <button
+                                            type="button"
+                                            onClick={() => setCategoriaFiltro("")}
+                                            className={`px-3 py-1.5 rounded-full text-xs font-semibold transition-all ${categoriaFiltro === ""
+                                                ? 'bg-[#44B16F] text-white shadow-sm'
+                                                : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                                                }`}
+                                        >
+                                            Todas as categorias
+                                        </button>
+                                        {categories.map((cat) => (
                                             <button
+                                                key={cat.id}
                                                 type="button"
-                                                onClick={() => setCategoriaFiltro("")}
-                                                className={`px-3 py-1.5 rounded-full text-xs font-semibold transition-all ${categoriaFiltro === ""
+                                                onClick={() => setCategoriaFiltro(cat.id)}
+                                                className={`px-3 py-1.5 rounded-full text-xs font-semibold transition-all ${String(categoriaFiltro) === String(cat.id)
                                                     ? 'bg-[#44B16F] text-white shadow-sm'
                                                     : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
                                                     }`}
                                             >
-                                                Todas as categorias
+                                                {cat.name}
                                             </button>
-                                            {categories.map((cat) => (
-                                                <button
-                                                    key={cat.id}
-                                                    type="button"
-                                                    onClick={() => setCategoriaFiltro(cat.id)}
-                                                    className={`px-3 py-1.5 rounded-full text-xs font-semibold transition-all ${String(categoriaFiltro) === String(cat.id)
-                                                        ? 'bg-[#44B16F] text-white shadow-sm'
-                                                        : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-                                                        }`}
-                                                >
-                                                    {cat.name}
-                                                </button>
-                                            ))}
-                                        </div>
-
-                                        {/* Search fornecedores */}
-                                        <div className="relative mb-2">
-                                            <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={14} />
-                                            <input
-                                                type="text"
-                                                value={fornecedorSearchQuery}
-                                                onChange={(e) => setFornecedorSearchQuery(e.target.value)}
-                                                placeholder="Pesquisar fornecedores..."
-                                                className="w-full pl-8 pr-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#44B16F] focus:border-transparent text-sm"
-                                            />
-                                        </div>
-
-                                        {isLoadingFornecedores ? (
-                                            <div className="w-full px-4 py-3 border border-gray-300 rounded-lg bg-gray-50 text-gray-500 text-sm">
-                                                Carregando fornecedores...
-                                            </div>
-                                        ) : (
-                                            <div className="border border-gray-300 rounded-lg max-h-[150px] overflow-y-auto">
-                                                {filteredFornecedores.length === 0 ? (
-                                                    <div className="p-3 text-sm text-gray-500 text-center">Nenhum fornecedor encontrado</div>
-                                                ) : (
-                                                    filteredFornecedores.map((forn) => (
-                                                        <label
-                                                            key={forn.id}
-                                                            className={`flex items-center gap-3 px-3 py-2.5 hover:bg-gray-50 cursor-pointer border-b border-gray-50 last:border-0 transition-colors ${selectedFornecedores.includes(forn.id) ? 'bg-emerald-50' : ''
-                                                                }`}
-                                                        >
-                                                            <input
-                                                                type="checkbox"
-                                                                checked={selectedFornecedores.includes(forn.id)}
-                                                                onChange={() => toggleFornecedor(forn.id)}
-                                                                className="rounded border-gray-300 text-[#44B16F] focus:ring-[#44B16F]"
-                                                            />
-                                                            <div className="flex-1 min-w-0">
-                                                                <p className="text-sm font-medium text-gray-800 truncate">
-                                                                    {forn.commercial_name || forn.legal_name || `#${forn.id}`}
-                                                                </p>
-                                                                <p className="text-xs text-gray-500 truncate">{forn.email || ''}</p>
-                                                            </div>
-                                                            {forn.categories && forn.categories.length > 0 && (
-                                                                <div className="flex flex-wrap gap-1 shrink-0">
-                                                                    {forn.categories.slice(0, 2).map((cat, idx) => (
-                                                                        <span key={idx} className="text-[10px] px-2 py-0.5 bg-emerald-50 text-emerald-700 rounded-full">
-                                                                            {cat.name}
-                                                                        </span>
-                                                                    ))}
-                                                                    {forn.categories.length > 2 && (
-                                                                        <span className="text-[10px] px-2 py-0.5 bg-gray-100 text-gray-500 rounded-full">
-                                                                            +{forn.categories.length - 2}
-                                                                        </span>
-                                                                    )}
-                                                                </div>
-                                                            )}
-                                                        </label>
-                                                    ))
-                                                )}
-                                            </div>
-                                        )}
-                                        {selectedFornecedores.length > 0 && (
-                                            <div className="mt-2 flex flex-wrap gap-2">
-                                                {selectedFornecedores.map(id => {
-                                                    const forn = fornecedoresList.find(f => f.id === id);
-                                                    return forn ? (
-                                                        <span key={id} className="inline-flex items-center gap-1 px-3 py-1 bg-[#44B16F] text-white text-xs rounded-full">
-                                                            {forn.commercial_name || forn.legal_name}
-                                                            <button
-                                                                type="button"
-                                                                onClick={() => setSelectedFornecedores(selectedFornecedores.filter(f => f !== id))}
-                                                                className="hover:bg-[#3a9d5f] rounded-full p-0.5"
-                                                            >
-                                                                <X className="w-3 h-3" />
-                                                            </button>
-                                                        </span>
-                                                    ) : null;
-                                                })}
-                                            </div>
-                                        )}
-                                        {selectedFornecedores.length < 3 && selectedFornecedores.length > 0 && (
-                                            <p className="mt-1 text-xs text-amber-600 font-medium">
-                                                Selecione mais {3 - selectedFornecedores.length} {3 - selectedFornecedores.length === 1 ? 'fornecedor' : 'fornecedores'} (mínimo 3).
-                                            </p>
-                                        )}
+                                        ))}
                                     </div>
 
-                                    {/* Product Name */}
-                                    <div className="relative">
-                                        <label className="block text-sm font-medium text-gray-700 mb-2">
-                                            Nome do produto
-                                        </label>
+                                    {/* Search licitantes */}
+                                    <div className="relative mb-2">
+                                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={14} />
                                         <input
                                             type="text"
-                                            value={productName}
-                                            onChange={(e) => setProductName(e.target.value)}
-                                            onFocus={() => { if (productName.length >= 2) setShowSuggestions(true); }}
-                                            onBlur={() => setTimeout(() => setShowSuggestions(false), 200)}
-                                            placeholder="Computador portátil"
-                                            className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#44B16F] focus:border-transparent"
+                                            value={fornecedorSearchQuery}
+                                            onChange={(e) => setFornecedorSearchQuery(e.target.value)}
+                                            placeholder="Pesquisar licitantes..."
+                                            className="w-full pl-8 pr-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#44B16F] focus:border-transparent text-sm"
                                         />
-                                        {showSuggestions && filteredProducts.length > 0 && (
-                                            <div className="absolute z-50 w-full bg-white mt-1 border border-gray-200 rounded-lg shadow-xl max-h-60 overflow-y-auto">
-                                                {filteredProducts.map(product => (
-                                                    <div
-                                                        key={product.id}
-                                                        onClick={() => handleSelectProduct(product)}
-                                                        className="px-4 py-2 hover:bg-gray-50 cursor-pointer border-b border-gray-50 last:border-0"
+                                    </div>
+
+                                    {isLoadingFornecedores ? (
+                                        <div className="w-full px-4 py-3 border border-gray-300 rounded-lg bg-gray-50 text-gray-500 text-sm">
+                                            Carregando licitantes...
+                                        </div>
+                                    ) : (
+                                        <div className="border border-gray-300 rounded-lg max-h-[180px] overflow-y-auto">
+                                            {filteredFornecedores.length === 0 ? (
+                                                <div className="p-3 text-sm text-gray-500 text-center">Nenhum licitante encontrado</div>
+                                            ) : (
+                                                filteredFornecedores.map((forn) => (
+                                                    <label
+                                                        key={forn.id}
+                                                        className={`flex items-center gap-3 px-3 py-2.5 hover:bg-gray-50 cursor-pointer border-b border-gray-50 last:border-0 transition-colors ${selectedFornecedores.includes(forn.id) ? 'bg-emerald-50' : ''
+                                                            }`}
                                                     >
-                                                        <p className="font-medium text-sm text-gray-800">{product.name}</p>
-                                                        {product.description && (
-                                                            <p className="text-xs text-gray-500 truncate">{product.description}</p>
-                                                        )}
-                                                    </div>
-                                                ))}
-                                            </div>
-                                        )}
-                                    </div>
-
-                                    {/* Product Description */}
-                                    <div>
-                                        <label className="block text-sm font-medium text-gray-700 mb-2">
-                                            Especificações
-                                        </label>
-                                        <textarea
-                                            value={productDescription}
-                                            onChange={(e) => setProductDescription(e.target.value)}
-                                            placeholder="HP, i5 de 11gen com 32G de RAM e 1T de ROM"
-                                            rows={3}
-                                            className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#44B16F] focus:border-transparent resize-none"
-                                        />
-                                    </div>
-
-                                    {/* Quantity and Unit */}
-                                    <div className="grid grid-cols-2 gap-4">
-                                        <div>
-                                            <label className="block text-sm font-medium text-gray-700 mb-2">
-                                                Quantidade
-                                            </label>
-                                            <input
-                                                type="number"
-                                                min="1"
-                                                value={productQuantity}
-                                                onChange={(e) => setProductQuantity(parseInt(e.target.value) || 1)}
-                                                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#44B16F] focus:border-transparent"
-                                            />
-                                        </div>
-                                        <div>
-                                            <label className="block text-sm font-medium text-gray-700 mb-2">
-                                                Unidade
-                                            </label>
-                                            <select
-                                                value={productUnit}
-                                                onChange={(e) => setProductUnit(e.target.value)}
-                                                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#44B16F] focus:border-transparent"
-                                            >
-                                                <option value="un">Unidade (un)</option>
-                                                <option value="kg">Quilograma (kg)</option>
-                                                <option value="g">Grama (g)</option>
-                                                <option value="l">Litro (l)</option>
-                                                <option value="ml">Mililitro (ml)</option>
-                                                <option value="m">Metro (m)</option>
-                                                <option value="cm">Centímetro (cm)</option>
-                                                <option value="m²">Metro Quadrado (m²)</option>
-                                                <option value="pc">Peça (pc)</option>
-                                                <option value="cx">Caixa (cx)</option>
-                                            </select>
-                                        </div>
-                                    </div>
-
-                                    {/* Add Product Button */}
-                                    <button
-                                        onClick={handleAddProduct}
-                                        className="w-full flex items-center justify-center gap-2 px-6 py-3 border-2 border-dashed border-gray-400 text-gray-700 rounded-lg hover:bg-gray-50 hover:border-gray-500 transition-all font-medium"
-                                    >
-                                        <div className="w-5 h-5 rounded-full border-2 border-gray-700 flex items-center justify-center">
-                                            <Plus className="w-3 h-3" strokeWidth={3} />
-                                        </div>
-                                        Adicionar produto
-                                    </button>
-                                </div>
-
-                                {/* Right Column - Products List */}
-                                <div>
-                                    {/* Tabs */}
-                                    <div className="flex gap-2 mb-4 border-b border-gray-200">
-                                        <button
-                                            type="button"
-                                            onClick={() => setRightColView('products')}
-                                            className={`pb-2 px-4 font-bold text-sm border-b-2 transition-all ${rightColView === 'products'
-                                                ? 'border-[#44B16F] text-[#44B16F]'
-                                                : 'border-transparent text-gray-500 hover:text-gray-700'
-                                            }`}
-                                        >
-                                            Produtos Adicionados ({productsList.length})
-                                        </button>
-                                        <button
-                                            type="button"
-                                            onClick={() => setRightColView('suppliers')}
-                                            className={`pb-2 px-4 font-bold text-sm border-b-2 transition-all ${rightColView === 'suppliers'
-                                                ? 'border-[#44B16F] text-[#44B16F]'
-                                                : 'border-transparent text-gray-500 hover:text-gray-700'
-                                            }`}
-                                        >
-                                            Produtos por Fornecedor ({selectedFornecedores.length})
-                                        </button>
-                                    </div>
-
-                                    <div className="bg-gray-50 rounded-lg p-4 min-h-[356px] max-h-[356px] overflow-y-auto">
-                                        {rightColView === 'products' ? (
-                                            productsList.length === 0 ? (
-                                                <div className="flex flex-col items-center justify-center h-full text-gray-400">
-                                                    <Package className="w-16 h-16 mb-4" strokeWidth={1.5} />
-                                                    <p className="text-sm">Nenhum produto adicionado</p>
-                                                </div>
-                                            ) : (
-                                                <div className="space-y-3">
-                                                    {productsList.map((product) => (
-                                                        <div
-                                                            key={product.id}
-                                                            className="bg-white rounded-lg px-4 py-3 flex items-center justify-between hover:shadow-sm transition-shadow"
-                                                        >
-                                                            <div className="flex-1">
-                                                                <p className="text-sm font-medium text-gray-900">
-                                                                    {product.name}
-                                                                </p>
-                                                                <p className="text-xs text-gray-500 mt-1">
-                                                                    {product.quantity} {product.unit}
-                                                                </p>
-                                                                {product.specifications && (
-                                                                    <p className="text-xs text-gray-500 mt-1 line-clamp-1">
-                                                                        {product.specifications}
-                                                                    </p>
-                                                                )}
-                                                            </div>
-                                                            <div className="flex items-center gap-3 ml-4">
-                                                                {/* Quantity Controls */}
-                                                                <div className="flex items-center gap-2 bg-gray-100 rounded-lg px-2 py-1">
-                                                                    <button
-                                                                        onClick={() => handleDecreaseQuantity(product.id)}
-                                                                        className="text-gray-600 hover:text-gray-900 transition-colors"
-                                                                        disabled={product.quantity <= 1}
-                                                                    >
-                                                                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 12H4" />
-                                                                        </svg>
-                                                                    </button>
-                                                                    <span className="text-sm font-medium text-gray-900 min-w-[20px] text-center">
-                                                                        {product.quantity}
-                                                                    </span>
-                                                                    <button
-                                                                        onClick={() => handleIncreaseQuantity(product.id)}
-                                                                        className="text-gray-600 hover:text-gray-900 transition-colors"
-                                                                    >
-                                                                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-                                                                        </svg>
-                                                                    </button>
-                                                                </div>
-                                                                {/* Delete Button */}
-                                                                <button
-                                                                    onClick={() => handleRemoveProduct(product.id)}
-                                                                    className="text-red-500 hover:text-red-700 transition-colors p-1"
-                                                                >
-                                                                    <Trash2 className="w-4 h-4" />
-                                                                </button>
-                                                            </div>
+                                                        <input
+                                                            type="checkbox"
+                                                            checked={selectedFornecedores.includes(forn.id)}
+                                                            onChange={() => toggleFornecedor(forn.id)}
+                                                            className="rounded border-gray-300 text-[#44B16F] focus:ring-[#44B16F]"
+                                                        />
+                                                        <div className="flex-1 min-w-0">
+                                                            <p className="text-sm font-medium text-gray-800 truncate">
+                                                                {forn.commercial_name || forn.legal_name || `#${forn.id}`}
+                                                            </p>
+                                                            <p className="text-xs text-gray-500 truncate">{forn.email || ''}</p>
                                                         </div>
-                                                    ))}
-                                                </div>
-                                            )
-                                        ) : (
-                                            selectedFornecedores.length === 0 ? (
-                                                <div className="flex flex-col items-center justify-center h-full text-gray-400 p-4 text-center">
-                                                    <Search className="w-16 h-16 mb-4 mx-auto" strokeWidth={1.5} />
-                                                    <p className="text-sm">Selecione pelo menos um fornecedor para ver a lista de produtos associados.</p>
-                                                </div>
-                                            ) : (
-                                                <div className="space-y-4">
-                                                    {selectedFornecedores.map(id => {
-                                                        const forn = fornecedoresList.find(f => f.id === id);
-                                                        if (!forn) return null;
-                                                        return (
-                                                            <div key={id} className="bg-white rounded-lg p-4 border border-gray-100 hover:shadow-sm transition-shadow">
-                                                                <div className="flex items-center gap-2 border-b border-gray-50 pb-2 mb-3">
-                                                                    <span className="w-2.5 h-2.5 rounded-full bg-[#44B16F]"></span>
-                                                                    <h4 className="font-bold text-sm text-gray-900">{forn.commercial_name || forn.legal_name}</h4>
-                                                                </div>
-                                                                {productsList.length === 0 ? (
-                                                                    <p className="text-xs text-gray-400 italic">Nenhum produto adicionado à cotação.</p>
-                                                                ) : (
-                                                                    <ul className="space-y-2">
-                                                                        {productsList.map(product => (
-                                                                            <li key={product.id} className="flex justify-between items-center bg-gray-50/50 px-3 py-1.5 rounded border border-gray-100">
-                                                                                <span className="text-xs font-semibold text-gray-700">{product.name}</span>
-                                                                                <span className="text-xs bg-emerald-50 text-emerald-700 px-2 py-0.5 rounded-full font-bold">
-                                                                                    {product.quantity} {product.unit}
-                                                                                </span>
-                                                                            </li>
-                                                                        ))}
-                                                                    </ul>
+                                                        {forn.categories && forn.categories.length > 0 && (
+                                                            <div className="flex flex-wrap gap-1 shrink-0">
+                                                                {forn.categories.slice(0, 2).map((cat, idx) => (
+                                                                    <span key={idx} className="text-[10px] px-2 py-0.5 bg-emerald-50 text-emerald-700 rounded-full">
+                                                                        {cat.name}
+                                                                    </span>
+                                                                ))}
+                                                                {forn.categories.length > 2 && (
+                                                                    <span className="text-[10px] px-2 py-0.5 bg-gray-100 text-gray-500 rounded-full">
+                                                                        +{forn.categories.length - 2}
+                                                                    </span>
                                                                 )}
                                                             </div>
-                                                        );
-                                                    })}
-                                                </div>
-                                            )
-                                        )}
-                                    </div>
+                                                        )}
+                                                    </label>
+                                                ))
+                                            )}
+                                        </div>
+                                    )}
+                                    {selectedFornecedores.length > 0 && (
+                                        <div className="mt-2 flex flex-wrap gap-2">
+                                            {selectedFornecedores.map(id => {
+                                                const forn = fornecedoresList.find(f => f.id === id);
+                                                return forn ? (
+                                                    <span key={id} className="inline-flex items-center gap-1 px-3 py-1 bg-[#44B16F] text-white text-xs rounded-full">
+                                                        {forn.commercial_name || forn.legal_name}
+                                                        <button
+                                                            type="button"
+                                                            onClick={() => setSelectedFornecedores(selectedFornecedores.filter(f => f !== id))}
+                                                            className="hover:bg-[#3a9d5f] rounded-full p-0.5"
+                                                        >
+                                                            <X className="w-3 h-3" />
+                                                        </button>
+                                                    </span>
+                                                ) : null;
+                                            })}
+                                        </div>
+                                    )}
+                                    {selectedFornecedores.length < 3 && selectedFornecedores.length > 0 && (
+                                        <p className="mt-1 text-xs text-amber-600 font-medium">
+                                            Selecione mais {3 - selectedFornecedores.length} {3 - selectedFornecedores.length === 1 ? 'licitante' : 'licitantes'} (mínimo 3).
+                                        </p>
+                                    )}
                                 </div>
                             </div>
 
@@ -972,7 +756,7 @@ export default function ModalPedirCotacao({ isOpen, onClose, fornecedor, activit
                             <div className="flex justify-end pt-6 mt-6 border-t border-gray-100">
                                 <button
                                     onClick={handleSendExternalLink}
-                                    disabled={productsList.length === 0 || !pedidoAssunto.trim() || selectedFornecedores.length < 3 || isSubmitting}
+                                    disabled={!pedidoAssunto.trim() || selectedFornecedores.length < 3 || isSubmitting}
                                     className="px-8 py-3 bg-[#44B16F] text-white rounded-lg hover:bg-[#3a9d5f] transition-colors font-medium shadow-sm disabled:bg-gray-300 disabled:cursor-not-allowed flex items-center gap-2"
                                 >
                                     {isSubmitting ? (

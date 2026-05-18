@@ -283,6 +283,16 @@ export default function ModalDetalhesFornecedor({
                                         />
                                     )}
 
+                                    {(fornecedor.products_list || fornecedor.products_list_url) && (
+                                        <DocumentItem
+                                            type="products_list"
+                                            label="Lista de Produtos"
+                                            subLabel="Documento de Fornecimento"
+                                            iconColorClass="bg-pink-50 text-pink-600"
+                                            icon={FileText}
+                                        />
+                                    )}
+
                                     {(fornecedor.commercial_license || fornecedor.commercial_license_url) && (
                                         Array.isArray(fornecedor.commercial_license) ? (
                                             fornecedor.commercial_license.map((license, index) => (
@@ -310,6 +320,7 @@ export default function ModalDetalhesFornecedor({
                                         !(fornecedor.pacto_social || fornecedor.pacto_social_url) &&
                                         !(fornecedor.non_debtor_certificate || fornecedor.non_debtor_certificate_url) &&
                                         !(fornecedor.nif_proof || fornecedor.nif_proof_url) &&
+                                        !(fornecedor.products_list || fornecedor.products_list_url) &&
                                         !(fornecedor.commercial_license || fornecedor.commercial_license_url) && (
                                             <div className="p-8 text-center bg-gray-50 rounded-xl border border-dashed border-gray-200">
                                                 <p className="text-gray-500 text-sm">Nenhum documento disponível.</p>

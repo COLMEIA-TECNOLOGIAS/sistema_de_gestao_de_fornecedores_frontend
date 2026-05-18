@@ -365,11 +365,10 @@ export default function RelatoriosPage() {
       {/* REPORT CONTENT */}
       {!isLoading && reportData && (
         <div className="space-y-8 bg-transparent">
-
-
           {/* Metrics Grid */}
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-            <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            {/* Total Gasto hidden as requested */}
+            {/* <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
               <div className="flex items-start justify-between mb-4">
                 <div className="p-3 bg-blue-50 text-blue-600 rounded-xl">
                   <TrendingUp size={24} />
@@ -379,7 +378,7 @@ export default function RelatoriosPage() {
               <h3 className="text-2xl font-bold text-gray-900 mt-1">
                 {formatCurrency(reportData.metrics?.total_spent)}
               </h3>
-            </div>
+            </div> */}
 
             <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
               <div className="flex items-start justify-between mb-4">
@@ -393,7 +392,8 @@ export default function RelatoriosPage() {
               </h3>
             </div>
 
-            <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
+            {/* Ticket Médio hidden as requested */}
+            {/* <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
               <div className="flex items-start justify-between mb-4">
                 <div className="p-3 bg-green-50 text-green-600 rounded-xl">
                   <Zap size={24} />
@@ -403,7 +403,7 @@ export default function RelatoriosPage() {
               <h3 className="text-2xl font-bold text-gray-900 mt-1">
                 {formatCurrency(reportData.metrics?.avg_ticket)}
               </h3>
-            </div>
+            </div> */}
 
             <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
               <div className="flex items-start justify-between mb-4">
@@ -418,13 +418,12 @@ export default function RelatoriosPage() {
             </div>
           </div>
 
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            {/* Spending Over Time (Placeholder logic since API return empty for now) */}
+          {/* Evolução de Gastos and Top Produtos hidden as requested */}
+          {/* <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
               <h3 className="text-lg font-bold text-gray-900 mb-6">Evolução de Gastos</h3>
               {reportData.charts?.spending_over_time?.length > 0 ? (
                 <div className="h-64 flex items-end justify-center gap-4">
-                  {/* Simple Bar Chart Implementation */}
                   {reportData.charts.spending_over_time.map((item, idx) => (
                     <div key={idx} className="flex flex-col items-center">
                       <div
@@ -442,7 +441,6 @@ export default function RelatoriosPage() {
               )}
             </div>
 
-            {/* Top Products */}
             <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
               <h3 className="text-lg font-bold text-gray-900 mb-6">Top Produtos</h3>
               <div className="space-y-4">
@@ -470,7 +468,7 @@ export default function RelatoriosPage() {
                 )}
               </div>
             </div>
-          </div>
+          </div> */}
         </div>
       )}
     </div>

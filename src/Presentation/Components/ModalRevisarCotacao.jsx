@@ -149,86 +149,88 @@ export default function ModalRevisarCotacao({
                     </div>
 
                     {/* Tabela de Produtos */}
-                    <div className="mb-6 pb-6 border-b-2 border-dashed border-gray-200">
-                        <div className="grid grid-cols-12 gap-4 font-bold text-gray-900 mb-4">
-                            <div className="col-span-4">Produtos:</div>
-                            <div className="col-span-4">Descrição:</div>
-                            <div className="col-span-2 text-right">Unitário:</div>
-                            <div className="col-span-2 text-right">Total:</div>
-                        </div>
+                    {!isAcquisition && (
+                        <div className="mb-6 pb-6 border-b-2 border-dashed border-gray-200">
+                            <div className="grid grid-cols-12 gap-4 font-bold text-gray-900 mb-4">
+                                <div className="col-span-4">Produtos:</div>
+                                <div className="col-span-4">Descrição:</div>
+                                <div className="col-span-2 text-right">Unitário:</div>
+                                <div className="col-span-2 text-right">Total:</div>
+                            </div>
 
-                        {cotacao.items && cotacao.items.length > 0 ? (
-                            <div className="space-y-4">
-                                {cotacao.items.map((item, index) => {
-                                    // Try to get item details from the nested quotation_item object (priority)
-                                    // or find it in the original request items array (fallback)
-                                    const requestItem = item.quotation_item || cotacao.quotation_supplier?.quotation_request?.items?.find(
-                                        r => r.id === item.quotation_item_id
-                                    );
+                            {cotacao.items && cotacao.items.length > 0 ? (
+                                <div className="space-y-4">
+                                    {cotacao.items.map((item, index) => {
+                                        // Try to get item details from the nested quotation_item object (priority)
+                                        // or find it in the original request items array (fallback)
+                                        const requestItem = item.quotation_item || cotacao.quotation_supplier?.quotation_request?.items?.find(
+                                            r => r.id === item.quotation_item_id
+                                        );
 
-                                    const quantity = parseFloat(requestItem?.quantity || item.quantity || 1);
-                                    let unitPrice = parseFloat(item.unit_price || item.price || 0);
+                                        const quantity = parseFloat(requestItem?.quantity || item.quantity || 1);
+                                        let unitPrice = parseFloat(item.unit_price || item.price || 0);
 
-                                    // Heuristic: If we have a total_amount for the whole quote but 0 for unit price,
-                                    // try to distribute it or assign it to the single item.
-                                    if (unitPrice === 0 && (cotacao.total_amount || cotacao.amount)) {
-                                        const total = parseFloat(cotacao.total_amount || cotacao.amount);
-                                        if (total > 0) {
-                                            if (cotacao.items.length === 1 && quantity > 0) {
-                                                // Single item: exact match
-                                                unitPrice = total / quantity;
-                                            } else if (cotacao.items.length > 1 && quantity > 0) {
-                                                // Multiple items: This is technically inaccurate, but if the user demands "add the price",
-                                                // and we ONLY have the grand total, we can try to distribute it explicitly OR
-                                                // check if there's a stored 'estimated_price' from the request fallback we might have missed.
+                                        // Heuristic: If we have a total_amount for the whole quote but 0 for unit price,
+                                        // try to distribute it or assign it to the single item.
+                                        if (unitPrice === 0 && (cotacao.total_amount || cotacao.amount)) {
+                                            const total = parseFloat(cotacao.total_amount || cotacao.amount);
+                                            if (total > 0) {
+                                                if (cotacao.items.length === 1 && quantity > 0) {
+                                                    // Single item: exact match
+                                                    unitPrice = total / quantity;
+                                                } else if (cotacao.items.length > 1 && quantity > 0) {
+                                                    // Multiple items: This is technically inaccurate, but if the user demands "add the price",
+                                                    // and we ONLY have the grand total, we can try to distribute it explicitly OR
+                                                    // check if there's a stored 'estimated_price' from the request fallback we might have missed.
 
-                                                // Better heuristic: if we have prices on SOME items, don't overwrite. 
-                                                // If ALL items are 0, distribute evenly? No, that's misleading.
+                                                    // Better heuristic: if we have prices on SOME items, don't overwrite. 
+                                                    // If ALL items are 0, distribute evenly? No, that's misleading.
 
-                                                // Let's at least check 'item.estimated_price' again very explicitly.
-                                                unitPrice = parseFloat(item.estimated_price || 0);
+                                                    // Let's at least check 'item.estimated_price' again very explicitly.
+                                                    unitPrice = parseFloat(item.estimated_price || 0);
 
-                                                // Final fallback: If still 0, and we really want to show *something* that sums up?
-                                                // No, showing 0.00 on multi-item lines is safer than lying.
-                                                // However, the screenshot shows 2 items (Caneta/Borracha) and Total 5000.
-                                                // The user wants unit prices. 
-                                                // If the technician view is restricted, we LITERALLY DO NOT HAVE THEM.
-                                                // I will leave it as 0.00 for multi-item unless estimated_price saves us.
+                                                    // Final fallback: If still 0, and we really want to show *something* that sums up?
+                                                    // No, showing 0.00 on multi-item lines is safer than lying.
+                                                    // However, the screenshot shows 2 items (Caneta/Borracha) and Total 5000.
+                                                    // The user wants unit prices. 
+                                                    // If the technician view is restricted, we LITERALLY DO NOT HAVE THEM.
+                                                    // I will leave it as 0.00 for multi-item unless estimated_price saves us.
+                                                }
                                             }
                                         }
-                                    }
 
-                                    const lineTotal = quantity * unitPrice;
+                                        const lineTotal = quantity * unitPrice;
 
-                                    return (
-                                        <div key={index} className="grid grid-cols-12 gap-4 text-sm text-gray-700 items-center">
-                                            <div className="col-span-4">
-                                                <span className="text-gray-900">
-                                                    {String(index + 1).padStart(2, '0')} - {requestItem ? requestItem.name : (item.name || item.product_name || `Item #${item.quotation_item_id || index + 1}`)}
-                                                </span>
-                                                {requestItem && (
-                                                    <span className="text-gray-600 ml-1">
-                                                        ({requestItem.quantity} {requestItem.unit || 'uni'})
+                                        return (
+                                            <div key={index} className="grid grid-cols-12 gap-4 text-sm text-gray-700 items-center">
+                                                <div className="col-span-4">
+                                                    <span className="text-gray-900">
+                                                        {String(index + 1).padStart(2, '0')} - {requestItem ? requestItem.name : (item.name || item.product_name || `Item #${item.quotation_item_id || index + 1}`)}
                                                     </span>
-                                                )}
+                                                    {requestItem && (
+                                                        <span className="text-gray-600 ml-1">
+                                                            ({requestItem.quantity} {requestItem.unit || 'uni'})
+                                                        </span>
+                                                    )}
+                                                </div>
+                                                <div className="col-span-4 text-gray-600">
+                                                    {requestItem?.specifications || item.notes || item.description || item.specifications || '-'}
+                                                </div>
+                                                <div className="col-span-2 text-right font-medium text-gray-900">
+                                                    {(unitPrice !== undefined && unitPrice !== null) ? `${unitPrice.toLocaleString('pt-AO', { minimumFractionDigits: 2 })} AOA` : '---'}
+                                                </div>
+                                                <div className="col-span-2 text-right font-bold text-gray-900">
+                                                    {(lineTotal !== undefined && lineTotal !== null) ? `${lineTotal.toLocaleString('pt-AO', { minimumFractionDigits: 2 })} AOA` : '---'}
+                                                </div>
                                             </div>
-                                            <div className="col-span-4 text-gray-600">
-                                                {requestItem?.specifications || item.notes || item.description || item.specifications || '-'}
-                                            </div>
-                                            <div className="col-span-2 text-right font-medium text-gray-900">
-                                                {(unitPrice !== undefined && unitPrice !== null) ? `${unitPrice.toLocaleString('pt-AO', { minimumFractionDigits: 2 })} AOA` : '---'}
-                                            </div>
-                                            <div className="col-span-2 text-right font-bold text-gray-900">
-                                                {(lineTotal !== undefined && lineTotal !== null) ? `${lineTotal.toLocaleString('pt-AO', { minimumFractionDigits: 2 })} AOA` : '---'}
-                                            </div>
-                                        </div>
-                                    );
-                                })}
-                            </div>
-                        ) : (
-                            <p className="text-gray-500 text-sm">Nenhum item cotado.</p>
-                        )}
-                    </div>
+                                        );
+                                    })}
+                                </div>
+                            ) : (
+                                <p className="text-gray-500 text-sm">Nenhum item cotado.</p>
+                            )}
+                        </div>
+                    )}
 
                     {/* Documentos */}
                     <div className="mb-6 pb-6 border-b border-gray-200">
@@ -351,18 +353,20 @@ export default function ModalRevisarCotacao({
                     </div>
 
                     {/* Total */}
-                    <div className="flex justify-end items-center mt-4">
-                        <span className="text-xl font-bold text-gray-900 mr-2">Total:</span>
-                        <span className="text-4xl font-black text-black tracking-tight">
-                            {(() => {
-                                const calculated = cotacao.items && cotacao.items.length > 0 ? calcularTotal() : '0,00';
-                                if (calculated === '0,00' && (cotacao.total_amount || cotacao.amount)) {
-                                    return parseFloat(cotacao.total_amount || cotacao.amount).toLocaleString('pt-AO', { minimumFractionDigits: 2 }).replace('.', ',');
-                                }
-                                return calculated;
-                            })()} AOA
-                        </span>
-                    </div>
+                    {!isAcquisition && (
+                        <div className="flex justify-end items-center mt-4">
+                            <span className="text-xl font-bold text-gray-900 mr-2">Total:</span>
+                            <span className="text-4xl font-black text-black tracking-tight">
+                                {(() => {
+                                    const calculated = cotacao.items && cotacao.items.length > 0 ? calcularTotal() : '0,00';
+                                    if (calculated === '0,00' && (cotacao.total_amount || cotacao.amount)) {
+                                        return parseFloat(cotacao.total_amount || cotacao.amount).toLocaleString('pt-AO', { minimumFractionDigits: 2 }).replace('.', ',');
+                                    }
+                                    return calculated;
+                                })()} AOA
+                            </span>
+                        </div>
+                    )}
                 </div>
 
                 {/* Footer com botões */}
