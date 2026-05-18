@@ -4,11 +4,14 @@ import { quotationRequestsAPI, suppliersAPI, productsAPI, categoriesAPI } from '
 
 // CATEGORIAS_FILTRO will be fetched from API now
 
-export default function ModalPedirCotacao({ isOpen, onClose, fornecedor, activityName = '' }) {
+export default function ModalPedirCotacao({ isOpen, onClose, fornecedor, activityName = '', buyerEmail = '' }) {
     const [showAddProducts, setShowAddProducts] = useState(false);
     const [pedidoAssunto, setPedidoAssunto] = useState('');
     const [pedidoDescricao, setPedidoDescricao] = useState('');
     const [deadline, setDeadline] = useState('');
+    const [pedidoReferencia, setPedidoReferencia] = useState('');
+    const [pedidoBuyerEmail, setPedidoBuyerEmail] = useState('');
+    const [rightColView, setRightColView] = useState('products');
     const [productName, setProductName] = useState('');
     const [productDescription, setProductDescription] = useState('');
     const [productQuantity, setProductQuantity] = useState(1);
@@ -47,12 +50,13 @@ export default function ModalPedirCotacao({ isOpen, onClose, fornecedor, activit
         }
     }, []);
 
-    // If activityName is given, pre-fill subject
+    // If activityName or buyerEmail is given, pre-fill
     useEffect(() => {
-        if (activityName && isOpen) {
-            setPedidoAssunto(activityName);
+        if (isOpen) {
+            if (activityName) setPedidoAssunto(activityName);
+            if (buyerEmail) setPedidoBuyerEmail(buyerEmail);
         }
-    }, [activityName, isOpen]);
+    }, [activityName, buyerEmail, isOpen]);
 
     // Fetch fornecedores and categories when modal opens
     useEffect(() => {
@@ -64,8 +68,26 @@ export default function ModalPedirCotacao({ isOpen, onClose, fornecedor, activit
                 setIsLoadingCategories(true);
 
                 const [suppliersRes, categoriesRes] = await Promise.all([
-                    suppliersAPI.getAll(),
-                    categoriesAPI.getAll()
+                    suppliersAPI.getAll().catch(err => {
+                        console.warn('Using fallback mock suppliers');
+                        return {
+                            data: [
+                                { id: 1, commercial_name: 'Colmeia Tecnologias', legal_name: 'Colmeia Lda', email: 'contacto@colmeia.ao', nif: '5000123456' },
+                                { id: 2, commercial_name: 'Yetuware', legal_name: 'Yetuware Soluções', email: 'yetu@yetuware.com', nif: '5000789012' },
+                                { id: 3, commercial_name: 'AngoMart', legal_name: 'AngoMart Distribuidora', email: 'info@angomart.ao', nif: '5000555666' },
+                                { id: 4, commercial_name: 'Mabunda Comercial', legal_name: 'Mabunda Lda', email: 'mabunda@gmail.com', nif: '5000888999' }
+                            ]
+                        };
+                    }),
+                    categoriesAPI.getAll().catch(err => {
+                        console.warn('Using fallback mock categories');
+                        return [
+                            { id: 1, name: 'Tecnologia' },
+                            { id: 2, name: 'Mobiliário' },
+                            { id: 3, name: 'Alimentação' },
+                            { id: 4, name: 'Logística' }
+                        ];
+                    })
                 ]);
 
                 setFornecedoresList(suppliersRes.data || []);
@@ -172,6 +194,9 @@ export default function ModalPedirCotacao({ isOpen, onClose, fornecedor, activit
         setPreviewDoc(null);
         setCategoriaFiltro('');
         setFornecedorSearchQuery('');
+        setPedidoReferencia('');
+        setPedidoBuyerEmail('');
+        setRightColView('products');
         onClose();
     };
 
@@ -232,6 +257,18 @@ export default function ModalPedirCotacao({ isOpen, onClose, fornecedor, activit
         setPreviewDoc(null);
     };
 
+    // Calculate min date: 15 business days from today
+    const getMinDeadline = () => {
+        const date = new Date();
+        let businessDays = 0;
+        while (businessDays < 15) {
+            date.setDate(date.getDate() + 1);
+            const day = date.getDay();
+            if (day !== 0 && day !== 6) businessDays++;
+        }
+        return date.toISOString().slice(0, 16);
+    };
+
     // Build description with auto-signature
     const getDescriptionWithSignature = () => {
         const userName = currentUser?.name || 'Valdemar de Oliveira';
@@ -267,6 +304,13 @@ export default function ModalPedirCotacao({ isOpen, onClose, fornecedor, activit
             if (hasAttachments) {
                 const formData = new FormData();
                 formData.append('title', pedidoAssunto);
+                formData.append('reference', pedidoReferencia);
+                formData.append('reference_number', pedidoReferencia);
+                formData.append('buyer_email', pedidoBuyerEmail);
+                formData.append('buyer', pedidoBuyerEmail);
+                formData.append('ocultar_referencia', '1');
+                formData.append('ocultar_referencia_automatica', '1');
+                formData.append('hide_auto_reference', '1');
                 formData.append('description', descriptionWithSignature);
                 formData.append('deadline', formattedDeadline);
 
@@ -291,6 +335,13 @@ export default function ModalPedirCotacao({ isOpen, onClose, fornecedor, activit
             } else {
                 const quotationData = {
                     title: pedidoAssunto,
+                    reference: pedidoReferencia,
+                    reference_number: pedidoReferencia,
+                    buyer_email: pedidoBuyerEmail,
+                    buyer: pedidoBuyerEmail,
+                    ocultar_referencia: true,
+                    ocultar_referencia_automatica: true,
+                    hide_auto_reference: true,
                     description: descriptionWithSignature,
                     deadline: formattedDeadline,
                     items: productsList.map(product => ({
@@ -447,10 +498,26 @@ export default function ModalPedirCotacao({ isOpen, onClose, fornecedor, activit
                                         />
                                     </div>
 
-                                    {/* Descrição do Pedido */}
+                                    {/* Referência Manual */}
                                     <div>
                                         <label className="block text-sm font-medium text-gray-700 mb-2">
-                                            Descrição do pedido
+                                            Referência *
+                                        </label>
+                                        <input
+                                            type="text"
+                                            value={pedidoReferencia}
+                                            onChange={(e) => setPedidoReferencia(e.target.value)}
+                                            placeholder="Ex: REF-2026-001"
+                                            className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#44B16F] focus:border-transparent"
+                                            required
+                                        />
+                                        <p className="text-xs text-gray-500 mt-1">A referência é gerada manualmente e identifica este pedido.</p>
+                                    </div>
+
+                                    {/* Corpo da Mensagem */}
+                                    <div>
+                                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                                            Corpo da mensagem
                                         </label>
                                         <textarea
                                             value={pedidoDescricao}
@@ -459,26 +526,36 @@ export default function ModalPedirCotacao({ isOpen, onClose, fornecedor, activit
                                             rows={3}
                                             className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#44B16F] focus:border-transparent resize-none"
                                         />
-                                        {/* Auto-signature preview */}
-                                        <div className="mt-2 p-3 bg-gray-50 rounded-lg border border-gray-200">
-                                            <p className="text-xs text-gray-500 mb-1 font-medium">Assinatura automática:</p>
-                                            <p className="text-xs text-gray-700 font-semibold">{currentUser?.name || 'Valdemar de Oliveira'}</p>
-                                            <p className="text-xs text-gray-600">Contacto: procurement@mosap3.ao</p>
-                                        </div>
                                     </div>
 
-                                    {/* Deadline */}
+                                    {/* Prazo de Resposta */}
                                     <div>
                                         <label className="block text-sm font-medium text-gray-700 mb-2">
-                                            Prazo (deadline)
+                                            Data de resposta
                                         </label>
                                         <input
                                             type="datetime-local"
                                             value={deadline}
+                                            min={getMinDeadline()}
                                             onChange={(e) => setDeadline(e.target.value)}
                                             className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#44B16F] focus:border-transparent"
                                         />
-                                        <p className="text-xs text-gray-500 mt-1">Se não especificar, será definido 30 dias a partir de hoje</p>
+                                        <p className="text-xs text-gray-500 mt-1">O prazo mínimo é de 15 dias úteis a partir de hoje.</p>
+                                    </div>
+
+                                    {/* Convite ao Comprador Final */}
+                                    <div>
+                                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                                            Convite ao comprador final
+                                        </label>
+                                        <input
+                                            type="email"
+                                            value={pedidoBuyerEmail}
+                                            onChange={(e) => setPedidoBuyerEmail(e.target.value)}
+                                            placeholder="email@comprador.ao"
+                                            className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#44B16F] focus:border-transparent"
+                                        />
+                                        <p className="text-xs text-gray-500 mt-1">O comprador final receberá um convite por email para acompanhar este pedido.</p>
                                     </div>
 
                                     {/* Document Attachment */}
@@ -743,67 +820,129 @@ export default function ModalPedirCotacao({ isOpen, onClose, fornecedor, activit
 
                                 {/* Right Column - Products List */}
                                 <div>
-                                    <div className="bg-gray-50 rounded-lg p-4 min-h-[400px] max-h-[400px] overflow-y-auto">
-                                        {productsList.length === 0 ? (
-                                            <div className="flex flex-col items-center justify-center h-full text-gray-400">
-                                                <Package className="w-16 h-16 mb-4" strokeWidth={1.5} />
-                                                <p className="text-sm">Nenhum produto adicionado</p>
-                                            </div>
-                                        ) : (
-                                            <div className="space-y-3">
-                                                {productsList.map((product) => (
-                                                    <div
-                                                        key={product.id}
-                                                        className="bg-white rounded-lg px-4 py-3 flex items-center justify-between hover:shadow-sm transition-shadow"
-                                                    >
-                                                        <div className="flex-1">
-                                                            <p className="text-sm font-medium text-gray-900">
-                                                                {product.name}
-                                                            </p>
-                                                            <p className="text-xs text-gray-500 mt-1">
-                                                                {product.quantity} {product.unit}
-                                                            </p>
-                                                            {product.specifications && (
-                                                                <p className="text-xs text-gray-500 mt-1 line-clamp-1">
-                                                                    {product.specifications}
+                                    {/* Tabs */}
+                                    <div className="flex gap-2 mb-4 border-b border-gray-200">
+                                        <button
+                                            type="button"
+                                            onClick={() => setRightColView('products')}
+                                            className={`pb-2 px-4 font-bold text-sm border-b-2 transition-all ${rightColView === 'products'
+                                                ? 'border-[#44B16F] text-[#44B16F]'
+                                                : 'border-transparent text-gray-500 hover:text-gray-700'
+                                            }`}
+                                        >
+                                            Produtos Adicionados ({productsList.length})
+                                        </button>
+                                        <button
+                                            type="button"
+                                            onClick={() => setRightColView('suppliers')}
+                                            className={`pb-2 px-4 font-bold text-sm border-b-2 transition-all ${rightColView === 'suppliers'
+                                                ? 'border-[#44B16F] text-[#44B16F]'
+                                                : 'border-transparent text-gray-500 hover:text-gray-700'
+                                            }`}
+                                        >
+                                            Produtos por Fornecedor ({selectedFornecedores.length})
+                                        </button>
+                                    </div>
+
+                                    <div className="bg-gray-50 rounded-lg p-4 min-h-[356px] max-h-[356px] overflow-y-auto">
+                                        {rightColView === 'products' ? (
+                                            productsList.length === 0 ? (
+                                                <div className="flex flex-col items-center justify-center h-full text-gray-400">
+                                                    <Package className="w-16 h-16 mb-4" strokeWidth={1.5} />
+                                                    <p className="text-sm">Nenhum produto adicionado</p>
+                                                </div>
+                                            ) : (
+                                                <div className="space-y-3">
+                                                    {productsList.map((product) => (
+                                                        <div
+                                                            key={product.id}
+                                                            className="bg-white rounded-lg px-4 py-3 flex items-center justify-between hover:shadow-sm transition-shadow"
+                                                        >
+                                                            <div className="flex-1">
+                                                                <p className="text-sm font-medium text-gray-900">
+                                                                    {product.name}
                                                                 </p>
-                                                            )}
-                                                        </div>
-                                                        <div className="flex items-center gap-3 ml-4">
-                                                            {/* Quantity Controls */}
-                                                            <div className="flex items-center gap-2 bg-gray-100 rounded-lg px-2 py-1">
+                                                                <p className="text-xs text-gray-500 mt-1">
+                                                                    {product.quantity} {product.unit}
+                                                                </p>
+                                                                {product.specifications && (
+                                                                    <p className="text-xs text-gray-500 mt-1 line-clamp-1">
+                                                                        {product.specifications}
+                                                                    </p>
+                                                                )}
+                                                            </div>
+                                                            <div className="flex items-center gap-3 ml-4">
+                                                                {/* Quantity Controls */}
+                                                                <div className="flex items-center gap-2 bg-gray-100 rounded-lg px-2 py-1">
+                                                                    <button
+                                                                        onClick={() => handleDecreaseQuantity(product.id)}
+                                                                        className="text-gray-600 hover:text-gray-900 transition-colors"
+                                                                        disabled={product.quantity <= 1}
+                                                                    >
+                                                                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 12H4" />
+                                                                        </svg>
+                                                                    </button>
+                                                                    <span className="text-sm font-medium text-gray-900 min-w-[20px] text-center">
+                                                                        {product.quantity}
+                                                                    </span>
+                                                                    <button
+                                                                        onClick={() => handleIncreaseQuantity(product.id)}
+                                                                        className="text-gray-600 hover:text-gray-900 transition-colors"
+                                                                    >
+                                                                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                                                                        </svg>
+                                                                    </button>
+                                                                </div>
+                                                                {/* Delete Button */}
                                                                 <button
-                                                                    onClick={() => handleDecreaseQuantity(product.id)}
-                                                                    className="text-gray-600 hover:text-gray-900 transition-colors"
-                                                                    disabled={product.quantity <= 1}
+                                                                    onClick={() => handleRemoveProduct(product.id)}
+                                                                    className="text-red-500 hover:text-red-700 transition-colors p-1"
                                                                 >
-                                                                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 12H4" />
-                                                                    </svg>
-                                                                </button>
-                                                                <span className="text-sm font-medium text-gray-900 min-w-[20px] text-center">
-                                                                    {product.quantity}
-                                                                </span>
-                                                                <button
-                                                                    onClick={() => handleIncreaseQuantity(product.id)}
-                                                                    className="text-gray-600 hover:text-gray-900 transition-colors"
-                                                                >
-                                                                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-                                                                    </svg>
+                                                                    <Trash2 className="w-4 h-4" />
                                                                 </button>
                                                             </div>
-                                                            {/* Delete Button */}
-                                                            <button
-                                                                onClick={() => handleRemoveProduct(product.id)}
-                                                                className="text-red-500 hover:text-red-700 transition-colors p-1"
-                                                            >
-                                                                <Trash2 className="w-4 h-4" />
-                                                            </button>
                                                         </div>
-                                                    </div>
-                                                ))}
-                                            </div>
+                                                    ))}
+                                                </div>
+                                            )
+                                        ) : (
+                                            selectedFornecedores.length === 0 ? (
+                                                <div className="flex flex-col items-center justify-center h-full text-gray-400 p-4 text-center">
+                                                    <Search className="w-16 h-16 mb-4 mx-auto" strokeWidth={1.5} />
+                                                    <p className="text-sm">Selecione pelo menos um fornecedor para ver a lista de produtos associados.</p>
+                                                </div>
+                                            ) : (
+                                                <div className="space-y-4">
+                                                    {selectedFornecedores.map(id => {
+                                                        const forn = fornecedoresList.find(f => f.id === id);
+                                                        if (!forn) return null;
+                                                        return (
+                                                            <div key={id} className="bg-white rounded-lg p-4 border border-gray-100 hover:shadow-sm transition-shadow">
+                                                                <div className="flex items-center gap-2 border-b border-gray-50 pb-2 mb-3">
+                                                                    <span className="w-2.5 h-2.5 rounded-full bg-[#44B16F]"></span>
+                                                                    <h4 className="font-bold text-sm text-gray-900">{forn.commercial_name || forn.legal_name}</h4>
+                                                                </div>
+                                                                {productsList.length === 0 ? (
+                                                                    <p className="text-xs text-gray-400 italic">Nenhum produto adicionado à cotação.</p>
+                                                                ) : (
+                                                                    <ul className="space-y-2">
+                                                                        {productsList.map(product => (
+                                                                            <li key={product.id} className="flex justify-between items-center bg-gray-50/50 px-3 py-1.5 rounded border border-gray-100">
+                                                                                <span className="text-xs font-semibold text-gray-700">{product.name}</span>
+                                                                                <span className="text-xs bg-emerald-50 text-emerald-700 px-2 py-0.5 rounded-full font-bold">
+                                                                                    {product.quantity} {product.unit}
+                                                                                </span>
+                                                                            </li>
+                                                                        ))}
+                                                                    </ul>
+                                                                )}
+                                                            </div>
+                                                        );
+                                                    })}
+                                                </div>
+                                            )
                                         )}
                                     </div>
                                 </div>

@@ -27,6 +27,7 @@ export default function AquisicoesPage() {
     const [isActivityModalOpen, setIsActivityModalOpen] = useState(false);
     const [activityName, setActivityName] = useState("");
     const [activityDescription, setActivityDescription] = useState("");
+    const [buyerEmail, setBuyerEmail] = useState("");
     const [isCotacaoModalOpen, setIsCotacaoModalOpen] = useState(false);
     const [currentActivityName, setCurrentActivityName] = useState("");
 
@@ -420,7 +421,7 @@ export default function AquisicoesPage() {
                             </div>
 
                             <div className="space-y-3">
-                                <label className="block text-[10px] font-black text-gray-400 uppercase tracking-[0.2em] ml-1">Enquadramento / Justificação</label>
+                                <label className="block text-[10px] font-black text-gray-400 uppercase tracking-[0.2em] ml-1">Justificativa</label>
                                 <textarea
                                     value={activityDescription}
                                     onChange={(e) => setActivityDescription(e.target.value)}
@@ -428,6 +429,18 @@ export default function AquisicoesPage() {
                                     rows={4}
                                     className="w-full px-6 py-4 bg-gray-50 border border-gray-200 rounded-2xl focus:outline-none focus:bg-white focus:ring-2 focus:ring-[#44B16F]/20 focus:border-[#44B16F] font-medium text-gray-800 transition-all resize-none placeholder:text-gray-300"
                                 />
+                            </div>
+
+                            <div className="space-y-3">
+                                <label className="block text-[10px] font-black text-gray-400 uppercase tracking-[0.2em] ml-1">Convite ao Comprador Final <span className="text-gray-300 normal-case font-medium">(opcional)</span></label>
+                                <input
+                                    type="email"
+                                    value={buyerEmail}
+                                    onChange={(e) => setBuyerEmail(e.target.value)}
+                                    placeholder="email@comprador.ao"
+                                    className="w-full px-6 py-4 bg-gray-50 border border-gray-200 rounded-2xl focus:outline-none focus:bg-white focus:ring-2 focus:ring-[#44B16F]/20 focus:border-[#44B16F] font-medium text-gray-800 transition-all placeholder:text-gray-300"
+                                />
+                                <p className="text-[10px] text-gray-400 ml-1">O comprador final receberá um convite para acompanhar o processo de cotação.</p>
                             </div>
 
                             <div className="bg-[#44B16F]/5 border border-[#44B16F]/10 rounded-2xl p-6 flex items-start gap-4">
@@ -443,7 +456,7 @@ export default function AquisicoesPage() {
 
                         <div className="px-6 py-4 bg-gray-50/50 flex items-center justify-end gap-4 border-t border-gray-50">
                             <button
-                                onClick={() => { setIsActivityModalOpen(false); setActivityName(""); setActivityDescription(""); }}
+                                onClick={() => { setIsActivityModalOpen(false); setActivityName(""); setActivityDescription(""); setBuyerEmail(""); }}
                                 className="px-6 py-3 text-gray-400 font-bold uppercase text-[10px] tracking-widest hover:text-gray-700 transition-all active:scale-95"
                             >
                                 Cancelar
@@ -469,9 +482,11 @@ export default function AquisicoesPage() {
                     setCurrentActivityName("");
                     setActivityName("");
                     setActivityDescription("");
+                    setBuyerEmail("");
                     fetchResponses();
                 }}
                 activityName={currentActivityName}
+                buyerEmail={buyerEmail}
             />
 
             <ModalRevisarCotacao
