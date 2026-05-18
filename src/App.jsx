@@ -60,6 +60,7 @@ function AppRoutes() {
       <Route path="/home" element={<ProtectedRoute><Home /></ProtectedRoute>} />
       <Route path="/dashboard" element={<ProtectedRoute><DashboardLayout /></ProtectedRoute>} />
       <Route path="/fornecedores" element={<ProtectedRoute><DashboardLayout /></ProtectedRoute>} />
+      <Route path="/cotacoes" element={<ProtectedRoute><DashboardLayout /></ProtectedRoute>} />
       <Route path="/usuarios" element={<ProtectedRoute><DashboardLayout /></ProtectedRoute>} />
       <Route path="/relatorios" element={<ProtectedRoute><DashboardLayout /></ProtectedRoute>} />
       <Route path="/aquisicoes" element={<ProtectedRoute><DashboardLayout /></ProtectedRoute>} />

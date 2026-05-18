@@ -1,4 +1,4 @@
-import { LayoutDashboard, Package, UserCircle, BarChart3, ShoppingCart, Settings } from "lucide-react";
+import { LayoutDashboard, Package, UserCircle, BarChart3, ShoppingCart, Settings, FileText } from "lucide-react";
 import { useAuth } from "../../context/AuthContext";
 import { PERMISSIONS } from "../../utils/permissions";
 
@@ -18,6 +18,12 @@ function Sidebar({ activeItem, onItemClick }) {
       label: "Fornecedores",
       icon: Package,
       permission: PERMISSIONS.FORNECEDORES
+    },
+    {
+      id: "cotacoes",
+      label: "Cotações",
+      icon: FileText,
+      permission: PERMISSIONS.COTACOES
     },
     {
       id: "usuarios",
