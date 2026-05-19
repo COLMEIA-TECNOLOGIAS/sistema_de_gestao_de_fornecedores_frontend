@@ -269,11 +269,9 @@ export default function ModalPedirCotacao({ isOpen, onClose, fornecedor, activit
         return date.toISOString().slice(0, 16);
     };
 
-    // Build description with auto-signature
+    // Build description without auto-signature
     const getDescriptionWithSignature = () => {
-        const userName = currentUser?.name || 'Valdemar de Oliveira';
-        const signature = `\n\n---\n${userName}\nContacto: procurement@mosap3.ao`;
-        return (pedidoDescricao || pedidoAssunto) + signature;
+        return (pedidoDescricao || pedidoAssunto || '');
     };
 
     const handleSendExternalLink = async () => {
@@ -557,21 +555,6 @@ export default function ModalPedirCotacao({ isOpen, onClose, fornecedor, activit
                                         className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#44B16F] focus:border-transparent"
                                     />
                                     <p className="text-xs text-gray-500 mt-1">O prazo mínimo é de 15 dias úteis a partir de hoje.</p>
-                                </div>
-
-                                {/* Convite ao Comprador Final */}
-                                <div>
-                                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                                        Convite ao comprador final
-                                    </label>
-                                    <input
-                                        type="email"
-                                        value={pedidoBuyerEmail}
-                                        onChange={(e) => setPedidoBuyerEmail(e.target.value)}
-                                        placeholder="email@comprador.ao"
-                                        className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#44B16F] focus:border-transparent"
-                                    />
-                                    <p className="text-xs text-gray-500 mt-1">O comprador final receberá um convite por email para acompanhar este pedido.</p>
                                 </div>
 
                                 {/* Document Attachment */}
