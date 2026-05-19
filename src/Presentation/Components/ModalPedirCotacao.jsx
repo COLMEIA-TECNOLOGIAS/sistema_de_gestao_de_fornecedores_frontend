@@ -330,12 +330,12 @@ export default function ModalPedirCotacao({ isOpen, onClose, fornecedor, activit
                     formData.append(`items[${index}][specifications]`, product.specifications || '');
                 });
 
-                selectedFornecedores.forEach((id, index) => {
-                    formData.append(`suppliers[${index}]`, id);
+                selectedFornecedores.forEach((id) => {
+                    formData.append('suppliers[]', id);
                 });
 
-                attachedDocuments.forEach((file, index) => {
-                    formData.append(`documents[${index}]`, file);
+                attachedDocuments.forEach((file) => {
+                    formData.append('documents[]', file);
                 });
 
                 console.log('Enviando pedido de cotação com documentos...');
