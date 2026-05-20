@@ -39,7 +39,7 @@ export default function LoginPage() {
       {/* Left Side - Image with content - Menos espaço */}
       <div className="hidden lg:flex items-center justify-center relative overflow-hidden py-4">
         <img
-          src="/Rectangle 1.png"
+          src="/login_bg.png"
           alt="Background"
           className="absolute inset-4 w-[calc(100%-2rem)] h-[calc(100%-2rem)] object-cover"
         />
