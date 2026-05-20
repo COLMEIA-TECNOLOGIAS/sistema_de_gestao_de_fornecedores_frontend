@@ -144,8 +144,8 @@ export default function DashboardPage() {
                 </div>
                 <div className="hidden lg:block">
                     <img
-                        src="https://images.unsplash.com/photo-1522071820081-009f0129c71c?w=400&h=200&fit=crop"
-                        alt="Team collaboration"
+                        src="/dashboard_banner.png"
+                        alt="Agricultura Sustentável MOSAP3"
                         className="w-96 h-32 object-cover rounded-xl"
                     />
                 </div>

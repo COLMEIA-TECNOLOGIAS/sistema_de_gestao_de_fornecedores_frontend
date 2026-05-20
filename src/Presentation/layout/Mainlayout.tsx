@@ -15,7 +15,7 @@ function MainContent() {
           <p className="text-gray-600">Continue com as suas atividades</p>
         </div>
         <img
-          src="/public/tea.png"
+          src="/tea.png"
           alt="Team"
           className="w-96 h-48 object-cover rounded-xl"
         />

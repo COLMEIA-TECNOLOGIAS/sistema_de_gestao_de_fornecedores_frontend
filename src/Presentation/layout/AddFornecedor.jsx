@@ -36,28 +36,28 @@ export default function AddFornecedorPage() {
           <div className="grid grid-cols-4 gap-4 mb-8">
             <div className="rounded-2xl overflow-hidden shadow-md">
               <img
-                src="/public/tea.png"
+                src="/tea.png"
                 alt="Professional 1"
                 className="w-full h-48 object-cover"
               />
             </div>
             <div className="rounded-2xl overflow-hidden shadow-md">
               <img
-                src="/public/Rectangle 1085.png"
+                src="/Rectangle 1085.png"
                 alt="Professional 2"
                 className="w-full h-48 object-cover"
               />
             </div>
             <div className="rounded-2xl overflow-hidden shadow-md">
               <img
-                src="/public/Rectangle 1086.png"
+                src="/Rectangle 1086.png"
                 alt="Professional 3"
                 className="w-full h-48 object-cover"
               />
             </div>
             <div className="rounded-2xl overflow-hidden shadow-md">
               <img
-                src="/public/Rectangle 1087.png"
+                src="/Rectangle 1087.png"
                 alt="Professional 4"
                 className="w-full h-48 object-cover"
               />

@@ -13,7 +13,7 @@ function DashboardLayout() {
       <Navbar 
         userName="Adão Magalhães" 
         userRole="Super Admin" 
-        userAvatar="/public/tea.png"
+        userAvatar="/tea.png"
       />
       <div className="flex">
         <Sidebar activeItem={activeItem} onItemClick={setActiveItem} />

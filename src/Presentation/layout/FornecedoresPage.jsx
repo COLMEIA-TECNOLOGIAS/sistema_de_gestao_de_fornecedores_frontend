@@ -182,8 +182,8 @@ export default function FornecedoresPage() {
                 </div>
                 <div className="hidden lg:block">
                     <img
-                        src="https://images.unsplash.com/photo-1497366754035-f200968a6e72?w=400&h=200&fit=crop"
-                        alt="Office"
+                        src="/fornecedores_banner.png"
+                        alt="Parcerias e Fornecedores Agrícolas"
                         className="w-96 h-32 object-cover rounded-xl"
                     />
                 </div>
