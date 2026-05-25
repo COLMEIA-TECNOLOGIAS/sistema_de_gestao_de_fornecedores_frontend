@@ -67,7 +67,7 @@ export default function ModalLinkExterno({ isOpen, onClose, onSuccess }) {
                         <div className="p-2 bg-[#44B16F]/10 rounded-lg">
                             <Send className="w-5 h-5 text-[#44B16F]" />
                         </div>
-                        <h2 className="text-xl font-bold text-gray-900">Envio de Cadastro</h2>
+                        <h2 className="text-xl font-bold text-gray-900">Enviar convite</h2>
                     </div>
                     <button
                         onClick={handleClose}
@@ -116,22 +116,7 @@ export default function ModalLinkExterno({ isOpen, onClose, onSuccess }) {
                                 />
                             </div>
 
-                            {/* Activity Type */}
-                            <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-2">
-                                    Tipo de Atividade
-                                </label>
-                                <select
-                                    value={activityType}
-                                    onChange={(e) => setActivityType(e.target.value)}
-                                    className="w-full px-4 py-3 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#44B16F] focus:border-transparent transition-all bg-white"
-                                    disabled={isSubmitting}
-                                >
-                                    <option value="service">Serviço</option>
-                                    <option value="product">Produto</option>
-                                    <option value="both">Ambos</option>
-                                </select>
-                            </div>
+
 
                             {/* Error */}
                             {error && (

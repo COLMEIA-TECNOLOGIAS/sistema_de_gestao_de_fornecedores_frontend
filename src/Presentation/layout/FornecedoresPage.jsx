@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 import { Search, SlidersHorizontal, MoreVertical, Trash2, Eye, FileText, CheckCircle, Send, Loader2 } from "lucide-react";
 import ModalCadastroFornecedor from "../Components/ModalCadastroFornecedor";
 import ModalPedirCotacao from "../Components/ModalPedirCotacao";
@@ -9,6 +10,7 @@ import FornecedorTableSkeleton from "../Components/FornecedorTableSkeleton";
 import { suppliersAPI, categoriesAPI } from "../../services/api";
 
 export default function FornecedoresPage() {
+    const navigate = useNavigate();
     // Modal states
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [isCotacaoModalOpen, setIsCotacaoModalOpen] = useState(false);
@@ -490,14 +492,30 @@ export default function FornecedoresPage() {
                                                         <button
                                                             onClick={() => {
                                                                 setSelectedFornecedor(f);
-                                                                setIsCotacaoModalOpen(true);
+                                                                setIsModalOpen(true);
                                                                 setOpenMenuId(null);
                                                             }}
                                                             className="w-full px-4 py-3 text-left hover:bg-gray-50 text-sm flex items-center gap-3 transition-colors rounded-lg mx-1"
                                                         >
-                                                            <FileText size={16} className="text-gray-500" />
-                                                            <span className="text-gray-700">Pedir Cotação</span>
+                                                            <svg className="w-4 h-4 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2-2V11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                                                            </svg>
+                                                            <span className="text-gray-700">Editar</span>
                                                         </button>
+
+                                                        {f.is_active && (
+                                                            <button
+                                                                onClick={() => {
+                                                                    setSelectedFornecedor(f);
+                                                                    setIsCotacaoModalOpen(true);
+                                                                    setOpenMenuId(null);
+                                                                }}
+                                                                className="w-full px-4 py-3 text-left hover:bg-gray-50 text-sm flex items-center gap-3 transition-colors rounded-lg mx-1"
+                                                            >
+                                                                <FileText size={16} className="text-gray-500" />
+                                                                <span className="text-gray-700">Pedir Cotação</span>
+                                                            </button>
+                                                        )}
                                                         <div className="my-1 border-t border-gray-100"></div>
                                                         <button
                                                             onClick={() => handleDeleteFornecedor(f)}

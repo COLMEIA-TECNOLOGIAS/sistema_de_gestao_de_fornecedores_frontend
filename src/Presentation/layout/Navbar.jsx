@@ -189,15 +189,7 @@ function Navbar({ userName: propUserName, userRole: propUserRole, userAvatar: pr
             <span className="font-bold text-2xl">MOSAP3</span>
           </div>
 
-          {/* Search Bar mais à direita (mas ainda no lado esquerdo) */}
-          <div className="relative w-96 ml-16">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={20} />
-            <input
-              type="text"
-              placeholder="Search for anything..."
-              className="w-full pl-10 pr-4 py-2.5 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#44B16F]/20 focus:border-[#44B16F]"
-            />
-          </div>
+
         </div>
 
         {/* User Info with Dropdown */}

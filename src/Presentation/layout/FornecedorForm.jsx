@@ -337,7 +337,7 @@ export default function FornecedorFormWrapper() {
       {/* Header */}
       <div className="px-8 py-6 border-b border-gray-100 bg-white shadow-sm flex items-center justify-between">
         <button
-          onClick={() => navigate("/AddFornecedorPage")}
+          onClick={() => navigate("/dashboard")}
           className="flex items-center gap-2 text-gray-500 hover:text-gray-900 transition-all font-medium group"
         >
           <div className="p-2 rounded-lg group-hover:bg-gray-100 transition-colors">
@@ -668,7 +668,7 @@ export default function FornecedorFormWrapper() {
 
           <div className="px-10 py-8 bg-gray-50 flex items-center justify-between">
             <button
-              onClick={currentStep === 1 ? () => navigate("/AddFornecedorPage") : prevStep}
+              onClick={currentStep === 1 ? () => navigate("/dashboard") : prevStep}
               className="px-8 py-3 text-gray-500 font-bold hover:text-gray-900 transition-colors uppercase tracking-widest text-xs"
             >
               {currentStep === 1 ? "Cancelar" : "Anterior"}
