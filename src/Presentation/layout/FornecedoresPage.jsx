@@ -503,7 +503,7 @@ export default function FornecedoresPage() {
                                                             <span className="text-gray-700">Editar</span>
                                                         </button>
 
-                                                        {f.is_active && (
+                                                        {(f.is_active == 1 || f.is_active === true) ? (
                                                             <button
                                                                 onClick={() => {
                                                                     setSelectedFornecedor(f);
@@ -515,7 +515,7 @@ export default function FornecedoresPage() {
                                                                 <FileText size={16} className="text-gray-500" />
                                                                 <span className="text-gray-700">Pedir Cotação</span>
                                                             </button>
-                                                        )}
+                                                        ) : null}
                                                         <div className="my-1 border-t border-gray-100"></div>
                                                         <button
                                                             onClick={() => handleDeleteFornecedor(f)}
@@ -635,4 +635,4 @@ export default function FornecedoresPage() {
             />
         </div>
     );
-}
+} 

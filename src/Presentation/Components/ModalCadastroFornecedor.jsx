@@ -126,17 +126,17 @@ export default function ModalCadastroFornecedor({ isOpen, onClose, fornecedor, o
                         {/* Buttons */}
                         <div className="flex gap-4 justify-center">
                             <button
+                                onClick={handleCadastroDireto}
+                                className="px-8 py-3 border-2 border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors font-medium"
+                            >
+                                Cadastro Directo
+                            </button>
+                            <button
                                 onClick={() => setIsLinkExternoOpen(true)}
                                 className="px-8 py-3 bg-[#44B16F] text-white rounded-lg hover:bg-[#3a9d5f] transition-colors font-medium flex items-center gap-2"
                             >
                                 <Send className="w-4 h-4" />
                                 Envio de Convite
-                            </button>
-                            <button
-                                onClick={handleCadastroDireto}
-                                className="px-8 py-3 border-2 border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors font-medium"
-                            >
-                                Cadastro Directo
                             </button>
                         </div>
                     </div>
