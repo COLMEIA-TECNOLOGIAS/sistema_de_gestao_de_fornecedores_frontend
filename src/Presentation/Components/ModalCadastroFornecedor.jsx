@@ -109,34 +109,34 @@ export default function ModalCadastroFornecedor({ isOpen, onClose, fornecedor, o
                         {/* Icon */}
                         <div className="flex justify-center mb-6">
                             <div className="relative p-4 bg-[#44B16F]/10 rounded-full">
-                                <Send className="w-20 h-20 text-[#44B16F]" strokeWidth={1.5} />
+                                <UserPlus className="w-20 h-20 text-[#44B16F]" strokeWidth={1.5} />
                             </div>
                         </div>
 
                         {/* Title */}
                         <h2 className="text-3xl font-bold text-gray-900 mb-3">
-                            Envio de Cadastro
+                            Cadastrar um novo fornecedor
                         </h2>
 
                         {/* Subtitle */}
                         <p className="text-gray-600 mb-10">
-                            Envie um convite por email para o fornecedor se registrar no sistema.
+                            Seleciona a forma de cadastro que pretende prosseguir.
                         </p>
 
                         {/* Buttons */}
                         <div className="flex gap-4 justify-center">
                             <button
-                                onClick={onClose}
+                                onClick={handleCadastroDireto}
                                 className="px-8 py-3 border-2 border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors font-medium"
                             >
-                                Cancelar
+                                Cadastro Directo
                             </button>
                             <button
                                 onClick={() => setIsLinkExternoOpen(true)}
                                 className="px-8 py-3 bg-[#44B16F] text-white rounded-lg hover:bg-[#3a9d5f] transition-colors font-medium flex items-center gap-2"
                             >
                                 <Send className="w-4 h-4" />
-                                Enviar Convite
+                                Envio de Cadastro
                             </button>
                         </div>
                     </div>
