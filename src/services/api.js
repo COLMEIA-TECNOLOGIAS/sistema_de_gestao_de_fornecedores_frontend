@@ -102,6 +102,14 @@ export const suppliersAPI = {
         const response = await api.get(`/suppliers/${id}/classification`);
         return response.data;
     },
+    invite: async (inviteData) => {
+        const response = await api.post('/suppliers/invite', inviteData);
+        return response.data;
+    },
+    approve: async (id) => {
+        const response = await api.post(`/suppliers/${id}/approve`);
+        return response.data;
+    },
 };
 
 // Quotation Requests API

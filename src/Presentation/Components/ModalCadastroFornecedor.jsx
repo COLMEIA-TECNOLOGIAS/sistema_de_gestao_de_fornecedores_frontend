@@ -1,9 +1,9 @@
 import { useState } from "react";
-import { X, UserPlus } from "lucide-react";
+import { X, UserPlus, Send } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import ModalLinkExterno from "./ModalLinkExterno";
 
-export default function ModalCadastroFornecedor({ isOpen, onClose, fornecedor }) {
+export default function ModalCadastroFornecedor({ isOpen, onClose, fornecedor, onSuccess }) {
     const [isLinkExternoOpen, setIsLinkExternoOpen] = useState(false);
     const navigate = useNavigate();
 
@@ -14,6 +14,73 @@ export default function ModalCadastroFornecedor({ isOpen, onClose, fornecedor })
 
     if (!isOpen) return null;
 
+    // If editing an existing fornecedor, show the edit modal
+    if (fornecedor) {
+        return (
+            <>
+                <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50">
+                    <div className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl mx-4 overflow-hidden animate-fadeIn">
+                        {/* Header */}
+                        <div className="flex items-center justify-between p-6 border-b border-gray-200">
+                            <button
+                                onClick={onClose}
+                                className="flex items-center gap-2 text-gray-600 hover:text-gray-800 transition-colors"
+                            >
+                                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+                                </svg>
+                                <span className="text-sm font-medium">Voltar</span>
+                            </button>
+                            <button
+                                onClick={onClose}
+                                className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+                            >
+                                <X className="w-5 h-5 text-gray-500" />
+                            </button>
+                        </div>
+
+                        {/* Content */}
+                        <div className="p-12 text-center">
+                            {/* Icon */}
+                            <div className="flex justify-center mb-6">
+                                <div className="relative p-4 bg-[#44B16F]/10 rounded-full">
+                                    <UserPlus className="w-20 h-20 text-[#44B16F]" strokeWidth={1.5} />
+                                </div>
+                            </div>
+
+                            {/* Title */}
+                            <h2 className="text-3xl font-bold text-gray-900 mb-3">
+                                Editar fornecedor
+                            </h2>
+
+                            {/* Subtitle */}
+                            <p className="text-gray-600 mb-10">
+                                Selecione a opção para editar os dados do fornecedor.
+                            </p>
+
+                            {/* Buttons */}
+                            <div className="flex gap-4 justify-center">
+                                <button
+                                    onClick={onClose}
+                                    className="px-8 py-3 border-2 border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors font-medium"
+                                >
+                                    Cancelar
+                                </button>
+                                <button
+                                    onClick={handleCadastroDireto}
+                                    className="px-8 py-3 bg-[#44B16F] text-white rounded-lg hover:bg-[#3a9d5f] transition-colors font-medium"
+                                >
+                                    Editar Dados
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </>
+        );
+    }
+
+    // For new fornecedor — show only the Envio de Cadastro flow directly
     return (
         <>
             <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50">
@@ -42,35 +109,34 @@ export default function ModalCadastroFornecedor({ isOpen, onClose, fornecedor })
                         {/* Icon */}
                         <div className="flex justify-center mb-6">
                             <div className="relative p-4 bg-[#44B16F]/10 rounded-full">
-                                <UserPlus className="w-20 h-20 text-[#44B16F]" strokeWidth={1.5} />
+                                <Send className="w-20 h-20 text-[#44B16F]" strokeWidth={1.5} />
                             </div>
                         </div>
 
                         {/* Title */}
                         <h2 className="text-3xl font-bold text-gray-900 mb-3">
-                            {fornecedor ? "Editar fornecedor" : "Cadastrar um novo fornecedor"}
+                            Envio de Cadastro
                         </h2>
 
                         {/* Subtitle */}
                         <p className="text-gray-600 mb-10">
-                            {fornecedor
-                                ? "Selecione a opção para editar os dados do fornecedor."
-                                : "Seleciona a forma de cadastro que pretende prosseguir."}
+                            Envie um convite por email para o fornecedor se registrar no sistema.
                         </p>
 
                         {/* Buttons */}
                         <div className="flex gap-4 justify-center">
                             <button
-                                onClick={handleCadastroDireto}
+                                onClick={onClose}
                                 className="px-8 py-3 border-2 border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors font-medium"
                             >
-                                {fornecedor ? "Editar Dados" : "Cadastro Directo"}
+                                Cancelar
                             </button>
                             <button
                                 onClick={() => setIsLinkExternoOpen(true)}
-                                className="px-8 py-3 bg-[#44B16F] text-white rounded-lg hover:bg-[#3a9d5f] transition-colors font-medium"
+                                className="px-8 py-3 bg-[#44B16F] text-white rounded-lg hover:bg-[#3a9d5f] transition-colors font-medium flex items-center gap-2"
                             >
-                                Enviar link externo
+                                <Send className="w-4 h-4" />
+                                Enviar Convite
                             </button>
                         </div>
                     </div>
@@ -81,6 +147,11 @@ export default function ModalCadastroFornecedor({ isOpen, onClose, fornecedor })
             <ModalLinkExterno
                 isOpen={isLinkExternoOpen}
                 onClose={() => setIsLinkExternoOpen(false)}
+                onSuccess={() => {
+                    setIsLinkExternoOpen(false);
+                    onClose();
+                    if (onSuccess) onSuccess();
+                }}
             />
         </>
     );

@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Search, SlidersHorizontal, MoreVertical, Trash2, Eye, FileText } from "lucide-react";
+import { Search, SlidersHorizontal, MoreVertical, Trash2, Eye, FileText, CheckCircle, Send, Loader2 } from "lucide-react";
 import ModalCadastroFornecedor from "../Components/ModalCadastroFornecedor";
 import ModalPedirCotacao from "../Components/ModalPedirCotacao";
 import ModalDetalhesFornecedor from "../Components/ModalDetalhesFornecedor";
@@ -28,6 +28,10 @@ export default function FornecedoresPage() {
     const [isDeleting, setIsDeleting] = useState(false);
     const [currentPage, setCurrentPage] = useState(1);
     const itemsPerPage = 10;
+    const [activeTab, setActiveTab] = useState("fornecedores");
+
+    // Approve loading state
+    const [approvingId, setApprovingId] = useState(null);
 
     // Search and Filter states
     const [searchQuery, setSearchQuery] = useState("");
@@ -68,6 +72,12 @@ export default function FornecedoresPage() {
     useEffect(() => {
         let result = fornecedores;
 
+        if (activeTab === 'convites') {
+            result = result.filter(f => !f.is_active && (f.registration_status === 'invited' || f.registration_status === 'completed'));
+        } else {
+            result = result.filter(f => f.is_active || (f.registration_status !== 'invited' && f.registration_status !== 'completed'));
+        }
+
         if (searchQuery) {
             const lowerQuery = searchQuery.toLowerCase();
             result = result.filter(f =>
@@ -86,7 +96,7 @@ export default function FornecedoresPage() {
 
         setFilteredFornecedores(result);
         setCurrentPage(1); 
-    }, [fornecedores, searchQuery, selectedCategory]);
+    }, [fornecedores, searchQuery, selectedCategory, activeTab]);
 
     // Pagination logic
     const totalPages = Math.ceil(filteredFornecedores.length / itemsPerPage);
@@ -167,6 +177,22 @@ export default function FornecedoresPage() {
         setToast({ type, message });
     };
 
+    // Approve supplier handler
+    const handleApproveSupplier = async (fornecedor) => {
+        setApprovingId(fornecedor.id);
+        setOpenMenuId(null);
+        try {
+            await suppliersAPI.approve(fornecedor.id);
+            showToast('success', 'Fornecedor aprovado com sucesso!');
+            await reloadSuppliers();
+        } catch (err) {
+            console.error('Error approving supplier:', err);
+            showToast('error', err.response?.data?.message || 'Erro ao aprovar fornecedor');
+        } finally {
+            setApprovingId(null);
+        }
+    };
+
     return (
         <div className="space-y-6">
             {/* Welcome Section */}
@@ -187,6 +213,28 @@ export default function FornecedoresPage() {
                         className="w-96 h-32 object-cover rounded-xl"
                     />
                 </div>
+            </div>
+
+            {/* Tabs Section */}
+            <div className="flex border-b border-gray-200">
+                <button
+                    onClick={() => { setActiveTab("fornecedores"); setCurrentPage(1); }}
+                    className={`pb-4 px-6 font-medium text-sm transition-all ${activeTab === "fornecedores"
+                        ? "text-[#44B16F] border-b-2 border-[#44B16F]"
+                        : "text-gray-500 hover:text-gray-700"
+                        }`}
+                >
+                    Fornecedores
+                </button>
+                <button
+                    onClick={() => { setActiveTab("convites"); setCurrentPage(1); }}
+                    className={`pb-4 px-6 font-medium text-sm transition-all ${activeTab === "convites"
+                        ? "text-[#44B16F] border-b-2 border-[#44B16F]"
+                        : "text-gray-500 hover:text-gray-700"
+                        }`}
+                >
+                    Convites Enviados
+                </button>
             </div>
 
             {/* Actions Bar */}
@@ -293,6 +341,7 @@ export default function FornecedoresPage() {
                                 <th className="px-6 py-4 text-left text-sm font-semibold text-gray-600">Município</th>
                                 <th className="px-6 py-4 text-left text-sm font-semibold text-gray-600">Data de Registo</th>
                                 <th className="px-6 py-4 text-left text-sm font-semibold text-gray-600">Status</th>
+                                <th className="px-6 py-4 text-left text-sm font-semibold text-gray-600">Registo</th>
                                 <th className="px-6 py-4 text-center text-sm font-semibold text-gray-600">Ações</th>
                             </tr>
                         </thead>
@@ -301,7 +350,7 @@ export default function FornecedoresPage() {
                                 <FornecedorTableSkeleton rows={10} />
                             ) : currentFornecedores.length === 0 ? (
                                 <tr>
-                                    <td colSpan="14" className="px-6 py-12 text-center text-gray-500">
+                                    <td colSpan="15" className="px-6 py-12 text-center text-gray-500">
                                         <div className="flex flex-col items-center gap-2">
                                             <svg className="w-12 h-12 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2.586a1 1 0 00-.707.293l-2.414 2.414a1 1 0 01-.707.293h-3.172a1 1 0 01-.707-.293l-2.414-2.414A1 1 0 006.586 13H4" />
@@ -378,13 +427,51 @@ export default function FornecedoresPage() {
                                             </span>
                                         </td>
                                         <td className="px-6 py-8">
-                                            <div className="relative flex justify-center dropdown-menu">
-                                                <button
-                                                    onClick={() => setOpenMenuId(openMenuId === f.id ? null : f.id)}
-                                                    className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
-                                                >
-                                                    <MoreVertical size={20} className="text-gray-600" />
-                                                </button>
+                                            {(f.is_active && (f.registration_status === 'invited' || f.registration_status === 'completed')) || f.registration_status === 'approved' ? (
+                                                <span className="px-3 py-1.5 rounded-xl text-xs font-bold bg-blue-50 text-blue-700 border border-blue-200 flex items-center gap-1 w-fit">
+                                                    <CheckCircle size={12} />
+                                                    Aprovado
+                                                </span>
+                                            ) : f.registration_status === 'invited' ? (
+                                                <span className="px-3 py-1.5 rounded-xl text-xs font-bold bg-amber-50 text-amber-700 border border-amber-200 flex items-center gap-1 w-fit">
+                                                    <Send size={12} />
+                                                    Convidado
+                                                </span>
+                                            ) : f.registration_status === 'completed' ? (
+                                                <span className="px-3 py-1.5 rounded-xl text-xs font-bold bg-emerald-50 text-emerald-700 border border-emerald-200 flex items-center gap-1 w-fit">
+                                                    <CheckCircle size={12} />
+                                                    Completo
+                                                </span>
+                                            ) : (
+                                                <span className="px-3 py-1.5 rounded-xl text-xs font-bold bg-gray-50 text-gray-600 border border-gray-200 w-fit">
+                                                    {f.registration_status || 'Directo'}
+                                                </span>
+                                            )}
+                                        </td>
+                                        <td className="px-6 py-8">
+                                            <div className="flex items-center justify-center gap-2">
+                                                {!f.is_active && (f.registration_status === 'invited' || f.registration_status === 'completed') && (
+                                                    <button
+                                                        onClick={() => handleApproveSupplier(f)}
+                                                        disabled={approvingId === f.id}
+                                                        className="px-3 py-1.5 bg-emerald-50 text-emerald-700 rounded-lg hover:bg-emerald-100 transition-colors text-sm font-medium flex items-center gap-2 border border-emerald-200"
+                                                    >
+                                                        {approvingId === f.id ? (
+                                                            <Loader2 size={14} className="animate-spin" />
+                                                        ) : (
+                                                            <CheckCircle size={14} />
+                                                        )}
+                                                        Aprovar
+                                                    </button>
+                                                )}
+
+                                                <div className="relative dropdown-menu">
+                                                    <button
+                                                        onClick={() => setOpenMenuId(openMenuId === f.id ? null : f.id)}
+                                                        className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+                                                    >
+                                                        <MoreVertical size={20} className="text-gray-600" />
+                                                    </button>
 
                                                 {openMenuId === f.id && (
                                                     <div className="absolute right-0 top-full mt-2 w-56 bg-white rounded-xl shadow-xl border border-gray-100 py-1 z-50">
@@ -433,6 +520,7 @@ export default function FornecedoresPage() {
                                                         </button>
                                                     </div>
                                                 )}
+                                                </div>
                                             </div>
                                         </td>
                                     </tr>

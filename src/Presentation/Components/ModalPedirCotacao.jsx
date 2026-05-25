@@ -8,6 +8,7 @@ export default function ModalPedirCotacao({ isOpen, onClose, fornecedor, activit
     const [showAddProducts, setShowAddProducts] = useState(false);
     const [pedidoAssunto, setPedidoAssunto] = useState('');
     const [pedidoDescricao, setPedidoDescricao] = useState('');
+    const [activityDescription, setActivityDescription] = useState('');
     const [deadline, setDeadline] = useState('');
     const [pedidoReferencia, setPedidoReferencia] = useState('');
     const [pedidoBuyerEmail, setPedidoBuyerEmail] = useState('');
@@ -179,6 +180,7 @@ export default function ModalPedirCotacao({ isOpen, onClose, fornecedor, activit
         setShowAddProducts(false);
         setPedidoAssunto('');
         setPedidoDescricao('');
+        setActivityDescription('');
         setDeadline('');
         setProductName('');
         setProductDescription('');
@@ -321,6 +323,7 @@ export default function ModalPedirCotacao({ isOpen, onClose, fornecedor, activit
                 formData.append('ocultar_referencia_automatica', '1');
                 formData.append('hide_auto_reference', '1');
                 formData.append('description', descriptionWithSignature);
+                formData.append('activity_description', activityDescription);
                 formData.append('deadline', formattedDeadline);
 
                 finalProductsList.forEach((product, index) => {
@@ -352,6 +355,7 @@ export default function ModalPedirCotacao({ isOpen, onClose, fornecedor, activit
                     ocultar_referencia_automatica: true,
                     hide_auto_reference: true,
                     description: descriptionWithSignature,
+                    activity_description: activityDescription,
                     deadline: formattedDeadline,
                     items: finalProductsList.map(product => ({
                         name: product.name,
@@ -500,7 +504,7 @@ export default function ModalPedirCotacao({ isOpen, onClose, fornecedor, activit
                                 {/* Assunto do Pedido */}
                                 <div>
                                     <label className="block text-sm font-medium text-gray-700 mb-2">
-                                        Descrição de atividade *
+                                        Solicitação da atividade *
                                     </label>
                                     <input
                                         type="text"
@@ -509,6 +513,20 @@ export default function ModalPedirCotacao({ isOpen, onClose, fornecedor, activit
                                         placeholder="Materiais para trabalho"
                                         className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#44B16F] focus:border-transparent"
                                         required
+                                    />
+                                </div>
+
+                                {/* Descrição da Atividade */}
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                                        Descrição da atividade
+                                    </label>
+                                    <textarea
+                                        value={activityDescription}
+                                        onChange={(e) => setActivityDescription(e.target.value)}
+                                        placeholder="Descreva a atividade em detalhe..."
+                                        rows={2}
+                                        className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#44B16F] focus:border-transparent resize-none"
                                     />
                                 </div>
 
