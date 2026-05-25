@@ -450,7 +450,7 @@ export default function FornecedoresPage() {
                                         </td>
                                         <td className="px-6 py-8">
                                             <div className="flex items-center justify-center gap-2">
-                                                {!f.is_active && (f.registration_status === 'invited' || f.registration_status === 'completed') && (
+                                                {!f.is_active && f.registration_status !== 'invited' && (
                                                     <button
                                                         onClick={() => handleApproveSupplier(f)}
                                                         disabled={approvingId === f.id}

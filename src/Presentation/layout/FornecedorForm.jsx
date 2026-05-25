@@ -52,7 +52,7 @@ export default function FornecedorFormWrapper() {
     commercial_certificate: null,
     non_debtor_certificate: null,
     nif_proof: null,
-    products_list: null,
+    product_list: null,
     commercial_licenses: [], // Multiple files
   });
 
@@ -215,8 +215,8 @@ export default function FornecedorFormWrapper() {
       if (formData.nif_proof instanceof File) {
         data.append("nif_proof", formData.nif_proof);
       }
-      if (formData.products_list) {
-        data.append("products_list", formData.products_list);
+      if (formData.product_list) {
+        data.append("product_list", formData.product_list);
       }
       // Multiple alvarás - Some backends expect repeated keys without []
       if (formData.commercial_licenses && formData.commercial_licenses.length > 0) {
@@ -609,10 +609,10 @@ export default function FornecedorFormWrapper() {
                       />
                       <FileUploadField
                         label="Lista de Produtos"
-                        name="products_list"
-                        file={formData.products_list}
+                        name="product_list"
+                        file={formData.product_list}
                         onChange={handleFileChange}
-                        error={errors.products_list}
+                        error={errors.product_list}
                         onPreview={handlePreviewFile}
                       />
                     </div>

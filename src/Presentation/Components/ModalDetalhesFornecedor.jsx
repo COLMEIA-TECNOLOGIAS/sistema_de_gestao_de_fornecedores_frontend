@@ -130,6 +130,9 @@ export default function ModalDetalhesFornecedor({
                                     {fornecedor.commercial_name}
                                 </h2>
                                 <StatusBadge isActive={fornecedor.is_active} />
+                                <span className={`px-3 py-1 rounded-full text-xs font-bold border ${fornecedor.registration_status === 'invited' || fornecedor.registration_status === 'completed' || fornecedor.registration_status === 'approved' ? 'bg-orange-50 text-orange-700 border-orange-200' : 'bg-purple-50 text-purple-700 border-purple-200'}`}>
+                                    {fornecedor.registration_status === 'invited' || fornecedor.registration_status === 'completed' || fornecedor.registration_status === 'approved' ? 'Cadastro Directo' : 'Via Link Externo'}
+                                </span>
                             </div>
                             <p className="text-gray-500 font-medium">{fornecedor.legal_name}</p>
                             <div className="flex items-center gap-4 mt-2 text-sm text-gray-500">
@@ -283,9 +286,9 @@ export default function ModalDetalhesFornecedor({
                                         />
                                     )}
 
-                                    {(fornecedor.products_list || fornecedor.products_list_url) && (
+                                    {(fornecedor.product_list || fornecedor.product_list_url) && (
                                         <DocumentItem
-                                            type="products_list"
+                                            type="product_list"
                                             label="Lista de Produtos"
                                             subLabel="Documento de Fornecimento"
                                             iconColorClass="bg-pink-50 text-pink-600"
