@@ -253,16 +253,15 @@ export default function AquisicoesPage() {
             {/* Header */}
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
                 <div>
-                    <h1 className="text-3xl font-bold text-gray-900 tracking-tight">Aquisições</h1>
-                    <p className="text-gray-500 mt-1">Gerencie as respostas e aquisições de fornecedores</p>
+                    <h1 className="text-2xl font-bold" style={{ color: 'var(--color-text-primary)' }}>Aquisições</h1>
+                    <p className="text-sm mt-0.5" style={{ color: 'var(--color-text-secondary)' }}>Gerencie as respostas e aquisições de fornecedores</p>
                 </div>
                 <div className="flex items-center gap-3">
-
                     <button
                         onClick={() => setIsCotacaoModalOpen(true)}
-                        className="flex items-center gap-2 px-6 py-3 bg-[#44B16F] text-white rounded-xl hover:bg-[#3a9d5f] transition-all font-bold shadow-lg hover:shadow-xl transform hover:scale-[1.02]"
+                        className="btn-primary"
                     >
-                        <Plus size={20} />
+                        <Plus size={18} />
                         Registar nova actividade
                     </button>
                 </div>
@@ -297,8 +296,8 @@ export default function AquisicoesPage() {
 
             {/* Content Area */}
 
-            <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden mt-6">
-                <div className="flex flex-col md:flex-row md:items-center justify-between p-6 gap-4 border-b border-gray-50">
+            <div className="rounded-2xl shadow-sm overflow-hidden mt-6" style={{ background: 'var(--color-surface)', border: '1px solid var(--color-border-light)' }}>
+                <div className="flex flex-col md:flex-row md:items-center justify-between p-6 gap-4 border-b" style={{ borderColor: 'var(--color-border-light)' }}>
                     <div className="flex items-center gap-4 flex-1">
                         <div className="relative flex-1 max-w-md">
                             <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
@@ -307,10 +306,11 @@ export default function AquisicoesPage() {
                                 placeholder="Pesquisar por ID, fornecedor ou referência..."
                                 value={searchTerm}
                                 onChange={(e) => setSearchTerm(e.target.value)}
-                                className="w-full pl-12 pr-4 py-3 bg-gray-50 border border-transparent rounded-xl focus:outline-none focus:bg-white focus:ring-2 focus:ring-[#44B16F]/20 focus:border-[#44B16F] transition-all text-sm"
+                                className="w-full pl-12 pr-4 py-3 border border-transparent rounded-xl focus:outline-none focus:ring-2 focus:ring-[#44B16F]/20 focus:border-[#44B16F] transition-all text-sm"
+                                style={{ background: 'var(--color-bg)', color: 'var(--color-text-primary)' }}
                             />
                         </div>
-                        <button className="p-3 bg-gray-50 text-gray-500 rounded-xl hover:bg-gray-100 transition-all">
+                        <button className="p-3 rounded-xl transition-all" style={{ background: 'var(--color-bg)', color: 'var(--color-text-secondary)' }} onMouseEnter={e => e.currentTarget.style.background = 'var(--color-border-light)'} onMouseLeave={e => e.currentTarget.style.background = 'var(--color-bg)'}>
                             <SlidersHorizontal size={20} />
                         </button>
                     </div>
@@ -321,17 +321,17 @@ export default function AquisicoesPage() {
 
                 <div className="overflow-x-auto">
                     <table className="w-full">
-                        <thead className="bg-gray-50/50 border-b border-gray-100">
+                        <thead style={{ background: 'var(--color-bg)', borderBottom: '1px solid var(--color-border-light)' }}>
                             <tr>
-                                <th className="px-6 py-5 text-left text-[10px] font-black text-gray-400 uppercase tracking-widest">ID</th>
-                                <th className="px-6 py-5 text-left text-[10px] font-black text-gray-400 uppercase tracking-widest">Procedência</th>
-                                <th className="px-6 py-5 text-left text-[10px] font-black text-gray-400 uppercase tracking-widest">Fornecedor</th>
-                                <th className="px-6 py-5 text-left text-[10px] font-black text-gray-400 uppercase tracking-widest">Data Entrega</th>
-                                <th className="px-6 py-5 text-left text-[10px] font-black text-gray-400 uppercase tracking-widest">Estado</th>
-                                <th className="px-6 py-5 text-center text-[10px] font-black text-gray-400 uppercase tracking-widest">Acções</th>
+                                <th className="px-6 py-5 text-left text-[10px] font-black uppercase tracking-widest" style={{ color: 'var(--color-text-muted)' }}>ID</th>
+                                <th className="px-6 py-5 text-left text-[10px] font-black uppercase tracking-widest" style={{ color: 'var(--color-text-muted)' }}>Procedência</th>
+                                <th className="px-6 py-5 text-left text-[10px] font-black uppercase tracking-widest" style={{ color: 'var(--color-text-muted)' }}>Fornecedor</th>
+                                <th className="px-6 py-5 text-left text-[10px] font-black uppercase tracking-widest" style={{ color: 'var(--color-text-muted)' }}>Data Entrega</th>
+                                <th className="px-6 py-5 text-left text-[10px] font-black uppercase tracking-widest" style={{ color: 'var(--color-text-muted)' }}>Estado</th>
+                                <th className="px-6 py-5 text-center text-[10px] font-black uppercase tracking-widest" style={{ color: 'var(--color-text-muted)' }}>Acções</th>
                             </tr>
                         </thead>
-                        <tbody className="divide-y divide-gray-50">
+                        <tbody className="divide-y" style={{ divideColor: 'var(--color-border-light)' }}>
                             {isLoading ? (
                                 <DashboardTableSkeleton rows={5} />
                             ) : error ? (
@@ -346,17 +346,17 @@ export default function AquisicoesPage() {
                                 </tr>
                             ) : (
                                 filteredResponses.map((resp) => (
-                                    <tr key={resp.id} className="hover:bg-gray-50/50 transition-colors group">
-                                        <td className="px-6 py-6 text-sm font-bold text-gray-900">#{resp.id}</td>
-                                        <td className="px-6 py-6 font-bold text-gray-800 text-sm">
+                                    <tr key={resp.id} className="transition-colors group" onMouseEnter={e => e.currentTarget.style.background = 'var(--color-bg)'} onMouseLeave={e => e.currentTarget.style.background = 'transparent'} style={{ borderBottom: '1px solid var(--color-border-light)' }}>
+                                        <td className="px-6 py-6 text-sm font-bold" style={{ color: 'var(--color-text-primary)' }}>#{resp.id}</td>
+                                        <td className="px-6 py-6 font-bold text-sm" style={{ color: 'var(--color-text-primary)' }}>
                                             Cotação #{resp.quotation_request_id}
                                         </td>
                                         <td className="px-6 py-6">
-                                            <span className="text-sm font-semibold text-gray-700">
+                                            <span className="text-sm font-semibold" style={{ color: 'var(--color-text-secondary)' }}>
                                                 {resp.supplier?.commercial_name || resp.supplier?.legal_name || "N/A"}
                                             </span>
                                         </td>
-                                        <td className="px-6 py-6 text-sm text-gray-600 font-medium">
+                                        <td className="px-6 py-6 text-sm font-medium" style={{ color: 'var(--color-text-secondary)' }}>
                                             {formatDate(resp.expected_delivery_date)}
                                         </td>
                                         <td className="px-6 py-6">
@@ -366,16 +366,20 @@ export default function AquisicoesPage() {
                                             <div className="flex items-center justify-center gap-2">
                                                 <button
                                                     onClick={() => handleOpenDetails(resp)}
-                                                    className="p-2 hover:bg-emerald-50 text-emerald-600 rounded-lg transition-all"
+                                                    className="p-2 text-emerald-600 rounded-lg transition-all"
                                                     title="Ver Detalhes"
+                                                    onMouseEnter={e => e.currentTarget.style.background = 'var(--color-bg)'}
+                                                    onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
                                                 >
                                                     <Eye size={18} />
                                                 </button>
                                                 {resp.status !== 'completed' && (
                                                     <button
                                                         onClick={() => handleConfirmDelivery(resp)}
-                                                        className="p-2 hover:bg-blue-50 text-blue-600 rounded-lg transition-all"
+                                                        className="p-2 text-blue-600 rounded-lg transition-all"
                                                         title="Confirmar Entrega"
+                                                        onMouseEnter={e => e.currentTarget.style.background = 'var(--color-bg)'}
+                                                        onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
                                                     >
                                                         <Truck size={18} />
                                                     </button>
@@ -395,76 +399,86 @@ export default function AquisicoesPage() {
 
             {/* Activity Registration */}
             {isActivityModalOpen && (
-                <div className="fixed inset-0 z-[70] flex items-center justify-center p-4">
-                    <div className="absolute inset-0 bg-black/50 backdrop-blur-sm animate-fadeIn" onClick={() => setIsActivityModalOpen(false)} />
-                    <div className="relative bg-white rounded-3xl shadow-2xl w-full max-w-lg overflow-hidden border border-gray-100">
-                        <div className="flex items-center justify-between px-6 py-4 border-b border-gray-50">
+                <div className="modal-overlay" onClick={(e) => { if (e.target === e.currentTarget) setIsActivityModalOpen(false); }}>
+                    <div className="modal-container animate-modalFadeIn" style={{ maxWidth: '520px', background: 'var(--color-surface)', border: '1px solid var(--color-border-light)' }}>
+                        {/* Header */}
+                        <div className="flex items-center justify-between px-6 py-4 border-b" style={{ borderColor: 'var(--color-border-light)' }}>
                             <div>
-                                <h2 className="text-2xl font-bold text-gray-900 tracking-tight leading-none">Nova Atividade</h2>
-                                <p className="text-xs text-gray-400 font-bold mt-2 tracking-wide uppercase opacity-70">Estruturação de Processo de Compra</p>
+                                <h2 className="text-lg font-bold" style={{ color: 'var(--color-text-primary)' }}>Nova Atividade</h2>
+                                <p className="text-xs mt-0.5" style={{ color: 'var(--color-text-muted)' }}>Estruturação de Processo de Compra</p>
                             </div>
-                            <button onClick={() => setIsActivityModalOpen(false)} className="p-2 hover:bg-gray-100 rounded-xl transition-all group active:scale-90">
-                                <X size={24} className="text-gray-400 group-hover:rotate-90 transition-all duration-300" />
+                            <button
+                                onClick={() => setIsActivityModalOpen(false)}
+                                className="p-1.5 transition-colors"
+                                style={{ color: 'var(--color-text-muted)', borderRadius: '4px' }}
+                                onMouseEnter={e => e.currentTarget.style.background = 'var(--color-bg)'}
+                                onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
+                            >
+                                <X size={18} />
                             </button>
                         </div>
 
-                        <div className="p-6 space-y-6">
-                            <div className="space-y-3">
-                                <label className="block text-[10px] font-black text-gray-400 uppercase tracking-[0.2em] ml-1">Denominação da Atividade</label>
+                        {/* Body */}
+                        <div className="p-6 space-y-4">
+                            <div className="space-y-1.5">
+                                <label className="block text-xs font-semibold" style={{ color: 'var(--color-text-secondary)' }}>Denominação da Atividade</label>
                                 <input
                                     type="text"
                                     value={activityName}
                                     onChange={(e) => setActivityName(e.target.value)}
                                     placeholder="Ex: Reforço de Stock Sanitário Q1"
-                                    className="w-full px-6 py-4 bg-gray-50 border border-gray-200 rounded-2xl focus:outline-none focus:bg-white focus:ring-2 focus:ring-[#44B16F]/20 focus:border-[#44B16F] font-bold text-gray-800 transition-all text-base placeholder:text-gray-300"
+                                    className="input-field"
                                 />
                             </div>
 
-                            <div className="space-y-3">
-                                <label className="block text-[10px] font-black text-gray-400 uppercase tracking-[0.2em] ml-1">Justificativa</label>
+                            <div className="space-y-1.5">
+                                <label className="block text-xs font-semibold" style={{ color: 'var(--color-text-secondary)' }}>Justificativa</label>
                                 <textarea
                                     value={activityDescription}
                                     onChange={(e) => setActivityDescription(e.target.value)}
                                     placeholder="Descreva o propósito desta aquisição..."
-                                    rows={4}
-                                    className="w-full px-6 py-4 bg-gray-50 border border-gray-200 rounded-2xl focus:outline-none focus:bg-white focus:ring-2 focus:ring-[#44B16F]/20 focus:border-[#44B16F] font-medium text-gray-800 transition-all resize-none placeholder:text-gray-300"
+                                    rows={3}
+                                    className="input-field resize-none"
                                 />
                             </div>
 
-                            <div className="space-y-3">
-                                <label className="block text-[10px] font-black text-gray-400 uppercase tracking-[0.2em] ml-1">Convite ao Comprador Final <span className="text-gray-300 normal-case font-medium">(opcional)</span></label>
+                            <div className="space-y-1.5">
+                                <label className="block text-xs font-semibold" style={{ color: 'var(--color-text-secondary)' }}>
+                                    Convite ao Comprador Final <span style={{ color: 'var(--color-text-muted)', fontWeight: 400 }}>(opcional)</span>
+                                </label>
                                 <input
                                     type="email"
                                     value={buyerEmail}
                                     onChange={(e) => setBuyerEmail(e.target.value)}
                                     placeholder="email@comprador.ao"
-                                    className="w-full px-6 py-4 bg-gray-50 border border-gray-200 rounded-2xl focus:outline-none focus:bg-white focus:ring-2 focus:ring-[#44B16F]/20 focus:border-[#44B16F] font-medium text-gray-800 transition-all placeholder:text-gray-300"
+                                    className="input-field"
                                 />
-                                <p className="text-[10px] text-gray-400 ml-1">O comprador final receberá um convite para acompanhar o processo de cotação.</p>
+                                <p className="text-xs" style={{ color: 'var(--color-text-muted)' }}>O comprador final receberá um convite para acompanhar o processo de cotação.</p>
                             </div>
 
-                            <div className="bg-[#44B16F]/5 border border-[#44B16F]/10 rounded-2xl p-6 flex items-start gap-4">
-                                <div className="w-12 h-12 bg-[#44B16F] rounded-xl flex items-center justify-center text-white shadow-lg shadow-[#44B16F]/20 shrink-0">
-                                    <Package size={24} />
+                            <div className="flex items-start gap-3 p-4" style={{ background: 'var(--color-primary-light)', borderRadius: '4px', border: '1px solid rgba(68,177,111,0.15)' }}>
+                                <div className="w-9 h-9 flex items-center justify-center text-white flex-shrink-0" style={{ background: 'var(--color-primary)', borderRadius: '4px' }}>
+                                    <Package size={18} />
                                 </div>
                                 <div>
-                                    <p className="text-sm font-bold text-[#44B16F] leading-none">Fluxo de Solicitação</p>
-                                    <p className="text-xs text-gray-500 mt-2 font-medium leading-relaxed">Você será redirecionado para compor a lista de itens e convocar fornecedores certificados para este processo.</p>
+                                    <p className="text-sm font-semibold" style={{ color: 'var(--color-primary-dark)' }}>Fluxo de Solicitação</p>
+                                    <p className="text-xs mt-0.5" style={{ color: 'var(--color-text-secondary)' }}>Você será redirecionado para compor a lista de itens e convocar fornecedores certificados para este processo.</p>
                                 </div>
                             </div>
                         </div>
 
-                        <div className="px-6 py-4 bg-gray-50/50 flex items-center justify-end gap-4 border-t border-gray-50">
+                        {/* Footer */}
+                        <div className="flex items-center justify-end gap-3 px-6 py-4 border-t" style={{ borderColor: 'var(--color-border-light)', background: 'var(--color-bg)' }}>
                             <button
                                 onClick={() => { setIsActivityModalOpen(false); setActivityName(""); setActivityDescription(""); setBuyerEmail(""); }}
-                                className="px-6 py-3 text-gray-400 font-bold uppercase text-[10px] tracking-widest hover:text-gray-700 transition-all active:scale-95"
+                                className="btn-secondary"
                             >
                                 Cancelar
                             </button>
                             <button
                                 onClick={handleCreateActivity}
                                 disabled={!activityName.trim()}
-                                className="flex items-center gap-3 px-8 py-4 bg-[#44B16F] text-white rounded-2xl font-bold uppercase text-[10px] tracking-widest hover:bg-gray-900 transition-all disabled:bg-gray-200 disabled:cursor-not-allowed shadow-lg hover:shadow-xl active:scale-95"
+                                className="btn-primary"
                             >
                                 <FileText size={16} />
                                 Iniciar Request

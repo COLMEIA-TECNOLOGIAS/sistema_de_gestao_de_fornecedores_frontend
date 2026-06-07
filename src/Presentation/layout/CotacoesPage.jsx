@@ -296,9 +296,9 @@ export default function CotacoesPage() {
 
         if (!cotacoes || cotacoes.length === 0) {
             return (
-                <div className="flex flex-col items-center justify-center py-20 bg-white rounded-2xl border border-dashed border-gray-200">
-                    <FileText size={48} className="text-gray-300 mb-4" />
-                    <p className="text-gray-500 font-medium">Nenhuma atividade registrada ainda</p>
+                <div className="flex flex-col items-center justify-center py-20 rounded-2xl border border-dashed" style={{ background: 'var(--color-surface)', borderColor: 'var(--color-border)' }}>
+                    <FileText size={48} style={{ color: 'var(--color-text-muted)' }} className="mb-4" />
+                    <p style={{ color: 'var(--color-text-secondary)' }} className="font-medium">Nenhuma atividade registrada ainda</p>
                 </div>
             );
         }
@@ -311,14 +311,14 @@ export default function CotacoesPage() {
                 {sortedCotacoes.map((cot) => {
                     const title = cot.title || 'Solicitação sem Título';
                     return (
-                        <div key={cot.id} className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden hover:shadow-md transition-shadow">
-                            <div className="bg-gray-50/50 px-6 py-5 border-b border-gray-100 flex items-center justify-between">
+                        <div key={cot.id} className="rounded-2xl shadow-sm overflow-hidden hover:shadow-md transition-shadow" style={{ background: 'var(--color-surface)', border: '1px solid var(--color-border-light)' }}>
+                            <div className="px-6 py-5 flex items-center justify-between" style={{ background: 'var(--color-bg)', borderBottom: '1px solid var(--color-border-light)' }}>
                                 <div className="flex items-center gap-4">
                                     <div className="w-12 h-12 bg-[#44B16F]/10 rounded-2xl flex items-center justify-center text-[#44B16F]">
                                         <FileText size={24} />
                                     </div>
                                     <div>
-                                        <h3 className="text-lg font-bold text-gray-900">{title}</h3>
+                                        <h3 className="text-lg font-bold" style={{ color: 'var(--color-text-primary)' }}>{title}</h3>
                                     </div>
                                 </div>
                                 <div className="flex items-center gap-2">
@@ -329,22 +329,25 @@ export default function CotacoesPage() {
                             </div>
                             <div className="overflow-x-auto">
                                 <table className="w-full">
-                                    <thead className="bg-gray-50/30 border-b border-gray-100">
+                                    <thead style={{ background: 'var(--color-bg)', borderBottom: '1px solid var(--color-border)' }}>
                                         <tr>
-                                            <th className="px-6 py-4 text-left text-xs font-bold text-gray-400">ID / DATA</th>
-                                            <th className="px-6 py-4 text-left text-xs font-bold text-gray-400">FORNECEDORES CONVIDADOS</th>
-                                            <th className="px-6 py-4 text-left text-xs font-bold text-gray-400">ESTADO</th>
-                                            <th className="px-6 py-4 text-center text-xs font-bold text-gray-400">AÇÕES</th>
+                                            <th className="px-6 py-4 text-left text-xs font-bold" style={{ color: 'var(--color-text-muted)' }}>ID / DATA</th>
+                                            <th className="px-6 py-4 text-left text-xs font-bold" style={{ color: 'var(--color-text-muted)' }}>FORNECEDORES CONVIDADOS</th>
+                                            <th className="px-6 py-4 text-left text-xs font-bold" style={{ color: 'var(--color-text-muted)' }}>ESTADO</th>
+                                            <th className="px-6 py-4 text-center text-xs font-bold" style={{ color: 'var(--color-text-muted)' }}>AÇÕES</th>
                                         </tr>
                                     </thead>
-                                    <tbody className="divide-y divide-gray-50 font-medium">
-                                        <tr className="group hover:bg-emerald-50/30 transition-colors">
+                                    <tbody className="font-medium" style={{ borderTop: '1px solid var(--color-border-light)' }}>
+                                        <tr className="group transition-colors" style={{ borderBottom: '1px solid var(--color-border-light)' }}
+                                            onMouseEnter={e => e.currentTarget.style.background = 'var(--color-primary-50)'}
+                                            onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
+                                        >
                                             <td className="px-6 py-5">
                                                 <div className="flex flex-col">
-                                                    <span className="text-gray-900 font-bold">
+                                                    <span className="font-bold" style={{ color: 'var(--color-text-primary)' }}>
                                                         {cot.reference_number || cot.reference || `COD-#${cot.id}`}
                                                     </span>
-                                                    <span className="text-[11px] text-gray-400 italic">
+                                                    <span className="text-[11px] italic" style={{ color: 'var(--color-text-muted)' }}>
                                                         Criado em: {new Date(cot.created_at).toLocaleDateString()}
                                                     </span>
                                                 </div>
@@ -401,7 +404,7 @@ export default function CotacoesPage() {
         }
 
         return (
-            <div className="bg-white rounded-xl shadow-sm overflow-hidden">
+            <div className="rounded-xl shadow-sm overflow-hidden" style={{ background: 'var(--color-surface)' }}>
                 {cotacoesError && (
                     <div className="p-4 bg-red-50 border-b border-red-200">
                         <p className="text-red-600 text-sm">
@@ -412,21 +415,21 @@ export default function CotacoesPage() {
 
                 <div className="overflow-x-auto">
                     <table className="w-full">
-                        <thead className="bg-gray-50 border-b border-gray-200">
+                        <thead style={{ background: 'var(--color-bg)', borderBottom: '1px solid var(--color-border)' }}>
                             <tr>
                                 <th className="px-6 py-4 text-left">
-                                    <input type="checkbox" className="rounded border-gray-300" />
+                                    <input type="checkbox" className="rounded" style={{ borderColor: 'var(--color-border)' }} />
                                 </th>
-                                <th className="px-6 py-4 text-left text-sm font-semibold text-gray-600">ID</th>
-                                <th className="px-6 py-4 text-left text-sm font-semibold text-gray-600">Título</th>
-                                <th className="px-6 py-4 text-left text-sm font-semibold text-gray-600">Descrição</th>
-                                <th className="px-6 py-4 text-left text-sm font-semibold text-gray-600">Items</th>
-                                <th className="px-6 py-4 text-left text-sm font-semibold text-gray-600">Deadline</th>
-                                <th className="px-6 py-4 text-left text-sm font-semibold text-gray-600">Data de Criação</th>
-                                <th className="px-6 py-4 text-left text-sm font-semibold text-gray-600">Fornecedores</th>
-                                <th className="px-6 py-4 text-left text-sm font-semibold text-gray-600">Respostas</th>
-                                <th className="px-6 py-4 text-left text-sm font-semibold text-gray-600">Status</th>
-                                <th className="px-6 py-4 text-center text-sm font-semibold text-gray-600">Ações</th>
+                                <th className="px-6 py-4 text-left text-sm font-semibold" style={{ color: 'var(--color-text-secondary)' }}>ID</th>
+                                <th className="px-6 py-4 text-left text-sm font-semibold" style={{ color: 'var(--color-text-secondary)' }}>Título</th>
+                                <th className="px-6 py-4 text-left text-sm font-semibold" style={{ color: 'var(--color-text-secondary)' }}>Descrição</th>
+                                <th className="px-6 py-4 text-left text-sm font-semibold" style={{ color: 'var(--color-text-secondary)' }}>Items</th>
+                                <th className="px-6 py-4 text-left text-sm font-semibold" style={{ color: 'var(--color-text-secondary)' }}>Deadline</th>
+                                <th className="px-6 py-4 text-left text-sm font-semibold" style={{ color: 'var(--color-text-secondary)' }}>Data de Criação</th>
+                                <th className="px-6 py-4 text-left text-sm font-semibold" style={{ color: 'var(--color-text-secondary)' }}>Fornecedores</th>
+                                <th className="px-6 py-4 text-left text-sm font-semibold" style={{ color: 'var(--color-text-secondary)' }}>Respostas</th>
+                                <th className="px-6 py-4 text-left text-sm font-semibold" style={{ color: 'var(--color-text-secondary)' }}>Status</th>
+                                <th className="px-6 py-4 text-center text-sm font-semibold" style={{ color: 'var(--color-text-secondary)' }}>Ações</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -445,39 +448,42 @@ export default function CotacoesPage() {
                                 </tr>
                             ) : (
                                 currentCotacoes.map((cotacao) => (
-                                    <tr key={cotacao.id} className="border-b border-gray-100 hover:bg-gray-50 transition-colors">
+                                    <tr key={cotacao.id} className="transition-colors" style={{ borderBottom: '1px solid var(--color-border-light)' }}
+                                        onMouseEnter={e => e.currentTarget.style.background = 'var(--color-primary-50)'}
+                                        onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
+                                    >
                                         <td className="px-6 py-8">
                                             <input type="checkbox" className="rounded border-gray-300" />
                                         </td>
                                         <td className="px-6 py-8">
-                                            <span className="font-medium text-gray-700">#{cotacao.id}</span>
+                                            <span className="font-medium" style={{ color: 'var(--color-text-secondary)' }}>#{cotacao.id}</span>
                                         </td>
                                         <td className="px-6 py-8">
-                                            <span className="font-semibold text-gray-900">{cotacao.title || 'N/A'}</span>
+                                            <span className="font-semibold" style={{ color: 'var(--color-text-primary)' }}>{cotacao.title || 'N/A'}</span>
                                         </td>
-                                        <td className="px-6 py-8 text-gray-700 max-w-xs truncate">
+                                        <td className="px-6 py-8 max-w-xs truncate" style={{ color: 'var(--color-text-secondary)' }}>
                                             {cotacao.description || 'N/A'}
                                         </td>
                                         <td className="px-6 py-8">
                                             {cotacao.items && cotacao.items.length > 0 ? (
                                                 <div className="space-y-1">
                                                     {cotacao.items.slice(0, 2).map((item, idx) => (
-                                                        <div key={idx} className="text-xs text-gray-600">
+                                                        <div key={idx} className="text-xs" style={{ color: 'var(--color-text-secondary)' }}>
                                                             <span className="font-medium">{item.name}</span>
-                                                            <span className="text-gray-500"> - {item.quantity} {item.unit}</span>
+                                                            <span style={{ color: 'var(--color-text-muted)' }}> - {item.quantity} {item.unit}</span>
                                                         </div>
                                                     ))}
                                                     {cotacao.items.length > 2 && (
-                                                        <div className="text-xs text-gray-500 italic">
+                                                        <div className="text-xs italic" style={{ color: 'var(--color-text-muted)' }}>
                                                             +{cotacao.items.length - 2} mais
                                                         </div>
                                                     )}
                                                 </div>
                                             ) : (
-                                                <span className="text-xs text-gray-500">Sem items</span>
+                                                <span className="text-xs" style={{ color: 'var(--color-text-muted)' }}>Sem items</span>
                                             )}
                                         </td>
-                                        <td className="px-6 py-8 text-gray-700">
+                                        <td className="px-6 py-8" style={{ color: 'var(--color-text-secondary)' }}>
                                             {cotacao.deadline ? new Date(cotacao.deadline).toLocaleDateString('pt-AO', {
                                                 day: '2-digit',
                                                 month: '2-digit',
@@ -486,14 +492,14 @@ export default function CotacoesPage() {
                                                 minute: '2-digit'
                                             }) : 'N/A'}
                                         </td>
-                                        <td className="px-6 py-8 text-gray-700">
+                                        <td className="px-6 py-8" style={{ color: 'var(--color-text-secondary)' }}>
                                             {cotacao.created_at ? new Date(cotacao.created_at).toLocaleDateString('pt-AO', {
                                                 day: '2-digit',
                                                 month: '2-digit',
                                                 year: 'numeric'
                                             }) : 'N/A'}
                                         </td>
-                                        <td className="px-6 py-8 text-gray-700">
+                                        <td className="px-6 py-8" style={{ color: 'var(--color-text-secondary)' }}>
                                             {cotacao.suppliers?.length > 0 ? `${cotacao.suppliers.length} fornecedor(es)` : 'Nenhum'}
                                         </td>
                                         <td className="px-6 py-8">
@@ -525,13 +531,16 @@ export default function CotacoesPage() {
                                             <div className="relative flex justify-center dropdown-menu">
                                                 <button
                                                     onClick={() => setOpenMenuId(openMenuId === cotacao.id ? null : cotacao.id)}
-                                                    className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+                                                    className="p-2 rounded-lg transition-colors"
+                                                    style={{ color: 'var(--color-text-secondary)' }}
+                                                    onMouseEnter={e => e.currentTarget.style.background = 'var(--color-bg)'}
+                                                    onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
                                                 >
-                                                    <MoreVertical size={20} className="text-gray-600" />
+                                                    <MoreVertical size={20} />
                                                 </button>
 
                                                 {openMenuId === cotacao.id && (
-                                                    <div className="absolute right-0 top-full mt-2 w-52 bg-white rounded-xl shadow-xl border border-gray-100 py-2 z-50">
+                                                    <div className="absolute right-0 top-full mt-2 w-52 rounded-xl shadow-xl py-2 z-50" style={{ background: 'var(--color-surface)', border: '1px solid var(--color-border)' }}>
                                                         {/* Mais detalhes */}
                                                         <button
                                                             onClick={() => {
@@ -539,10 +548,13 @@ export default function CotacoesPage() {
                                                                 setIsRevisarModalOpen(true);
                                                                 setOpenMenuId(null);
                                                             }}
-                                                            className="w-full px-4 py-2.5 text-left hover:bg-gray-50 text-sm flex items-center gap-3 transition-colors"
+                                                            className="w-full px-4 py-2.5 text-left text-sm flex items-center gap-3 transition-colors"
+                                                            style={{ color: 'var(--color-text-secondary)' }}
+                                                            onMouseEnter={e => e.currentTarget.style.background = 'var(--color-bg)'}
+                                                            onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
                                                         >
-                                                            <FileText size={16} className="text-gray-400" />
-                                                            <span className="text-gray-700">Mais detalhes</span>
+                                                            <FileText size={16} style={{ color: 'var(--color-text-muted)' }} />
+                                                            <span>Mais detalhes</span>
                                                         </button>
 
                                                         {/* Cancelar/Remover */}
@@ -552,10 +564,13 @@ export default function CotacoesPage() {
                                                                     handleCancelCotacao(cotacao);
                                                                     setOpenMenuId(null);
                                                                 }}
-                                                                className="w-full px-4 py-2.5 text-left hover:bg-gray-50 text-sm flex items-center gap-3 transition-colors text-red-600"
+                                                                className="w-full px-4 py-2.5 text-left text-sm flex items-center gap-3 transition-colors"
+                                                                style={{ color: '#EF4444' }}
+                                                                onMouseEnter={e => e.currentTarget.style.background = 'rgba(239,68,68,0.08)'}
+                                                                onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
                                                             >
-                                                                <Trash2 size={16} className="text-red-400" />
-                                                                <span className="text-red-700">Cancelar Cotação</span>
+                                                                <Trash2 size={16} style={{ color: '#EF4444' }} />
+                                                                <span>Cancelar Cotação</span>
                                                             </button>
                                                         )}
 
@@ -563,9 +578,12 @@ export default function CotacoesPage() {
                                                         {cotacao.status === 'draft' && (
                                                             <button
                                                                 onClick={() => handleSendCotacao(cotacao)}
-                                                                className="w-full px-4 py-2.5 text-left hover:bg-gray-50 text-sm flex items-center gap-3 transition-colors text-blue-600 font-medium"
+                                                                className="w-full px-4 py-2.5 text-left text-sm flex items-center gap-3 transition-colors font-medium"
+                                                                style={{ color: '#3B82F6' }}
+                                                                onMouseEnter={e => e.currentTarget.style.background = 'rgba(59,130,246,0.08)'}
+                                                                onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
                                                             >
-                                                                <Send size={16} className="text-blue-500" />
+                                                                <Send size={16} style={{ color: '#3B82F6' }} />
                                                                 <span>Enviar para fornecedores</span>
                                                             </button>
                                                         )}
@@ -586,44 +604,40 @@ export default function CotacoesPage() {
     return (
         <div className="space-y-6">
             {/* Welcome Section */}
-            <div className="bg-white rounded-2xl p-8 shadow-sm flex items-center justify-between">
+            <div className="rounded-2xl p-8 shadow-sm flex items-center justify-between" style={{ background: 'var(--color-surface)' }}>
                 <div>
-                    <h1 className="text-4xl font-bold text-gray-900 mb-2">
+                    <h1 className="text-4xl font-bold mb-2" style={{ color: 'var(--color-text-primary)' }}>
                         Cotações
                     </h1>
-                    <h2 className="text-2xl font-semibold text-gray-900 mb-2">
+                    <h2 className="text-2xl font-semibold mb-2" style={{ color: 'var(--color-text-primary)' }}>
                         Gestão de Cotações
                     </h2>
-                    <p className="text-gray-600">Gerencie e envie pedidos de cotação para os fornecedores</p>
+                    <p style={{ color: 'var(--color-text-secondary)' }}>Gerencie e envie pedidos de cotação para os fornecedores</p>
                 </div>
-                <div className="hidden lg:block">
-                    <img
-                        src="/cotacoes_banner.png"
-                        alt="Pedidos de Cotação e Contratos Agrícolas"
-                        className="w-96 h-32 object-cover rounded-xl"
-                    />
-                </div>
+
             </div>
 
             {/* Cotações Sub-tabs */}
-            <div className="flex flex-wrap items-center justify-between gap-4 border-b border-gray-200">
+            <div className="flex flex-wrap items-center justify-between gap-4" style={{ borderBottom: '1px solid var(--color-border)' }}>
                 <div className="flex gap-6">
                     {/* "Pedidos enviados" tab button hidden as requested */}
                     <button
                         onClick={() => setActiveCotacaoTab("por-atividade")}
                         className={`pb-3 font-medium text-sm transition-all ${activeCotacaoTab === "por-atividade"
-                            ? "text-[#44B16F] border-b-2 border-[#44B16F]"
-                            : "text-gray-500 hover:text-gray-700"
+                            ? "border-b-2 border-[#44B16F]"
+                            : ""
                             }`}
+                        style={{ color: activeCotacaoTab === 'por-atividade' ? 'var(--color-primary)' : 'var(--color-text-secondary)' }}
                     >
                         Atividades
                     </button>
                     <button
                         onClick={() => setActiveCotacaoTab("pedidos-cancelados")}
                         className={`pb-3 font-medium text-sm transition-all ${activeCotacaoTab === "pedidos-cancelados"
-                            ? "text-[#44B16F] border-b-2 border-[#44B16F]"
-                            : "text-gray-500 hover:text-gray-700"
+                            ? "border-b-2 border-[#44B16F]"
+                            : ""
                             }`}
+                        style={{ color: activeCotacaoTab === 'pedidos-cancelados' ? 'var(--color-primary)' : 'var(--color-text-secondary)' }}
                     >
                         Pedidos Cancelados
                     </button>
@@ -634,7 +648,10 @@ export default function CotacoesPage() {
                     <button
                         onClick={fetchQuotationsAndData}
                         disabled={isLoadingCotacoes}
-                        className="flex items-center gap-2 px-3 py-2 text-gray-600 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors disabled:opacity-50"
+                        className="flex items-center gap-2 px-3 py-2 rounded-lg transition-colors disabled:opacity-50"
+                        style={{ color: 'var(--color-text-secondary)', border: '1px solid var(--color-border)' }}
+                        onMouseEnter={e => e.currentTarget.style.background = 'var(--color-bg)'}
+                        onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
                         title="Atualizar lista"
                     >
                         <RefreshCw size={16} className={isLoadingCotacoes ? "animate-spin" : ""} />

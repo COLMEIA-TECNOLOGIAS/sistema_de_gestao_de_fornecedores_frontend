@@ -8,7 +8,7 @@ import {
     quotationResponsesAPI
 } from "../../services/api";
 import DashboardTableSkeleton from "../Components/DashboardTableSkeleton";
-import { Package, AlertCircle, Users, FileText } from "lucide-react";
+import { Package, AlertCircle, Users, FileText, ArrowUpRight, TrendingUp, ArrowRight } from "lucide-react";
 
 export default function DashboardPage() {
     const { user } = useAuth();
@@ -30,7 +30,6 @@ export default function DashboardPage() {
             setDashboardData(data);
         } catch (err) {
             console.error("Erro ao carregar dados do dashboard via API principal:", err);
-            console.log("Tentando carregar dados via fallback (cálculo manual)...");
             await fetchDashboardDataFallback();
         } finally {
             setIsLoading(false);
@@ -39,42 +38,27 @@ export default function DashboardPage() {
 
     const fetchDashboardDataFallback = async () => {
         try {
-            // Fetch all necessary data in parallel
             const [quotations, suppliers, responses] = await Promise.all([
                 quotationRequestsAPI.getAll().catch(() => []),
                 suppliersAPI.getAll().catch(() => []),
                 quotationResponsesAPI.getAll().catch(() => [])
             ]);
-
-            // Normalizing data (API sometimes returns { data: [] } wrapper)
             const quotationsList = Array.isArray(quotations) ? quotations : (quotations.data || []);
             const suppliersList = Array.isArray(suppliers) ? suppliers : (suppliers.data || []);
             const responsesList = Array.isArray(responses) ? responses : (responses.data || []);
 
-            // Calculate Counts
-
-            // Active Quotations: sent or in_progress
             const activeQuotationsCount = quotationsList.filter(q =>
                 ['sent', 'in_progress', 'open'].includes(q.status)
             ).length;
-
-            // Pending Reviews: Responses that are pending
-            // Assuming responses have a 'status' field.
             const pendingReviewsCount = responsesList.filter(r =>
                 ['pending', 'review', 'submitted'].includes(r.status)
             ).length;
-
-            // Active Suppliers
             const activeSuppliersCount = suppliersList.length;
-
-            // Total Quotations
             const totalQuotationsCount = quotationsList.length;
 
-            // Recent Quotations (Take last 5)
-            // Sorting by created_at desc if possible, otherwise assume list order
-            const sortedQuotations = [...quotationsList].sort((a, b) => {
-                return new Date(b.created_at) - new Date(a.created_at);
-            }).slice(0, 5);
+            const sortedQuotations = [...quotationsList].sort((a, b) =>
+                new Date(b.created_at) - new Date(a.created_at)
+            ).slice(0, 5);
 
             setDashboardData({
                 counts: {
@@ -85,153 +69,230 @@ export default function DashboardPage() {
                 },
                 recent_quotations: sortedQuotations
             });
-
         } catch (fallbackErr) {
-            console.error("Erro no fallback do dashboard:", fallbackErr);
-            // Default empty state if even fallback fails
             setDashboardData({
-                counts: {
-                    active_quotations: 0,
-                    pending_reviews: 0,
-                    active_suppliers: 0,
-                    total_quotations: 0
-                },
+                counts: { active_quotations: 0, pending_reviews: 0, active_suppliers: 0, total_quotations: 0 },
                 recent_quotations: []
             });
-            setError(null);
         }
     };
 
     const formatDate = (dateString) => {
         const date = new Date(dateString);
-        return date.toLocaleDateString('pt-PT', {
-            day: '2-digit',
-            month: '2-digit',
-            year: 'numeric',
-            hour: '2-digit',
-            minute: '2-digit'
-        });
+        return date.toLocaleDateString('pt-PT', { day: '2-digit', month: '2-digit', year: 'numeric' });
+    };
+
+    const STATUS_CONFIG = {
+        draft:       { label: 'Rascunho',    cls: 'badge badge-neutral' },
+        sent:        { label: 'Enviada',      cls: 'badge badge-info' },
+        in_progress: { label: 'Em Progresso', cls: 'badge badge-warning' },
+        completed:   { label: 'Completa',     cls: 'badge badge-success' },
+        cancelled:   { label: 'Cancelada',    cls: 'badge badge-error' },
     };
 
     const getStatusBadge = (status) => {
-        const statusConfig = {
-            draft: { label: 'Rascunho', class: 'bg-gray-100 text-gray-700' },
-            sent: { label: 'Enviada', class: 'bg-blue-100 text-blue-700' },
-            in_progress: { label: 'Em Progresso', class: 'bg-yellow-100 text-yellow-700' },
-            completed: { label: 'Completa', class: 'bg-green-100 text-green-700' },
-            cancelled: { label: 'Cancelada', class: 'bg-red-100 text-red-700' },
-        };
-        const config = statusConfig[status] || statusConfig.draft;
-        return (
-            <span className={`px-3 py-1 rounded-full text-xs font-medium ${config.class}`}>
-                {config.label}
-            </span>
-        );
+        const cfg = STATUS_CONFIG[status] || STATUS_CONFIG.draft;
+        return <span className={cfg.cls}>{cfg.label}</span>;
     };
 
     return (
-        <div className="space-y-8">
-            {/* Welcome Section */}
-            <div className="bg-white rounded-2xl p-8 shadow-sm flex items-center justify-between">
+        <div className="space-y-6">
+            {/* Page Header */}
+            <div className="flex items-center justify-between">
                 <div>
-                    <h1 className="text-4xl font-bold text-gray-900 mb-2">
-                        Olá {userName},
+                    <h1 className="text-2xl font-bold" style={{ color: 'var(--color-text-primary)' }}>
+                        Dashboard
                     </h1>
-                    <h2 className="text-2xl font-semibold text-gray-900 mb-2">
-                        Bem vindo de volta!
-                    </h2>
-                    <p className="text-gray-600">Continue com as suas atividades</p>
+                    <p className="text-sm mt-0.5" style={{ color: 'var(--color-text-secondary)' }}>
+                        Aqui está o resumo das suas atividades de negócio.
+                    </p>
                 </div>
-                <div className="hidden lg:block">
-                    <img
-                        src="/dashboard_banner.png"
-                        alt="Agricultura Sustentável MOSAP3"
-                        className="w-96 h-32 object-cover rounded-xl"
-                    />
+                <div className="flex items-center gap-2">
+                    <button
+                        onClick={() => navigate('/relatorios')}
+                        className="btn-secondary text-sm"
+                        style={{ padding: '8px 16px' }}
+                    >
+                        Exportar
+                    </button>
+                    <button
+                        onClick={fetchDashboardData}
+                        className="btn-primary text-sm"
+                        style={{ padding: '8px 16px' }}
+                    >
+                        Actualizar
+                    </button>
                 </div>
             </div>
 
-            {/* Statistics Cards */}
+            {/* Stats Cards */}
             {isLoading ? (
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
                     {[...Array(4)].map((_, i) => (
-                        <div key={i} className="bg-white rounded-xl shadow-sm p-6 animate-pulse">
-                            <div className="h-4 bg-gray-200 rounded w-3/4 mb-4"></div>
-                            <div className="h-8 bg-gray-200 rounded w-1/2"></div>
+                        <div key={i} className="card p-6">
+                            <div className="skeleton h-4 w-3/4 mb-4 rounded" />
+                            <div className="skeleton h-8 w-1/2 rounded" />
                         </div>
                     ))}
                 </div>
-            ) : error ? (
-                <div className="bg-red-50 border border-red-200 rounded-xl p-4 text-red-700">
-                    {error}
-                </div>
-            ) : dashboardData?.counts ? (
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-                    {/* Card 1: Cotações Ativas - Navega para tabela de cotações */}
-                    <div
+            ) : (
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
+
+                    {/* Card 1 — HIGHLIGHTED (gradient verde, como azul na referência) */}
+                    <button
+                        onClick={() => navigate('/cotacoes')}
+                        className="rounded-xl p-6 text-left w-full relative overflow-hidden group transition-all duration-200"
+                        style={{
+                            background: 'linear-gradient(135deg, var(--color-primary) 0%, var(--color-primary-dark) 100%)',
+                            boxShadow: '0 8px 24px rgba(68,177,111,0.35)',
+                        }}
+                        onMouseEnter={e => { e.currentTarget.style.transform = 'translateY(-2px)'; e.currentTarget.style.boxShadow = '0 12px 32px rgba(68,177,111,0.45)'; }}
+                        onMouseLeave={e => { e.currentTarget.style.transform = 'translateY(0)'; e.currentTarget.style.boxShadow = '0 8px 24px rgba(68,177,111,0.35)'; }}
+                    >
+                        {/* Decorative circle */}
+                        <div style={{
+                            position: 'absolute', top: '-20px', right: '-20px',
+                            width: '80px', height: '80px', borderRadius: '50%',
+                            background: 'rgba(255,255,255,0.12)'
+                        }} />
+                        <div style={{
+                            position: 'absolute', bottom: '-30px', right: '20px',
+                            width: '60px', height: '60px', borderRadius: '50%',
+                            background: 'rgba(255,255,255,0.08)'
+                        }} />
+
+                        <div className="flex items-start justify-between relative z-10">
+                            <div
+                                className="w-10 h-10 rounded-xl flex items-center justify-center"
+                                style={{ background: 'rgba(255,255,255,0.2)' }}
+                            >
+                                <FileText size={20} color="white" />
+                            </div>
+                            <ArrowUpRight size={18} color="rgba(255,255,255,0.7)" />
+                        </div>
+                        <div className="mt-4 relative z-10">
+                            <p className="text-3xl font-bold text-white">
+                                {dashboardData?.counts?.total_quotations ?? 0}
+                            </p>
+                            <p className="text-sm mt-1" style={{ color: 'rgba(255,255,255,0.8)' }}>
+                                Total de Cotações
+                            </p>
+                        </div>
+                    </button>
+
+                    {/* Card 2 */}
+                    <button
                         onClick={() => navigate('/fornecedores?tab=cotacoes')}
-                        className="bg-white rounded-xl shadow-sm p-6 border-l-4 border-blue-500 cursor-pointer hover:shadow-lg transition-shadow"
+                        className="card p-6 text-left w-full group transition-all duration-200"
+                        onMouseEnter={e => { e.currentTarget.style.transform = 'translateY(-2px)'; e.currentTarget.style.boxShadow = 'var(--shadow-md)'; }}
+                        onMouseLeave={e => { e.currentTarget.style.transform = 'translateY(0)'; e.currentTarget.style.boxShadow = 'var(--shadow-sm)'; }}
                     >
-                        <div className="flex items-center justify-between mb-2">
-                            <h3 className="text-sm font-medium text-gray-600">Cotações Ativas</h3>
-                            <Package className="text-blue-500" size={24} />
+                        <div className="flex items-start justify-between">
+                            <div
+                                className="w-10 h-10 rounded-xl flex items-center justify-center"
+                                style={{ background: '#EFF8FF' }}
+                            >
+                                <Package size={20} style={{ color: '#0A90CD' }} />
+                            </div>
+                            <ArrowUpRight size={16} className="opacity-0 group-hover:opacity-60 transition-opacity" style={{ color: 'var(--color-text-muted)' }} />
                         </div>
-                        <p className="text-3xl font-bold text-gray-900">{dashboardData.counts.active_quotations}</p>
-                    </div>
-
-                    {/* Card 2: Revisões Pendentes - Navega para tabela de revisões */}
-                    <div
-                        onClick={() => navigate('/fornecedores?tab=cotacoes&subtab=respostas')}
-                        className="bg-white rounded-xl shadow-sm p-6 border-l-4 border-yellow-500 cursor-pointer hover:shadow-lg transition-shadow"
-                    >
-                        <div className="flex items-center justify-between mb-2">
-                            <h3 className="text-sm font-medium text-gray-600">Revisões Pendentes</h3>
-                            <AlertCircle className="text-yellow-500" size={24} />
+                        <div className="mt-4">
+                            <p className="text-3xl font-bold" style={{ color: 'var(--color-text-primary)' }}>
+                                {dashboardData?.counts?.active_quotations ?? 0}
+                            </p>
+                            <p className="text-sm mt-1" style={{ color: 'var(--color-text-secondary)' }}>
+                                Cotações Ativas
+                            </p>
                         </div>
-                        <p className="text-3xl font-bold text-gray-900">{dashboardData.counts.pending_reviews}</p>
-                    </div>
+                    </button>
 
-                    {/* Card 3: Fornecedores Ativos - Navega para página de fornecedores */}
-                    <div
+                    {/* Card 3 */}
+                    <button
                         onClick={() => navigate('/fornecedores')}
-                        className="bg-white rounded-xl shadow-sm p-6 border-l-4 border-green-500 cursor-pointer hover:shadow-lg transition-shadow"
+                        className="card p-6 text-left w-full group transition-all duration-200"
+                        onMouseEnter={e => { e.currentTarget.style.transform = 'translateY(-2px)'; e.currentTarget.style.boxShadow = 'var(--shadow-md)'; }}
+                        onMouseLeave={e => { e.currentTarget.style.transform = 'translateY(0)'; e.currentTarget.style.boxShadow = 'var(--shadow-sm)'; }}
                     >
-                        <div className="flex items-center justify-between mb-2">
-                            <h3 className="text-sm font-medium text-gray-600">Fornecedores Ativos</h3>
-                            <Users className="text-green-500" size={24} />
+                        <div className="flex items-start justify-between">
+                            <div
+                                className="w-10 h-10 rounded-xl flex items-center justify-center"
+                                style={{ background: '#F0FFF4' }}
+                            >
+                                <Users size={20} style={{ color: 'var(--color-primary)' }} />
+                            </div>
+                            <ArrowUpRight size={16} className="opacity-0 group-hover:opacity-60 transition-opacity" style={{ color: 'var(--color-text-muted)' }} />
                         </div>
-                        <p className="text-3xl font-bold text-gray-900">{dashboardData.counts.active_suppliers}</p>
-                    </div>
+                        <div className="mt-4">
+                            <p className="text-3xl font-bold" style={{ color: 'var(--color-text-primary)' }}>
+                                {dashboardData?.counts?.active_suppliers ?? 0}
+                            </p>
+                            <p className="text-sm mt-1" style={{ color: 'var(--color-text-secondary)' }}>
+                                Fornecedores Ativos
+                            </p>
+                        </div>
+                    </button>
 
-                    {/* Card 4: Total de Cotações - Navega para tabela de cotações */}
-                    <div
-                        onClick={() => navigate('/fornecedores?tab=cotacoes')}
-                        className="bg-white rounded-xl shadow-sm p-6 border-l-4 border-purple-500 cursor-pointer hover:shadow-lg transition-shadow"
+                    {/* Card 4 */}
+                    <button
+                        onClick={() => navigate('/fornecedores?tab=cotacoes&subtab=respostas')}
+                        className="card p-6 text-left w-full group transition-all duration-200"
+                        onMouseEnter={e => { e.currentTarget.style.transform = 'translateY(-2px)'; e.currentTarget.style.boxShadow = 'var(--shadow-md)'; }}
+                        onMouseLeave={e => { e.currentTarget.style.transform = 'translateY(0)'; e.currentTarget.style.boxShadow = 'var(--shadow-sm)'; }}
                     >
-                        <div className="flex items-center justify-between mb-2">
-                            <h3 className="text-sm font-medium text-gray-600">Total de Cotações</h3>
-                            <FileText className="text-purple-500" size={24} />
+                        <div className="flex items-start justify-between">
+                            <div
+                                className="w-10 h-10 rounded-xl flex items-center justify-center"
+                                style={{ background: '#FEF9C3' }}
+                            >
+                                <AlertCircle size={20} style={{ color: '#F59E0B' }} />
+                            </div>
+                            <ArrowUpRight size={16} className="opacity-0 group-hover:opacity-60 transition-opacity" style={{ color: 'var(--color-text-muted)' }} />
                         </div>
-                        <p className="text-3xl font-bold text-gray-900">{dashboardData.counts.total_quotations}</p>
-                    </div>
+                        <div className="mt-4">
+                            <p className="text-3xl font-bold" style={{ color: 'var(--color-text-primary)' }}>
+                                {dashboardData?.counts?.pending_reviews ?? 0}
+                            </p>
+                            <p className="text-sm mt-1" style={{ color: 'var(--color-text-secondary)' }}>
+                                Revisões Pendentes
+                            </p>
+                        </div>
+                    </button>
                 </div>
-            ) : null}
+            )}
 
-            {/* Recent Quotations */}
-            <div className="bg-white rounded-xl shadow-sm p-8">
-                <h2 className="text-2xl font-bold text-gray-900 mb-2">Cotações Recentes</h2>
-                <p className="text-gray-500 mb-6">Listamos as cotações criadas recentemente</p>
+            {/* Recent Quotations Table */}
+            <div className="card overflow-hidden">
+                <div
+                    className="flex items-center justify-between px-6 py-4 border-b"
+                    style={{ borderColor: 'var(--color-border-light)' }}
+                >
+                    <div className="flex items-center gap-2">
+                        <TrendingUp size={18} style={{ color: 'var(--color-primary)' }} />
+                        <h2 className="font-semibold text-base" style={{ color: 'var(--color-text-primary)' }}>
+                            Cotações Recentes
+                        </h2>
+                    </div>
+                    <button
+                        onClick={() => navigate('/cotacoes')}
+                        className="text-sm font-medium flex items-center gap-1 transition-colors"
+                        style={{ color: 'var(--color-primary)' }}
+                        onMouseEnter={e => e.currentTarget.style.color = 'var(--color-primary-dark)'}
+                        onMouseLeave={e => e.currentTarget.style.color = 'var(--color-primary)'}
+                    >
+                        Ver todas <ArrowRight size={14} />
+                    </button>
+                </div>
 
                 <div className="overflow-x-auto">
                     <table className="w-full">
                         <thead>
-                            <tr className="border-b border-gray-200">
-                                <th className="text-left py-4 px-4 text-sm font-semibold text-gray-500 uppercase">Referência</th>
-                                <th className="text-left py-4 px-4 text-sm font-semibold text-gray-500 uppercase">Título</th>
-                                <th className="text-left py-4 px-4 text-sm font-semibold text-gray-500 uppercase">Descrição</th>
-                                <th className="text-left py-4 px-4 text-sm font-semibold text-gray-500 uppercase">Prazo</th>
-                                <th className="text-left py-4 px-4 text-sm font-semibold text-gray-500 uppercase">Status</th>
-                                <th className="text-left py-4 px-4 text-sm font-semibold text-gray-500 uppercase">Criado em</th>
+                            <tr>
+                                <th className="table-header-cell">Referência</th>
+                                <th className="table-header-cell">Título</th>
+                                <th className="table-header-cell hidden md:table-cell">Descrição</th>
+                                <th className="table-header-cell">Prazo</th>
+                                <th className="table-header-cell">Status</th>
+                                <th className="table-header-cell hidden lg:table-cell">Criado em</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -239,37 +300,49 @@ export default function DashboardPage() {
                                 <DashboardTableSkeleton rows={4} />
                             ) : error ? (
                                 <tr>
-                                    <td colSpan="6" className="py-8 text-center text-gray-500">
+                                    <td colSpan="6" className="py-8 text-center text-sm" style={{ color: 'var(--color-text-muted)' }}>
                                         Erro ao carregar cotações
                                     </td>
                                 </tr>
                             ) : dashboardData?.recent_quotations?.length > 0 ? (
-                                dashboardData.recent_quotations.map((quotation) => (
-                                    <tr key={quotation.id} className="border-b border-gray-100 hover:bg-gray-50 transition-colors">
-                                        <td className="py-4 px-4">
-                                            <span className="font-semibold text-gray-900">{quotation.reference_number}</span>
+                                dashboardData.recent_quotations.map((q) => (
+                                    <tr key={q.id} className="table-row">
+                                        <td className="table-cell">
+                                            <span className="font-semibold text-sm" style={{ color: 'var(--color-primary)' }}>
+                                                {q.reference_number}
+                                            </span>
                                         </td>
-                                        <td className="py-4 px-4">
-                                            <span className="text-gray-900 font-medium">{quotation.title}</span>
+                                        <td className="table-cell font-medium" style={{ color: 'var(--color-text-primary)' }}>
+                                            {q.title}
                                         </td>
-                                        <td className="py-4 px-4">
-                                            <span className="text-gray-600 text-sm">{quotation.description}</span>
+                                        <td className="table-cell hidden md:table-cell" style={{ color: 'var(--color-text-secondary)', maxWidth: '200px' }}>
+                                            <span className="line-clamp-1">{q.description}</span>
                                         </td>
-                                        <td className="py-4 px-4">
-                                            <span className="text-gray-700 text-sm">{formatDate(quotation.deadline)}</span>
+                                        <td className="table-cell" style={{ color: 'var(--color-text-secondary)', whiteSpace: 'nowrap' }}>
+                                            {formatDate(q.deadline)}
                                         </td>
-                                        <td className="py-4 px-4">
-                                            {getStatusBadge(quotation.status)}
+                                        <td className="table-cell">
+                                            {getStatusBadge(q.status)}
                                         </td>
-                                        <td className="py-4 px-4">
-                                            <span className="text-gray-600 text-sm">{formatDate(quotation.created_at)}</span>
+                                        <td className="table-cell hidden lg:table-cell" style={{ color: 'var(--color-text-muted)', whiteSpace: 'nowrap' }}>
+                                            {formatDate(q.created_at)}
                                         </td>
                                     </tr>
                                 ))
                             ) : (
                                 <tr>
-                                    <td colSpan="6" className="py-8 text-center text-gray-500">
-                                        Nenhuma cotação recente
+                                    <td colSpan="6">
+                                        <div className="empty-state">
+                                            <div className="empty-state-icon">
+                                                <FileText size={28} style={{ color: 'var(--color-text-muted)' }} />
+                                            </div>
+                                            <p className="text-sm font-medium" style={{ color: 'var(--color-text-secondary)' }}>
+                                                Nenhuma cotação recente
+                                            </p>
+                                            <p className="text-xs mt-1" style={{ color: 'var(--color-text-muted)' }}>
+                                                As cotações criadas aparecem aqui
+                                            </p>
+                                        </div>
                                     </td>
                                 </tr>
                             )}

@@ -65,8 +65,8 @@ export default function LoginPage() {
         </div>
       </div>
 
-      {/* Right Side - Login Form - Menos espaço */}
-      <div className="flex items-center justify-center px-6 py-8 bg-white">
+      {/* Right Side - Login Form */}
+      <div className="flex items-center justify-center px-6 py-8" style={{ background: 'var(--color-surface)' }}>
         <div className="w-full max-w-md">
           {/* Logo for mobile */}
           <div className="lg:hidden flex justify-center mb-8">
@@ -74,10 +74,10 @@ export default function LoginPage() {
           </div>
 
           <div className="mb-8">
-            <h1 className="text-4xl font-bold mb-3 text-gray-900">
+            <h1 className="text-4xl font-bold mb-3" style={{ color: 'var(--color-text-primary)' }}>
               Login
             </h1>
-            <p className="text-gray-600 text-base">
+            <p className="text-base" style={{ color: 'var(--color-text-secondary)' }}>
               Entre com as sua conta para continuar<br />
               com as suas atividades
             </p>
@@ -93,7 +93,7 @@ export default function LoginPage() {
           <form onSubmit={handleSubmit} className="space-y-6">
             {/* Email Field */}
             <div>
-              <label className="block text-sm text-gray-700 mb-2">
+              <label className="block text-sm mb-2" style={{ color: 'var(--color-text-secondary)' }}>
                 Email
               </label>
               <input
@@ -101,7 +101,12 @@ export default function LoginPage() {
                 placeholder="seu.email@exemplo.com"
                 value={formData.email}
                 onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                className="w-full px-4 py-3 border border-[#DDE5E9] rounded-lg focus:outline-none focus:ring-2 focus:ring-[#44B16F]/20 focus:border-[#44B16F] transition-all"
+                className="w-full px-4 py-3 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#44B16F]/30 focus:border-[#44B16F] transition-all"
+                style={{
+                  background: 'var(--color-bg)',
+                  border: '1px solid var(--color-border)',
+                  color: 'var(--color-text-primary)',
+                }}
                 required
                 disabled={isLoading}
               />
@@ -109,7 +114,7 @@ export default function LoginPage() {
 
             {/* Password Field */}
             <div>
-              <label className="block text-sm text-gray-700 mb-2">
+              <label className="block text-sm mb-2" style={{ color: 'var(--color-text-secondary)' }}>
                 Senha
               </label>
               <div className="relative">
@@ -118,21 +123,27 @@ export default function LoginPage() {
                   placeholder="Sua senha"
                   value={formData.password}
                   onChange={(e) => setFormData({ ...formData, password: e.target.value })}
-                  className="w-full px-4 py-3 border border-[#DDE5E9] rounded-lg focus:outline-none focus:ring-2 focus:ring-[#44B16F]/20 focus:border-[#44B16F] transition-all pr-12"
+                  className="w-full px-4 py-3 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#44B16F]/30 focus:border-[#44B16F] transition-all pr-12"
+                  style={{
+                    background: 'var(--color-bg)',
+                    border: '1px solid var(--color-border)',
+                    color: 'var(--color-text-primary)',
+                  }}
                   required
                   disabled={isLoading}
                 />
                 <button
                   type="button"
                   onClick={() => setShowPassword(!showPassword)}
-                  className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                  className="absolute right-4 top-1/2 -translate-y-1/2 transition-colors"
+                  style={{ color: 'var(--color-text-muted)' }}
                 >
                   {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
                 </button>
               </div>
             </div>
 
-            {/* Submit Button and Forgot Password in same line */}
+            {/* Submit Button */}
             <div className="flex items-center justify-end">
               <button
                 type="submit"

@@ -95,23 +95,17 @@ export default function UsuariosPage() {
   return (
     <div className="space-y-8">
       {/* Welcome Section */}
-      <div className="bg-white rounded-2xl p-8 shadow-sm flex items-center justify-between">
+      <div className="rounded-2xl p-8 shadow-sm flex items-center justify-between" style={{ background: 'var(--color-surface)' }}>
         <div>
-          <h1 className="text-4xl font-bold text-gray-900 mb-2">
+          <h1 className="text-4xl font-bold mb-2" style={{ color: 'var(--color-text-primary)' }}>
             Usuários
           </h1>
-          <h2 className="text-2xl font-semibold text-gray-900 mb-2">
+          <h2 className="text-2xl font-semibold mb-2" style={{ color: 'var(--color-text-primary)' }}>
             Gestão de Usuários
           </h2>
-          <p className="text-gray-600">Gerencie os usuários cadastrados no sistema</p>
+          <p style={{ color: 'var(--color-text-secondary)' }}>Gerencie os usuários cadastrados no sistema</p>
         </div>
-        <div className="hidden lg:block">
-          <img
-            src="/usuarios_banner.png"
-            alt="Equipa Técnica MOSAP3"
-            className="w-96 h-32 object-cover rounded-xl"
-          />
-        </div>
+
       </div>
 
       {/* Actions Bar */}
@@ -132,7 +126,10 @@ export default function UsuariosPage() {
           <button
             onClick={fetchUsuarios}
             disabled={isLoading}
-            className="flex items-center gap-2 px-4 py-3 text-gray-600 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors"
+            className="flex items-center gap-2 px-4 py-3 rounded-lg transition-colors"
+            style={{ color: 'var(--color-text-secondary)', border: '1px solid var(--color-border)' }}
+            onMouseEnter={e => e.currentTarget.style.background = 'var(--color-bg)'}
+            onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
           >
             <RefreshCw size={18} className={isLoading ? "animate-spin" : ""} />
           </button>
@@ -147,7 +144,8 @@ export default function UsuariosPage() {
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
             placeholder="Pesquisar usuário"
-            className="pl-10 pr-4 py-3 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#44B16F] focus:border-transparent w-64"
+            className="pl-10 pr-4 py-3 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#44B16F] focus:border-transparent w-64"
+            style={{ background: 'var(--color-bg)', border: '1px solid var(--color-border)', color: 'var(--color-text-primary)' }}
           />
         </div>
       </div>
@@ -166,25 +164,25 @@ export default function UsuariosPage() {
       )}
 
       {/* Table */}
-      <div className="bg-white rounded-xl shadow-sm overflow-hidden">
+      <div className="rounded-xl shadow-sm overflow-hidden" style={{ background: 'var(--color-surface)', border: '1px solid var(--color-border-light)' }}>
         <div className="overflow-x-auto">
           <table className="w-full">
-            <thead className="bg-gray-50 border-b border-gray-200">
+            <thead style={{ background: 'var(--color-bg)', borderBottom: '1px solid var(--color-border-light)' }}>
               <tr>
-                <th className="px-6 py-4 text-left text-sm font-semibold text-gray-600">ID</th>
-                <th className="px-6 py-4 text-left text-sm font-semibold text-gray-600">
+                <th className="px-6 py-4 text-left text-sm font-semibold" style={{ color: 'var(--color-text-secondary)' }}>ID</th>
+                <th className="px-6 py-4 text-left text-sm font-semibold" style={{ color: 'var(--color-text-secondary)' }}>
                   <div className="flex items-center gap-2">
                     Nome completo
                   </div>
                 </th>
-                <th className="px-6 py-4 text-left text-sm font-semibold text-gray-600">
+                <th className="px-6 py-4 text-left text-sm font-semibold" style={{ color: 'var(--color-text-secondary)' }}>
                   <div className="flex items-center gap-2">
                     Estado
                   </div>
                 </th>
-                <th className="px-6 py-4 text-left text-sm font-semibold text-gray-600">Email</th>
-                <th className="px-6 py-4 text-left text-sm font-semibold text-gray-600">Função</th>
-                <th className="px-6 py-4 text-center text-sm font-semibold text-gray-600">Ações</th>
+                <th className="px-6 py-4 text-left text-sm font-semibold" style={{ color: 'var(--color-text-secondary)' }}>Email</th>
+                <th className="px-6 py-4 text-left text-sm font-semibold" style={{ color: 'var(--color-text-secondary)' }}>Função</th>
+                <th className="px-6 py-4 text-center text-sm font-semibold" style={{ color: 'var(--color-text-secondary)' }}>Ações</th>
               </tr>
             </thead>
             <tbody>
@@ -192,9 +190,9 @@ export default function UsuariosPage() {
                 <UsuarioTableSkeleton rows={5} />
               ) : filteredUsuarios.length === 0 ? (
                 <tr>
-                  <td colSpan="6" className="px-6 py-12 text-center text-gray-500">
+                  <td colSpan="6" className="px-6 py-12 text-center" style={{ color: 'var(--color-text-secondary)' }}>
                     <div className="flex flex-col items-center gap-2">
-                      <svg className="w-12 h-12 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <svg className="w-12 h-12" style={{ color: 'var(--color-text-muted)' }} fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" />
                       </svg>
                       <p className="text-lg font-medium">Nenhum usuário encontrado</p>
@@ -204,41 +202,50 @@ export default function UsuariosPage() {
                 </tr>
               ) : (
                 filteredUsuarios.map((u, index) => (
-                  <tr key={u.id || index} className="border-b border-gray-100 hover:bg-gray-50 transition-colors">
-                    <td className="px-6 py-4 text-gray-700">{u.id}</td>
+                  <tr key={u.id || index} className="transition-colors" style={{ borderBottom: '1px solid var(--color-border-light)' }} onMouseEnter={e => e.currentTarget.style.background = 'var(--color-bg)'} onMouseLeave={e => e.currentTarget.style.background = 'transparent'}>
+                    <td className="px-6 py-4" style={{ color: 'var(--color-text-secondary)' }}>{u.id}</td>
                     <td className="px-6 py-4">
-                      <span className="font-medium text-gray-900">{u.name || u.nome}</span>
+                      <span className="font-medium" style={{ color: 'var(--color-text-primary)' }}>{u.name || u.nome}</span>
                     </td>
                     <td className="px-6 py-4">
                       <div className="flex items-center gap-2">
-                        <span className={`w - 2 h - 2 rounded - full ${u.is_active !== false ? 'bg-green-500' : 'bg-red-500'} `}></span>
-                        <span className="text-gray-700">{u.is_active !== false ? 'Activo' : 'Inactivo'}</span>
+                        <span className={`w-2 h-2 rounded-full ${u.is_active !== false ? 'bg-green-500' : 'bg-red-500'}`}></span>
+                        <span style={{ color: 'var(--color-text-secondary)' }}>{u.is_active !== false ? 'Activo' : 'Inactivo'}</span>
                       </div>
                     </td>
-                    <td className="px-6 py-4 text-gray-700">{u.email}</td>
-                    <td className="px-6 py-4 text-gray-700">{getRoleLabel(u.role)}</td>
+                    <td className="px-6 py-4" style={{ color: 'var(--color-text-secondary)' }}>{u.email}</td>
+                    <td className="px-6 py-4" style={{ color: 'var(--color-text-secondary)' }}>{getRoleLabel(u.role)}</td>
                     <td className="px-6 py-4">
                       <div className="flex items-center justify-center gap-2">
                         <button
                           onClick={() => handleView(u)}
-                          className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+                          className="p-2 rounded-lg transition-colors"
                           title="Ver detalhes"
+                          style={{ color: 'var(--color-text-secondary)' }}
+                          onMouseEnter={e => e.currentTarget.style.background = 'var(--color-bg)'}
+                          onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
                         >
-                          <Eye size={18} className="text-gray-600" />
+                          <Eye size={18} />
                         </button>
                         <button
                           onClick={() => handleEdit(u)}
-                          className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+                          className="p-2 rounded-lg transition-colors"
                           title="Editar"
+                          style={{ color: 'var(--color-text-secondary)' }}
+                          onMouseEnter={e => e.currentTarget.style.background = 'var(--color-bg)'}
+                          onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
                         >
-                          <Edit size={18} className="text-gray-600" />
+                          <Edit size={18} />
                         </button>
                         <button
                           onClick={() => handleDeleteClick(u)}
-                          className="p-2 hover:bg-red-50 rounded-lg transition-colors"
+                          className="p-2 rounded-lg transition-colors"
                           title="Excluir"
+                          style={{ color: 'var(--color-error)' }}
+                          onMouseEnter={e => e.currentTarget.style.background = 'var(--color-error-light)'}
+                          onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
                         >
-                          <Trash2 size={18} className="text-red-600" />
+                          <Trash2 size={18} />
                         </button>
                       </div>
                     </td>
@@ -251,7 +258,7 @@ export default function UsuariosPage() {
 
         {/* Pagination logic is kept as is but hidden in this view replacement for brevity if unchanged logic is fine, but I better keep it or simplified */}
         {!isLoading && usuarios.length > 0 && (
-          <div className="flex items-center justify-between px-6 py-4 border-t border-gray-200">
+          <div className="flex items-center justify-between px-6 py-4" style={{ borderTop: '1px solid var(--color-border-light)' }}>
             {/* Pagination content remains standard */}
           </div>
         )}

@@ -116,8 +116,8 @@ export default function ProdutosPage() {
             {/* Header */}
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
                 <div>
-                    <h1 className="text-3xl font-bold text-gray-900 tracking-tight">Produtos</h1>
-                    <p className="text-gray-500 mt-1">Gerencie o catálogo de produtos reutilizáveis</p>
+                    <h1 className="text-3xl font-bold tracking-tight" style={{ color: 'var(--color-text-primary)' }}>Produtos</h1>
+                    <p className="mt-1" style={{ color: 'var(--color-text-secondary)' }}>Gerencie o catálogo de produtos reutilizáveis</p>
                 </div>
                 <button
                     onClick={() => {
@@ -132,20 +132,24 @@ export default function ProdutosPage() {
             </div>
 
             {/* Filters */}
-            <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 flex flex-col md:flex-row gap-4 items-center justify-between">
+            <div className="p-6 rounded-2xl shadow-sm flex flex-col md:flex-row gap-4 items-center justify-between" style={{ background: 'var(--color-surface)', border: '1px solid var(--color-border-light)' }}>
                 <div className="relative w-full md:w-96">
                     <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" size={20} />
                     <input
                         type="text"
                         placeholder="Buscar produtos..."
-                        className="w-full pl-12 pr-4 py-3 bg-gray-50 border-transparent focus:bg-white focus:ring-2 focus:ring-[#44B16F] focus:border-transparent rounded-xl outline-none transition-all text-sm"
+                        className="w-full pl-12 pr-4 py-3 border-transparent focus:ring-2 focus:ring-[#44B16F] focus:border-transparent rounded-xl outline-none transition-all text-sm"
+                        style={{ background: 'var(--color-bg)', color: 'var(--color-text-primary)' }}
                         value={searchTerm}
                         onChange={(e) => setSearchTerm(e.target.value)}
                     />
                 </div>
                 <button
                     onClick={() => fetchProducts()}
-                    className="flex items-center gap-2 px-4 py-2 text-gray-600 hover:bg-gray-50 rounded-xl transition-colors border border-gray-200"
+                    className="flex items-center gap-2 px-4 py-2 rounded-xl transition-colors"
+                    style={{ color: 'var(--color-text-secondary)', border: '1px solid var(--color-border)' }}
+                    onMouseEnter={e => e.currentTarget.style.background = 'var(--color-bg)'}
+                    onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
                 >
                     <RefreshCw size={18} />
                     <span className="text-sm font-medium">Atualizar</span>
@@ -153,18 +157,18 @@ export default function ProdutosPage() {
             </div>
 
             {/* Table */}
-            <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+            <div className="rounded-2xl shadow-sm overflow-hidden" style={{ background: 'var(--color-surface)', border: '1px solid var(--color-border-light)' }}>
                 <div className="overflow-x-auto">
                     <table className="w-full">
-                        <thead className="bg-gray-50/50 border-b border-gray-100">
+                        <thead style={{ background: 'var(--color-bg)', borderBottom: '1px solid var(--color-border-light)' }}>
                             <tr>
-                                <th className="px-6 py-5 text-left text-xs font-bold text-gray-500 uppercase tracking-widest">ID</th>
-                                <th className="px-6 py-5 text-left text-xs font-bold text-gray-500 uppercase tracking-widest">Nome</th>
-                                <th className="px-6 py-5 text-left text-xs font-bold text-gray-500 uppercase tracking-widest">Categoria</th>
-                                <th className="px-6 py-5 text-left text-xs font-bold text-gray-500 uppercase tracking-widest">Unidade</th>
-                                <th className="px-6 py-5 text-left text-xs font-bold text-gray-500 uppercase tracking-widest">Data Criação</th>
-                                <th className="px-6 py-5 text-center text-xs font-bold text-gray-500 uppercase tracking-widest">Análise</th>
-                                <th className="px-6 py-5 text-center text-xs font-bold text-gray-500 uppercase tracking-widest">Ações</th>
+                                <th className="px-6 py-5 text-left text-xs font-bold uppercase tracking-widest" style={{ color: 'var(--color-text-secondary)' }}>ID</th>
+                                <th className="px-6 py-5 text-left text-xs font-bold uppercase tracking-widest" style={{ color: 'var(--color-text-secondary)' }}>Nome</th>
+                                <th className="px-6 py-5 text-left text-xs font-bold uppercase tracking-widest" style={{ color: 'var(--color-text-secondary)' }}>Categoria</th>
+                                <th className="px-6 py-5 text-left text-xs font-bold uppercase tracking-widest" style={{ color: 'var(--color-text-secondary)' }}>Unidade</th>
+                                <th className="px-6 py-5 text-left text-xs font-bold uppercase tracking-widest" style={{ color: 'var(--color-text-secondary)' }}>Data Criação</th>
+                                <th className="px-6 py-5 text-center text-xs font-bold uppercase tracking-widest" style={{ color: 'var(--color-text-secondary)' }}>Análise</th>
+                                <th className="px-6 py-5 text-center text-xs font-bold uppercase tracking-widest" style={{ color: 'var(--color-text-secondary)' }}>Ações</th>
                             </tr>
                         </thead>
                         <tbody className="divide-y divide-gray-50">
@@ -178,22 +182,22 @@ export default function ProdutosPage() {
                                 </tr>
                             ) : filteredProducts.length === 0 ? (
                                 <tr>
-                                    <td colSpan="6" className="px-6 py-12 text-center text-gray-500 font-medium">
+                                    <td colSpan="6" className="px-6 py-12 text-center font-medium" style={{ color: 'var(--color-text-secondary)' }}>
                                         <div className="flex flex-col items-center gap-2">
-                                            <Package size={40} className="text-gray-300" />
+                                            <Package size={40} style={{ color: 'var(--color-text-muted)' }} />
                                             <p>Nenhum produto encontrado</p>
                                         </div>
                                     </td>
                                 </tr>
                             ) : (
                                 filteredProducts.map((product) => (
-                                    <tr key={product.id} className="hover:bg-gray-50/50 transition-colors group">
-                                        <td className="px-6 py-6 text-sm font-bold text-gray-900">#{product.id}</td>
+                                    <tr key={product.id} className="transition-colors group" onMouseEnter={e => e.currentTarget.style.background = 'var(--color-bg)'} onMouseLeave={e => e.currentTarget.style.background = 'transparent'}>
+                                        <td className="px-6 py-6 text-sm font-bold" style={{ color: 'var(--color-text-primary)' }}>#{product.id}</td>
                                         <td className="px-6 py-6">
                                             <div>
-                                                <p className="font-semibold text-gray-900">{product.name}</p>
+                                                <p className="font-semibold" style={{ color: 'var(--color-text-primary)' }}>{product.name}</p>
                                                 {product.description && (
-                                                    <p className="text-xs text-gray-500 mt-0.5 truncate max-w-xs">{product.description}</p>
+                                                    <p className="text-xs mt-0.5 truncate max-w-xs" style={{ color: 'var(--color-text-secondary)' }}>{product.description}</p>
                                                 )}
                                             </div>
                                         </td>
@@ -202,10 +206,10 @@ export default function ProdutosPage() {
                                                 {product.category?.name || product.category_id || "N/A"}
                                             </span>
                                         </td>
-                                        <td className="px-6 py-6 text-sm text-gray-600">
+                                        <td className="px-6 py-6 text-sm" style={{ color: 'var(--color-text-secondary)' }}>
                                             {product.unit || "-"}
                                         </td>
-                                        <td className="px-6 py-6 text-sm text-gray-500">
+                                        <td className="px-6 py-6 text-sm" style={{ color: 'var(--color-text-secondary)' }}>
                                             {new Date(product.created_at).toLocaleDateString('pt-AO')}
                                         </td>
                                         <td className="px-6 py-6 text-center">
@@ -222,13 +226,16 @@ export default function ProdutosPage() {
                                             <div className="relative inline-block text-left dropdown-menu">
                                                 <button
                                                     onClick={() => setOpenMenuId(openMenuId === product.id ? null : product.id)}
-                                                    className="p-2 hover:bg-gray-100 rounded-lg text-gray-400 hover:text-gray-600 transition-colors"
+                                                    className="p-2 rounded-lg transition-colors"
+                                                    style={{ color: 'var(--color-text-muted)' }}
+                                                    onMouseEnter={e => { e.currentTarget.style.background = 'var(--color-bg)'; e.currentTarget.style.color = 'var(--color-text-secondary)'; }}
+                                                    onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = 'var(--color-text-muted)'; }}
                                                 >
                                                     <MoreVertical size={18} />
                                                 </button>
 
                                                 {openMenuId === product.id && (
-                                                    <div className="absolute right-0 mt-2 w-48 bg-white rounded-xl shadow-lg border border-gray-100 py-1 z-10 animate-fadeIn">
+                                                    <div className="absolute right-0 mt-2 w-48 rounded-xl shadow-lg py-1 z-10 animate-fadeIn" style={{ background: 'var(--color-surface)', border: '1px solid var(--color-border)' }}>
                                                         <button
                                                             onClick={async () => {
                                                                 setOpenMenuId(null);
@@ -246,7 +253,10 @@ export default function ProdutosPage() {
                                                                 setIsCreateModalOpen(true);
                                                                 setOpenMenuId(null);
                                                             }}
-                                                            className="flex items-center gap-2 w-full px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-50 transition-colors"
+                                                            className="flex items-center gap-2 w-full px-4 py-2.5 text-sm transition-colors"
+                                                            style={{ color: 'var(--color-text-secondary)' }}
+                                                            onMouseEnter={e => e.currentTarget.style.background = 'var(--color-bg)'}
+                                                            onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
                                                         >
                                                             <Edit2 size={16} />
                                                             Editar
@@ -271,15 +281,16 @@ export default function ProdutosPage() {
 
                 {/* Pagination */}
                 {pagination.last_page > 1 && (
-                    <div className="px-6 py-4 bg-gray-50/50 border-t border-gray-100 flex items-center justify-between">
-                        <span className="text-sm text-gray-500">
+                    <div className="px-6 py-4 flex items-center justify-between" style={{ background: 'var(--color-bg)', borderTop: '1px solid var(--color-border-light)' }}>
+                        <span className="text-sm" style={{ color: 'var(--color-text-secondary)' }}>
                             Mostrando {((pagination.current_page - 1) * pagination.per_page) + 1} a {Math.min(pagination.current_page * pagination.per_page, pagination.total)} de {pagination.total} resultados
                         </span>
                         <div className="flex items-center gap-2">
                             <button
                                 onClick={() => handlePageChange(pagination.current_page - 1)}
                                 disabled={pagination.current_page === 1}
-                                className="px-3 py-1 text-sm border border-gray-200 rounded-lg hover:bg-white disabled:opacity-50 disabled:cursor-not-allowed"
+                                className="px-3 py-1 text-sm rounded-lg disabled:opacity-50 disabled:cursor-not-allowed"
+                                style={{ color: 'var(--color-text-secondary)', border: '1px solid var(--color-border)' }}
                             >
                                 Anterior
                             </button>
@@ -289,8 +300,9 @@ export default function ProdutosPage() {
                                     onClick={() => handlePageChange(page)}
                                     className={`px-3 py-1 text-sm rounded-lg ${pagination.current_page === page
                                         ? 'bg-[#44B16F] text-white font-medium'
-                                        : 'border border-gray-200 hover:bg-white text-gray-600'
+                                        : 'border border-transparent'
                                         }`}
+                                    style={pagination.current_page !== page ? { color: 'var(--color-text-secondary)', border: '1px solid var(--color-border)' } : {}}
                                 >
                                     {page}
                                 </button>
@@ -298,7 +310,8 @@ export default function ProdutosPage() {
                             <button
                                 onClick={() => handlePageChange(pagination.current_page + 1)}
                                 disabled={pagination.current_page === pagination.last_page}
-                                className="px-3 py-1 text-sm border border-gray-200 rounded-lg hover:bg-white disabled:opacity-50 disabled:cursor-not-allowed"
+                                className="px-3 py-1 text-sm rounded-lg disabled:opacity-50 disabled:cursor-not-allowed"
+                                style={{ color: 'var(--color-text-secondary)', border: '1px solid var(--color-border)' }}
                             >
                                 Próxima
                             </button>

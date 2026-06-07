@@ -1,18 +1,41 @@
-import { Search, Bell, ChevronDown, User, LogOut, Trash2, Check, Loader2, X } from "lucide-react";
+import { Bell, Trash2, Check, Loader2, User, LogOut, ChevronDown, Sun, Moon } from "lucide-react";
 import { useState, useRef, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../../context/AuthContext";
-import LogoutConfirmModal from "../Components/LogoutConfirmModal";
-import DatePicker from "../Components/DatePicker";
+import { useTheme } from "../../context/ThemeContext";
 import { notificationsAPI } from "../../services/api";
 import ModalDetalhesNotificacao from "../Components/ModalDetalhesNotificacao";
+import LogoutConfirmModal from "../Components/LogoutConfirmModal";
 
-function Navbar({ userName: propUserName, userRole: propUserRole, userAvatar: propUserAvatar, onItemClick }) {
+const PAGE_TITLES = {
+  dashboard:    "Dashboard",
+  fornecedores: "Fornecedores",
+  cotacoes:     "Cotações",
+  usuarios:     "Usuários",
+  relatorios:   "Relatórios",
+  aquisicoes:   "Aquisições",
+  categorias:   "Categorias",
+  produtos:     "Produtos",
+  "meu-perfil": "Meu Perfil",
+};
+
+const PAGE_SUBTITLES = {
+  dashboard:    "Aqui está o resumo das suas atividades.",
+  fornecedores: "Gerencie os fornecedores cadastrados.",
+  cotacoes:     "Consulte e gerencie as cotações.",
+  usuarios:     "Gerencie os utilizadores do sistema.",
+  relatorios:   "Análise detalhada e métricas de desempenho.",
+  aquisicoes:   "Gerencie as aquisições e respostas.",
+  categorias:   "Organize as categorias de produtos.",
+  produtos:     "Gerencie o catálogo de produtos.",
+  "meu-perfil": "Gerencie as suas informações pessoais.",
+};
+
+function Navbar({ userName: propUserName, userRole: propUserRole, userAvatar: propUserAvatar, onItemClick, activeItem }) {
+  const { isDark, toggleTheme } = useTheme();
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const [isLogoutModalOpen, setIsLogoutModalOpen] = useState(false);
   const [isLoggingOut, setIsLoggingOut] = useState(false);
-
-  // Notifications state
   const [isNotificationsOpen, setIsNotificationsOpen] = useState(false);
   const [notifications, setNotifications] = useState([]);
   const [unreadCount, setUnreadCount] = useState(0);
@@ -24,58 +47,36 @@ function Navbar({ userName: propUserName, userRole: propUserRole, userAvatar: pr
   const navigate = useNavigate();
   const { user, logout } = useAuth();
 
-  // Fetch notifications
   const fetchNotifications = async () => {
     try {
       const [countData, listData] = await Promise.all([
         notificationsAPI.getUnreadCount(),
         notificationsAPI.getAll()
       ]);
-
-      // Handle unread count - assuming {count: 5} or just integer
       setUnreadCount(typeof countData === 'object' ? (countData.count || 0) : countData);
-
-      // Handle notifications list - ensure it's an array
       let notifArray = [];
-      if (Array.isArray(listData)) {
-        notifArray = listData;
-      } else if (listData && Array.isArray(listData.data)) {
-        notifArray = listData.data;
-      }
-
-      console.log('Notifications fetched:', notifArray);
+      if (Array.isArray(listData)) notifArray = listData;
+      else if (listData && Array.isArray(listData.data)) notifArray = listData.data;
       setNotifications(notifArray);
     } catch (error) {
-      console.error("Failed to fetch notifications:", error);
       setNotifications([]);
     }
   };
 
   useEffect(() => {
     fetchNotifications();
-    // Poll every 60 seconds
     const interval = setInterval(fetchNotifications, 60000);
     return () => clearInterval(interval);
   }, []);
 
-  // Close dropdowns when clicking outside
   useEffect(() => {
     function handleClickOutside(event) {
-      if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
-        setIsDropdownOpen(false);
-      }
-      if (notificationsRef.current && !notificationsRef.current.contains(event.target)) {
-        setIsNotificationsOpen(false);
-      }
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target)) setIsDropdownOpen(false);
+      if (notificationsRef.current && !notificationsRef.current.contains(event.target)) setIsNotificationsOpen(false);
     }
     document.addEventListener("mousedown", handleClickOutside);
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
-
-  const handleLogoutClick = () => {
-    setIsDropdownOpen(false);
-    setIsLogoutModalOpen(true);
-  };
 
   const handleLogoutConfirm = async () => {
     setIsLoggingOut(true);
@@ -91,12 +92,9 @@ function Navbar({ userName: propUserName, userRole: propUserRole, userAvatar: pr
   const handleMarkAsRead = async (id) => {
     try {
       await notificationsAPI.markAsRead(id);
-      // Optimistic update
       setNotifications(prev => prev.map(n => n.id === id ? { ...n, read_at: new Date().toISOString() } : n));
       setUnreadCount(prev => Math.max(0, prev - 1));
-    } catch (error) {
-      console.error("Error marking as read", error);
-    }
+    } catch (error) { console.error("Error marking as read", error); }
   };
 
   const handleMarkAllAsRead = async () => {
@@ -105,73 +103,47 @@ function Navbar({ userName: propUserName, userRole: propUserRole, userAvatar: pr
       await notificationsAPI.markAllAsRead();
       setNotifications(prev => prev.map(n => ({ ...n, read_at: new Date().toISOString() })));
       setUnreadCount(0);
-    } catch (error) {
-      console.error("Error marking all as read", error);
-    } finally {
-      setIsLoadingNotifications(false);
-    }
+    } catch (error) { console.error("Error marking all as read", error); }
+    finally { setIsLoadingNotifications(false); }
   };
 
   const handleDeleteNotification = async (id, e) => {
-    e.stopPropagation(); // Prevent triggering other clicks
+    if (e) e.stopPropagation();
     try {
       await notificationsAPI.delete(id);
       setNotifications(prev => prev.filter(n => n.id !== id));
-      // Re-fetch count just in case or decrement if it was unread
-      // Ideally check if it was unread before decrementing, but fetching API is safer for sync
       fetchNotifications();
-    } catch (error) {
-      console.error("Error deleting notification", error);
-    }
+    } catch (error) { console.error("Error deleting notification", error); }
   };
 
   const toggleNotifications = () => {
-    if (!isNotificationsOpen) {
-      fetchNotifications(); // Refresh on open
-    }
+    if (!isNotificationsOpen) fetchNotifications();
     setIsNotificationsOpen(!isNotificationsOpen);
     setIsDropdownOpen(false);
   };
 
   const handleNotificationClick = async (notification) => {
     try {
-      if (!notification.read_at) {
-        handleMarkAsRead(notification.id);
-      }
-
-      // Fetch full details
+      if (!notification.read_at) handleMarkAsRead(notification.id);
       const details = await notificationsAPI.getById(notification.id);
       setSelectedNotification(details);
-    } catch (e) {
-      console.error("Error fetching details", e);
-      setSelectedNotification(notification);
-    } finally {
-      setIsNotificationsOpen(false);
-    }
+    } catch (e) { setSelectedNotification(notification); }
+    finally { setIsNotificationsOpen(false); }
   };
 
-  const userName = propUserName || user?.name || "Usuário";
+  const userName = propUserName || user?.name || "Utilizador";
   const userRole = propUserRole || user?.role || "Utilizador";
-  const userAvatar = propUserAvatar || `https://api.dicebear.com/7.x/avataaars/svg?seed=${userName}`;
+  const userInitials = userName.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2);
 
-  // Helper to get notification content
   const getNotificationContent = (notification) => {
-    // Laravel notifications store data in `data` field
     const sv = notification.data || {};
-
-    // Safely parse date
     let timeDisplay = 'Data desconhecida';
     try {
       if (notification.created_at) {
         const date = new Date(notification.created_at);
-        if (!isNaN(date.getTime())) {
-          timeDisplay = date.toLocaleString('pt-AO');
-        }
+        if (!isNaN(date.getTime())) timeDisplay = date.toLocaleString('pt-AO');
       }
-    } catch (e) {
-      console.error("Error parsing date", e);
-    }
-
+    } catch (e) {}
     return {
       title: notification.title || sv.title || "Notificação",
       message: notification.message || sv.message || sv.description || "Nova notificação",
@@ -179,92 +151,143 @@ function Navbar({ userName: propUserName, userRole: propUserRole, userAvatar: pr
     };
   };
 
+  const pageTitle = PAGE_TITLES[activeItem] || "Dashboard";
+  const pageSubtitle = PAGE_SUBTITLES[activeItem] || "";
+
   return (
     <>
-      <nav className="bg-white border-b border-gray-200 px-6 py-3 flex items-center justify-between fixed top-0 left-0 right-0 z-50">
-        <div className="flex items-center gap-8">
-          {/* Logo Aumentada */}
-          <div className="flex items-center gap-3">
-            <img src="/login1.svg" className="w-12 h-12" alt="MOSAP3" />
-            <span className="font-bold text-2xl">MOSAP3</span>
-          </div>
+      <header
+        className="flex items-center gap-4 px-6"
+        style={{
+          height: 'var(--topbar-height)',
+          borderBottom: '1px solid var(--color-border-light)',
+          background: 'var(--color-surface)',
+        }}
+      >
+        {/* Spacer */}
+        <div className="flex-1" />
 
+        {/* Right: Dark mode + Notifications + User */}
+        <div className="flex items-center gap-2">
 
-        </div>
-
-        {/* User Info with Dropdown */}
-        <div className="flex items-center gap-4">
-          <DatePicker />
+          {/* Dark Mode Toggle */}
+          <button
+            onClick={toggleTheme}
+            className="relative p-2.5 rounded-xl transition-all duration-200"
+            style={{ color: 'var(--color-text-secondary)' }}
+            onMouseEnter={e => e.currentTarget.style.background = 'var(--color-bg)'}
+            onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
+            title={isDark ? 'Mudar para modo claro' : 'Mudar para modo escuro'}
+          >
+            <span style={{ display: 'flex', transition: 'transform 0.3s, opacity 0.3s', transform: isDark ? 'rotate(0deg)' : 'rotate(180deg)', opacity: 1 }}>
+              {isDark ? <Sun size={18} style={{ color: '#FBBF24' }} /> : <Moon size={18} />}
+            </span>
+          </button>
 
           {/* Notifications */}
           <div className="relative" ref={notificationsRef}>
             <button
               onClick={toggleNotifications}
-              className="relative p-2 hover:bg-gray-100 rounded-lg transition-colors focus:outline-none"
+              className="relative p-2.5 rounded-xl transition-colors"
+              style={{ color: 'var(--color-text-secondary)' }}
+              onMouseEnter={e => e.currentTarget.style.background = 'var(--color-bg)'}
+              onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
             >
-              <Bell size={20} className="text-gray-600" />
+              <Bell size={18} />
               {unreadCount > 0 && (
-                <span className="absolute top-1 right-1 flex h-4 w-4 items-center justify-center rounded-full bg-red-500 text-[10px] font-bold text-white">
+                <span
+                  className="absolute top-1.5 right-1.5 flex items-center justify-center rounded-full text-white font-bold"
+                  style={{ background: '#EF4444', fontSize: '9px', width: '15px', height: '15px' }}
+                >
                   {unreadCount > 9 ? '9+' : unreadCount}
                 </span>
               )}
             </button>
 
             {isNotificationsOpen && (
-              <div className="absolute right-0 mt-2 w-80 sm:w-96 bg-white rounded-xl shadow-xl border border-gray-200 overflow-hidden z-50 animate-fadeIn">
-                <div className="flex items-center justify-between px-4 py-3 border-b border-gray-100 bg-gray-50/50">
-                  <h3 className="font-bold text-gray-900">Notificações</h3>
+              <div
+                className="absolute right-0 mt-2 rounded-2xl overflow-hidden animate-fadeIn"
+                style={{
+                  width: '360px',
+                  border: '1px solid var(--color-border)',
+                  boxShadow: 'var(--shadow-xl)',
+                  background: 'var(--color-surface)',
+                  zIndex: 100,
+                  top: '100%',
+                }}
+              >
+                <div className="flex items-center justify-between px-4 py-3 border-b" style={{ borderColor: 'var(--color-border-light)' }}>
+                  <div className="flex items-center gap-2">
+                    <h3 className="font-bold text-sm" style={{ color: 'var(--color-text-primary)' }}>Notificações</h3>
+                    {unreadCount > 0 && (
+                      <span className="badge badge-error text-xs px-2 py-0.5">{unreadCount} novas</span>
+                    )}
+                  </div>
                   {unreadCount > 0 && (
                     <button
                       onClick={handleMarkAllAsRead}
                       disabled={isLoadingNotifications}
-                      className="text-xs font-medium text-[#44B16F] hover:text-[#3a9d5f] flex items-center gap-1 transition-colors"
+                      className="text-xs font-semibold flex items-center gap-1 transition-colors"
+                      style={{ color: 'var(--color-primary)' }}
                     >
-                      {isLoadingNotifications ? <Loader2 size={12} className="animate-spin" /> : <Check size={12} />}
+                      {isLoadingNotifications ? <Loader2 size={11} className="animate-spin" /> : <Check size={11} />}
                       Marcar todas
                     </button>
                   )}
                 </div>
 
-                <div className="max-h-[70vh] overflow-y-auto">
+                <div style={{ maxHeight: '360px', overflowY: 'auto' }}>
                   {notifications.length === 0 ? (
-                    <div className="p-8 text-center text-gray-500">
-                      <Bell size={32} className="mx-auto mb-3 text-gray-300" />
-                      <p className="text-sm">Nenhuma notificação.</p>
+                    <div className="empty-state py-10">
+                      <div className="empty-state-icon">
+                        <Bell size={24} style={{ color: 'var(--color-text-muted)' }} />
+                      </div>
+                      <p className="text-sm font-medium" style={{ color: 'var(--color-text-secondary)' }}>Sem notificações</p>
                     </div>
                   ) : (
-                    <div className="divide-y divide-gray-100">
+                    <div>
                       {notifications.map((notification) => {
                         const content = getNotificationContent(notification);
                         const isRead = !!notification.read_at;
-
                         return (
                           <div
                             key={notification.id}
-                            className={`relative group px-4 py-4 hover:bg-gray-50 transition-colors cursor-pointer ${!isRead ? 'bg-blue-50/30' : ''}`}
+                            className="group relative flex items-start gap-3 px-4 py-3 cursor-pointer transition-colors border-b"
+                            style={{
+                              borderColor: 'var(--color-border-light)',
+                              background: !isRead ? 'rgba(68,177,111,0.04)' : 'transparent',
+                            }}
+                            onMouseEnter={e => e.currentTarget.style.background = 'var(--color-bg)'}
+                            onMouseLeave={e => e.currentTarget.style.background = !isRead ? 'rgba(68,177,111,0.04)' : 'transparent'}
                             onClick={() => handleNotificationClick(notification)}
                           >
-                            <div className="flex items-start gap-3">
-                              <div className={`mt-1 w-2 h-2 rounded-full flex-shrink-0 ${!isRead ? 'bg-blue-500' : 'bg-transparent'}`} />
-                              <div className="flex-1 min-w-0">
-                                <p className={`text-sm ${!isRead ? 'font-semibold text-gray-900' : 'font-medium text-gray-700'}`}>
-                                  {content.title}
-                                </p>
-                                <p className="text-sm text-gray-600 mt-0.5 line-clamp-2">
-                                  {content.message}
-                                </p>
-                                <p className="text-xs text-gray-400 mt-1.5">
-                                  {content.timeDisplay}
-                                </p>
-                              </div>
-                              <button
-                                onClick={(e) => handleDeleteNotification(notification.id, e)}
-                                className="p-1.5 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-lg opacity-0 group-hover:opacity-100 transition-all"
-                                title="Remover"
+                            <div
+                              className="mt-1.5 w-2 h-2 rounded-full flex-shrink-0"
+                              style={{ background: !isRead ? 'var(--color-primary)' : 'transparent' }}
+                            />
+                            <div className="flex-1 min-w-0">
+                              <p
+                                className="text-sm line-clamp-1"
+                                style={{ fontWeight: !isRead ? 600 : 500, color: 'var(--color-text-primary)' }}
                               >
-                                <Trash2 size={14} />
-                              </button>
+                                {content.title}
+                              </p>
+                              <p className="text-xs mt-0.5 line-clamp-2" style={{ color: 'var(--color-text-secondary)' }}>
+                                {content.message}
+                              </p>
+                              <p className="text-xs mt-1" style={{ color: 'var(--color-text-muted)' }}>
+                                {content.timeDisplay}
+                              </p>
                             </div>
+                            <button
+                              onClick={(e) => handleDeleteNotification(notification.id, e)}
+                              className="p-1 rounded-lg opacity-0 group-hover:opacity-100 transition-all"
+                              style={{ color: 'var(--color-text-muted)' }}
+                              onMouseEnter={e => { e.currentTarget.style.background = '#FEE2E2'; e.currentTarget.style.color = '#DC2626'; }}
+                              onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = 'var(--color-text-muted)'; }}
+                            >
+                              <Trash2 size={13} />
+                            </button>
                           </div>
                         );
                       })}
@@ -275,58 +298,81 @@ function Navbar({ userName: propUserName, userRole: propUserRole, userAvatar: pr
             )}
           </div>
 
+          {/* Divider */}
+          <div style={{ width: '1px', height: '28px', background: 'var(--color-border-light)' }} />
+
           {/* User Dropdown */}
           <div className="relative" ref={dropdownRef}>
             <button
-              onClick={() => {
-                setIsDropdownOpen(!isDropdownOpen);
-                setIsNotificationsOpen(false);
-              }}
-              className="flex items-center gap-3 hover:bg-gray-50 rounded-lg px-2 py-1 transition-colors"
+              onClick={() => { setIsDropdownOpen(!isDropdownOpen); setIsNotificationsOpen(false); }}
+              className="flex items-center gap-2.5 pl-1 pr-3 py-1.5 rounded-xl transition-colors"
+              onMouseEnter={e => e.currentTarget.style.background = 'var(--color-bg)'}
+              onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
             >
-              <div className="text-right">
-                <p className="text-sm font-medium text-gray-900">{userName}</p>
-                <p className="text-xs text-gray-500">{userRole}</p>
+              {/* Avatar initials */}
+              <div
+                className="w-8 h-8 rounded-lg flex items-center justify-center text-white text-xs font-bold flex-shrink-0"
+                style={{ background: 'linear-gradient(135deg, var(--color-primary), var(--color-primary-dark))' }}
+              >
+                {userInitials}
               </div>
-              <img
-                src={userAvatar}
-                alt={userName}
-                className="w-10 h-10 rounded-full object-cover"
-              />
+              <div className="hidden sm:block text-left">
+                <p className="text-sm font-semibold leading-tight" style={{ color: 'var(--color-text-primary)' }}>
+                  {userName.split(' ')[0]}
+                </p>
+                <p className="text-xs leading-tight" style={{ color: 'var(--color-text-muted)' }}>{userRole}</p>
+              </div>
               <ChevronDown
-                size={16}
-                className={`text-gray-500 transition-transform ${isDropdownOpen ? 'rotate-180' : ''}`}
+                size={14}
+                style={{ color: 'var(--color-text-muted)', transform: isDropdownOpen ? 'rotate(180deg)' : 'rotate(0)', transition: 'transform 0.2s' }}
               />
             </button>
 
-            {/* Dropdown Menu */}
             {isDropdownOpen && (
-              <div className="absolute right-0 mt-2 w-48 bg-white rounded-lg shadow-lg border border-gray-200 py-1 z-50">
-                <button
-                  onClick={() => {
-                    setIsDropdownOpen(false);
-                    onItemClick('meu-perfil');
-                  }}
-                  className="w-full flex items-center gap-3 px-4 py-2.5 text-gray-700 hover:bg-gray-50 transition-colors text-left"
-                >
-                  <User size={18} className="text-gray-500" />
-                  <span className="text-sm">Meu Perfil</span>
-                </button>
-                <hr className="my-1 border-gray-100" />
-                <button
-                  onClick={handleLogoutClick}
-                  className="w-full flex items-center gap-3 px-4 py-2.5 text-red-600 hover:bg-red-50 transition-colors"
-                >
-                  <LogOut size={18} />
-                  <span className="text-sm">Terminar Sessão</span>
-                </button>
+              <div
+                className="absolute right-0 mt-2 rounded-2xl overflow-hidden animate-fadeIn"
+                style={{
+                  width: '200px',
+                  border: '1px solid var(--color-border)',
+                  boxShadow: 'var(--shadow-xl)',
+                  background: 'var(--color-surface)',
+                  zIndex: 100,
+                  top: '100%',
+                }}
+              >
+                <div className="px-4 py-3 border-b" style={{ borderColor: 'var(--color-border-light)' }}>
+                  <p className="text-sm font-semibold" style={{ color: 'var(--color-text-primary)' }}>{userName}</p>
+                  <p className="text-xs" style={{ color: 'var(--color-text-muted)' }}>{userRole}</p>
+                </div>
+                <div className="py-1">
+                  <button
+                    onClick={() => { setIsDropdownOpen(false); onItemClick('meu-perfil'); }}
+                    className="w-full flex items-center gap-3 px-4 py-2.5 text-sm transition-colors"
+                    style={{ color: 'var(--color-text-secondary)' }}
+                    onMouseEnter={e => e.currentTarget.style.background = 'var(--color-bg)'}
+                    onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
+                  >
+                    <User size={15} />
+                    Meu Perfil
+                  </button>
+                  <div className="mx-3 my-1" style={{ height: '1px', background: 'var(--color-border-light)' }} />
+                  <button
+                    onClick={() => { setIsDropdownOpen(false); setIsLogoutModalOpen(true); }}
+                    className="w-full flex items-center gap-3 px-4 py-2.5 text-sm transition-colors"
+                    style={{ color: '#DC2626' }}
+                    onMouseEnter={e => e.currentTarget.style.background = '#FEF2F2'}
+                    onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
+                  >
+                    <LogOut size={15} />
+                    Terminar Sessão
+                  </button>
+                </div>
               </div>
             )}
           </div>
         </div>
-      </nav>
+      </header>
 
-      {/* Logout Confirmation Modal */}
       <LogoutConfirmModal
         isOpen={isLogoutModalOpen}
         onClose={() => setIsLogoutModalOpen(false)}

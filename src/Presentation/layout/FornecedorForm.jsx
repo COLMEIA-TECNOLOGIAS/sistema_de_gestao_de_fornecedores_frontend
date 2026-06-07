@@ -270,7 +270,7 @@ export default function FornecedorFormWrapper() {
 
   if (currentStep === 4) {
     return (
-      <div className="h-screen bg-[#F8FDF9] flex flex-col overflow-hidden">
+      <div className="h-screen flex flex-col overflow-hidden" style={{ background: 'var(--color-bg)' }}>
         <div className="flex-1 flex items-center justify-center px-8">
           <div className="w-full max-w-2xl text-center">
             <div className="w-24 h-24 bg-[#44B16F] rounded-full flex items-center justify-center mx-auto mb-8 shadow-lg animate-bounce">
@@ -295,7 +295,7 @@ export default function FornecedorFormWrapper() {
   }
 
   return (
-    <div className="min-h-screen bg-[#F8FDF9] flex flex-col">
+    <div className="min-h-screen flex flex-col" style={{ background: 'var(--color-bg)' }}>
       {/* Toast Notification */}
       {toast && (
         <Toast
