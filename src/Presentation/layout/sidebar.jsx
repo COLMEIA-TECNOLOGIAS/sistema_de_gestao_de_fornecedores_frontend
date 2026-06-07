@@ -19,6 +19,7 @@ function Sidebar({ activeItem, onItemClick }) {
     { id: "categorias",  label: "Categorias",   icon: Settings,        permission: PERMISSIONS.CATEGORIAS },
     { id: "relatorios",  label: "Relatórios",   icon: BarChart3,       permission: PERMISSIONS.RELATORIOS },
     { id: "usuarios",    label: "Usuários",     icon: UserCircle,      permission: PERMISSIONS.USUARIOS, adminOnly: true },
+    { id: "logs-eventos",label: "Logs de Eventos", icon: FileText,     permission: PERMISSIONS.USUARIOS, adminOnly: true },
   ];
 
   const menuItems = mainMenuItems.filter(item => {

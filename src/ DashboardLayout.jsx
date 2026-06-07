@@ -14,7 +14,7 @@ export default function DashboardLayout() {
   // Update activeItem based on URL
   useEffect(() => {
     const path = location.pathname.split("/")[1];
-    const validPaths = ["dashboard", "fornecedores", "cotacoes", "usuarios", "relatorios", "aquisicoes", "meu-perfil", "categorias", "produtos"];
+    const validPaths = ["dashboard", "fornecedores", "cotacoes", "usuarios", "relatorios", "aquisicoes", "meu-perfil", "categorias", "produtos", "logs-eventos"];
     if (path && validPaths.includes(path)) {
       setActiveItem(path);
     }

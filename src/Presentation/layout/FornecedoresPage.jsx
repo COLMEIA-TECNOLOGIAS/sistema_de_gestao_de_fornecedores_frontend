@@ -39,7 +39,17 @@ export default function FornecedoresPage() {
     const [searchQuery, setSearchQuery] = useState("");
     const [categories, setCategories] = useState([]); 
     const [selectedCategory, setSelectedCategory] = useState(""); 
+    const [selectedProvince, setSelectedProvince] = useState("");
+    const [selectedMunicipality, setSelectedMunicipality] = useState("");
+    const [selectedStatus, setSelectedStatus] = useState("");
     const [isFilterOpen, setIsFilterOpen] = useState(false);
+
+    const clearFilters = () => {
+        setSelectedCategory("");
+        setSelectedProvince("");
+        setSelectedMunicipality("");
+        setSelectedStatus("");
+    };
 
     // Classifications state
     const [classifications, setClassifications] = useState({});
@@ -96,9 +106,22 @@ export default function FornecedoresPage() {
             );
         }
 
+        if (selectedProvince) {
+            result = result.filter(f => (f.province || "").toLowerCase().includes(selectedProvince.toLowerCase()));
+        }
+
+        if (selectedMunicipality) {
+            result = result.filter(f => (f.municipality || "").toLowerCase().includes(selectedMunicipality.toLowerCase()));
+        }
+
+        if (selectedStatus) {
+            const isActive = selectedStatus === 'active';
+            result = result.filter(f => (f.is_active === 1 || f.is_active === true) === isActive);
+        }
+
         setFilteredFornecedores(result);
         setCurrentPage(1); 
-    }, [fornecedores, searchQuery, selectedCategory, activeTab]);
+    }, [fornecedores, searchQuery, selectedCategory, selectedProvince, selectedMunicipality, selectedStatus, activeTab]);
 
     // Pagination logic
     const totalPages = Math.ceil(filteredFornecedores.length / itemsPerPage);
@@ -248,42 +271,91 @@ export default function FornecedoresPage() {
 
                 {/* Filter Dropdown */}
                 <div className="relative">
-                    <button
-                        onClick={() => setIsFilterOpen(!isFilterOpen)}
-                        className="btn-secondary"
-                        style={selectedCategory ? { borderColor: 'var(--color-primary)', color: 'var(--color-primary)' } : {}}
-                    >
-                        <SlidersHorizontal size={16} />
-                        Filtros
-                        {selectedCategory && (
-                            <span
-                                className="flex items-center justify-center rounded-full text-white text-xs font-bold"
-                                style={{ background: 'var(--color-primary)', width: '18px', height: '18px', fontSize: '10px' }}
-                            >1</span>
-                        )}
-                    </button>
+                    {(() => {
+                        const activeFiltersCount = (selectedCategory ? 1 : 0) + (selectedProvince ? 1 : 0) + (selectedMunicipality ? 1 : 0) + (selectedStatus ? 1 : 0);
+                        return (
+                            <button
+                                onClick={() => setIsFilterOpen(!isFilterOpen)}
+                                className="btn-secondary"
+                                style={activeFiltersCount > 0 ? { borderColor: 'var(--color-primary)', color: 'var(--color-primary)' } : {}}
+                            >
+                                <SlidersHorizontal size={16} />
+                                Filtros
+                                {activeFiltersCount > 0 && (
+                                    <span
+                                        className="flex items-center justify-center rounded-full text-white text-xs font-bold"
+                                        style={{ background: 'var(--color-primary)', width: '18px', height: '18px', fontSize: '10px' }}
+                                    >{activeFiltersCount}</span>
+                                )}
+                            </button>
+                        );
+                    })()}
 
                     {isFilterOpen && (
-                        <div className="absolute left-0 top-full mt-2 w-64 rounded-xl p-4 z-50"
+                        <div className="absolute right-0 top-full mt-2 w-80 rounded-xl p-4 z-50 overflow-y-auto max-h-96"
                             style={{ background: 'var(--color-surface)', border: '1px solid var(--color-border)', boxShadow: 'var(--shadow-xl)' }}>
-                            <h3 className="text-xs font-bold uppercase tracking-wider mb-3" style={{ color: 'var(--color-text-muted)' }}>Categorias</h3>
-                            <div className="space-y-1 max-h-60 overflow-y-auto">
-                                <label className="flex items-center gap-2 p-2 rounded-lg cursor-pointer" style={{ color: 'var(--color-text-secondary)' }}
-                                    onMouseEnter={e => e.currentTarget.style.background = 'var(--color-bg)'}
-                                    onMouseLeave={e => e.currentTarget.style.background = 'transparent'}>
-                                    <input type="radio" name="category" checked={selectedCategory === ""}
-                                        onChange={() => { setSelectedCategory(""); setIsFilterOpen(false); }} />
-                                    <span className="text-sm">Todas</span>
-                                </label>
-                                {categories.map(cat => (
-                                    <label key={cat.id} className="flex items-center gap-2 p-2 rounded-lg cursor-pointer" style={{ color: 'var(--color-text-secondary)' }}
-                                        onMouseEnter={e => e.currentTarget.style.background = 'var(--color-bg)'}
-                                        onMouseLeave={e => e.currentTarget.style.background = 'transparent'}>
-                                        <input type="radio" name="category" checked={String(selectedCategory) === String(cat.id)}
-                                            onChange={() => { setSelectedCategory(cat.id); setIsFilterOpen(false); }} />
-                                        <span className="text-sm">{cat.name}</span>
-                                    </label>
-                                ))}
+                            <div className="flex items-center justify-between mb-4">
+                                <h3 className="text-xs font-bold uppercase tracking-wider" style={{ color: 'var(--color-text-muted)' }}>Filtros</h3>
+                                <button onClick={clearFilters} className="text-xs text-red-500 font-medium hover:text-red-700 transition-colors">Limpar filtros</button>
+                            </div>
+
+                            <div className="space-y-4">
+                                {/* Categoria */}
+                                <div>
+                                    <label className="block text-xs font-semibold mb-1" style={{ color: 'var(--color-text-secondary)' }}>Categoria</label>
+                                    <select
+                                        value={selectedCategory}
+                                        onChange={(e) => setSelectedCategory(e.target.value)}
+                                        className="w-full p-2 border rounded-lg text-sm bg-transparent outline-none"
+                                        style={{ borderColor: 'var(--color-border-light)', color: 'var(--color-text-primary)' }}
+                                    >
+                                        <option value="">Todas</option>
+                                        {categories.map(cat => (
+                                            <option key={cat.id} value={cat.id}>{cat.name}</option>
+                                        ))}
+                                    </select>
+                                </div>
+
+                                {/* Província */}
+                                <div>
+                                    <label className="block text-xs font-semibold mb-1" style={{ color: 'var(--color-text-secondary)' }}>Província</label>
+                                    <input
+                                        type="text"
+                                        placeholder="Digite a província"
+                                        value={selectedProvince}
+                                        onChange={(e) => setSelectedProvince(e.target.value)}
+                                        className="w-full p-2 border rounded-lg text-sm bg-transparent outline-none"
+                                        style={{ borderColor: 'var(--color-border-light)', color: 'var(--color-text-primary)' }}
+                                    />
+                                </div>
+
+                                {/* Município */}
+                                <div>
+                                    <label className="block text-xs font-semibold mb-1" style={{ color: 'var(--color-text-secondary)' }}>Município</label>
+                                    <input
+                                        type="text"
+                                        placeholder="Digite o município"
+                                        value={selectedMunicipality}
+                                        onChange={(e) => setSelectedMunicipality(e.target.value)}
+                                        className="w-full p-2 border rounded-lg text-sm bg-transparent outline-none"
+                                        style={{ borderColor: 'var(--color-border-light)', color: 'var(--color-text-primary)' }}
+                                    />
+                                </div>
+
+                                {/* Status */}
+                                <div>
+                                    <label className="block text-xs font-semibold mb-1" style={{ color: 'var(--color-text-secondary)' }}>Status</label>
+                                    <select
+                                        value={selectedStatus}
+                                        onChange={(e) => setSelectedStatus(e.target.value)}
+                                        className="w-full p-2 border rounded-lg text-sm bg-transparent outline-none"
+                                        style={{ borderColor: 'var(--color-border-light)', color: 'var(--color-text-primary)' }}
+                                    >
+                                        <option value="">Todos</option>
+                                        <option value="active">Ativo</option>
+                                        <option value="inactive">Inativo</option>
+                                    </select>
+                                </div>
                             </div>
                         </div>
                     )}
@@ -344,7 +416,7 @@ export default function FornecedoresPage() {
                                         <td className="px-6 py-8">
                                             <input type="checkbox" className="rounded border-gray-300" />
                                         </td>
-                                        <td className="px-6 py-8">
+                                        <td className="px-6 py-8 cursor-pointer" onClick={() => { setSelectedFornecedor(f); setIsDetalhesModalOpen(true); }}>
                                             <div className="flex items-center gap-3">
                                                 <img
                                                     src={`https://api.dicebear.com/7.x/initials/svg?seed=${f.commercial_name || 'N/A'}`}
@@ -354,13 +426,13 @@ export default function FornecedoresPage() {
                                                 <span className="font-medium" style={{ color: 'var(--color-text-secondary)' }}>#{f.id}</span>
                                             </div>
                                         </td>
-                                        <td className="px-6 py-8">
+                                        <td className="px-6 py-8 cursor-pointer" onClick={() => { setSelectedFornecedor(f); setIsDetalhesModalOpen(true); }}>
                                             <span className="font-semibold" style={{ color: 'var(--color-text-primary)' }}>{f.commercial_name || 'N/A'}</span>
                                         </td>
-                                        <td className="px-6 py-8" style={{ color: 'var(--color-text-secondary)' }}>{f.legal_name || 'N/A'}</td>
-                                        <td className="px-6 py-8" style={{ color: 'var(--color-text-secondary)' }}>{f.nif || 'N/A'}</td>
-                                        <td className="px-6 py-8" style={{ color: 'var(--color-text-secondary)' }}>{f.phone || 'N/A'}</td>
-                                        <td className="px-6 py-8" style={{ color: 'var(--color-text-secondary)' }}>{f.email || 'N/A'}</td>
+                                        <td className="px-6 py-8 cursor-pointer" style={{ color: 'var(--color-text-secondary)' }} onClick={() => { setSelectedFornecedor(f); setIsDetalhesModalOpen(true); }}>{f.legal_name || 'N/A'}</td>
+                                        <td className="px-6 py-8 cursor-pointer" style={{ color: 'var(--color-text-secondary)' }} onClick={() => { setSelectedFornecedor(f); setIsDetalhesModalOpen(true); }}>{f.nif || 'N/A'}</td>
+                                        <td className="px-6 py-8 cursor-pointer" style={{ color: 'var(--color-text-secondary)' }} onClick={() => { setSelectedFornecedor(f); setIsDetalhesModalOpen(true); }}>{f.phone || 'N/A'}</td>
+                                        <td className="px-6 py-8 cursor-pointer" style={{ color: 'var(--color-text-secondary)' }} onClick={() => { setSelectedFornecedor(f); setIsDetalhesModalOpen(true); }}>{f.email || 'N/A'}</td>
                                         <td className="px-6 py-8">
                                             <div className="w-24">
                                                 <div className="flex justify-between mb-1">
@@ -603,6 +675,10 @@ export default function FornecedoresPage() {
                 onClose={() => {
                     setIsDetalhesModalOpen(false);
                     setSelectedFornecedor(null);
+                }}
+                onEdit={() => {
+                    setIsDetalhesModalOpen(false);
+                    setIsModalOpen(true);
                 }}
                 fornecedor={selectedFornecedor}
             />

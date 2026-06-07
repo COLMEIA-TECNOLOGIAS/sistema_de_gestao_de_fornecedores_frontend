@@ -182,7 +182,7 @@ export default function DashboardPage() {
 
                     {/* Card 2 */}
                     <button
-                        onClick={() => navigate('/fornecedores?tab=cotacoes')}
+                        onClick={() => navigate('/cotacoes')}
                         className="card p-6 text-left w-full group transition-all duration-200"
                         onMouseEnter={e => { e.currentTarget.style.transform = 'translateY(-2px)'; e.currentTarget.style.boxShadow = 'var(--shadow-md)'; }}
                         onMouseLeave={e => { e.currentTarget.style.transform = 'translateY(0)'; e.currentTarget.style.boxShadow = 'var(--shadow-sm)'; }}
@@ -234,7 +234,7 @@ export default function DashboardPage() {
 
                     {/* Card 4 */}
                     <button
-                        onClick={() => navigate('/fornecedores?tab=cotacoes&subtab=respostas')}
+                        onClick={() => navigate('/cotacoes')}
                         className="card p-6 text-left w-full group transition-all duration-200"
                         onMouseEnter={e => { e.currentTarget.style.transform = 'translateY(-2px)'; e.currentTarget.style.boxShadow = 'var(--shadow-md)'; }}
                         onMouseLeave={e => { e.currentTarget.style.transform = 'translateY(0)'; e.currentTarget.style.boxShadow = 'var(--shadow-sm)'; }}
@@ -338,9 +338,6 @@ export default function DashboardPage() {
                                             </div>
                                             <p className="text-sm font-medium" style={{ color: 'var(--color-text-secondary)' }}>
                                                 Nenhuma cotação recente
-                                            </p>
-                                            <p className="text-xs mt-1" style={{ color: 'var(--color-text-muted)' }}>
-                                                As cotações criadas aparecem aqui
                                             </p>
                                         </div>
                                     </td>

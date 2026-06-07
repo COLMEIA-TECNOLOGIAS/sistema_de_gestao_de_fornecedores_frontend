@@ -14,6 +14,12 @@ export default function AquisicoesPage() {
     const [error, setError] = useState(null);
     const [toast, setToast] = useState(null);
     const [searchTerm, setSearchTerm] = useState("");
+    
+    // Filtros
+    const [filterSupplier, setFilterSupplier] = useState("");
+    const [filterDeliveryDate, setFilterDeliveryDate] = useState("");
+    const [filterStatus, setFilterStatus] = useState("");
+    const [isFiltersVisible, setIsFiltersVisible] = useState(false);
 
     // Modal states
     const [selectedResponse, setSelectedResponse] = useState(null);
@@ -102,11 +108,26 @@ export default function AquisicoesPage() {
         });
     };
 
-    const filteredResponses = responses.filter(resp =>
-        resp.id.toString().includes(searchTerm) ||
-        (resp.supplier?.commercial_name || "").toLowerCase().includes(searchTerm.toLowerCase()) ||
-        (resp.reference_number || "").toLowerCase().includes(searchTerm.toLowerCase())
-    );
+    const filteredResponses = responses.filter(resp => {
+        const matchSearch = resp.id.toString().includes(searchTerm) ||
+            (resp.supplier?.commercial_name || "").toLowerCase().includes(searchTerm.toLowerCase()) ||
+            (resp.reference_number || "").toLowerCase().includes(searchTerm.toLowerCase());
+            
+        const matchSupplier = filterSupplier === "" || (resp.supplier?.commercial_name || "").toLowerCase().includes(filterSupplier.toLowerCase());
+        
+        const matchDeliveryDate = filterDeliveryDate === "" || (resp.expected_delivery_date && resp.expected_delivery_date.startsWith(filterDeliveryDate));
+        
+        const matchStatus = filterStatus === "" || resp.status === filterStatus;
+        
+        return matchSearch && matchSupplier && matchDeliveryDate && matchStatus;
+    });
+
+    const handleClearFilters = () => {
+        setSearchTerm("");
+        setFilterSupplier("");
+        setFilterDeliveryDate("");
+        setFilterStatus("");
+    };
 
     const handleOpenDetails = async (aquisicao) => {
         try {
@@ -297,26 +318,82 @@ export default function AquisicoesPage() {
             {/* Content Area */}
 
             <div className="rounded-2xl shadow-sm overflow-hidden mt-6" style={{ background: 'var(--color-surface)', border: '1px solid var(--color-border-light)' }}>
-                <div className="flex flex-col md:flex-row md:items-center justify-between p-6 gap-4 border-b" style={{ borderColor: 'var(--color-border-light)' }}>
-                    <div className="flex items-center gap-4 flex-1">
-                        <div className="relative flex-1 max-w-md">
-                            <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
-                            <input
-                                type="text"
-                                placeholder="Pesquisar por ID, fornecedor ou referência..."
-                                value={searchTerm}
-                                onChange={(e) => setSearchTerm(e.target.value)}
-                                className="w-full pl-12 pr-4 py-3 border border-transparent rounded-xl focus:outline-none focus:ring-2 focus:ring-[#44B16F]/20 focus:border-[#44B16F] transition-all text-sm"
-                                style={{ background: 'var(--color-bg)', color: 'var(--color-text-primary)' }}
-                            />
+                <div className="flex flex-col p-6 gap-4 border-b" style={{ borderColor: 'var(--color-border-light)' }}>
+                    <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+                        <div className="flex items-center gap-4 flex-1">
+                            <div className="relative flex-1 max-w-md">
+                                <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
+                                <input
+                                    type="text"
+                                    placeholder="Pesquisar por ID, fornecedor ou referência..."
+                                    value={searchTerm}
+                                    onChange={(e) => setSearchTerm(e.target.value)}
+                                    className="w-full pl-12 pr-4 py-3 border border-transparent rounded-xl focus:outline-none focus:ring-2 focus:ring-[#44B16F]/20 focus:border-[#44B16F] transition-all text-sm"
+                                    style={{ background: 'var(--color-bg)', color: 'var(--color-text-primary)' }}
+                                />
+                            </div>
+                            <button 
+                                onClick={() => setIsFiltersVisible(!isFiltersVisible)}
+                                className={`p-3 rounded-xl transition-all ${isFiltersVisible ? 'bg-[#44B16F]/10 text-[#44B16F]' : ''}`} 
+                                style={{ background: isFiltersVisible ? '' : 'var(--color-bg)', color: isFiltersVisible ? '#44B16F' : 'var(--color-text-secondary)' }}
+                            >
+                                <SlidersHorizontal size={20} />
+                            </button>
                         </div>
-                        <button className="p-3 rounded-xl transition-all" style={{ background: 'var(--color-bg)', color: 'var(--color-text-secondary)' }} onMouseEnter={e => e.currentTarget.style.background = 'var(--color-border-light)'} onMouseLeave={e => e.currentTarget.style.background = 'var(--color-bg)'}>
-                            <SlidersHorizontal size={20} />
-                        </button>
+                        <div className="flex items-center gap-3 text-xs font-bold text-gray-400 uppercase tracking-widest">
+                            Mostrando <span className="text-[#44B16F]">{filteredResponses.length}</span> resultados
+                        </div>
                     </div>
-                    <div className="flex items-center gap-3 text-xs font-bold text-gray-400 uppercase tracking-widest">
-                        Mostrando <span className="text-[#44B16F]">{filteredResponses.length}</span> resultados
-                    </div>
+                    
+                    {isFiltersVisible && (
+                        <div className="grid grid-cols-1 md:grid-cols-4 gap-4 pt-4 mt-2 border-t" style={{ borderColor: 'var(--color-border-light)' }}>
+                            <div>
+                                <label className="block text-xs font-bold text-gray-500 uppercase mb-2">Fornecedor</label>
+                                <input
+                                    type="text"
+                                    value={filterSupplier}
+                                    onChange={(e) => setFilterSupplier(e.target.value)}
+                                    placeholder="Nome do fornecedor"
+                                    className="w-full px-4 py-2.5 rounded-xl border-none outline-none text-sm transition-all focus:ring-2 focus:ring-[#44B16F]/20"
+                                    style={{ background: 'var(--color-bg)', color: 'var(--color-text-primary)' }}
+                                />
+                            </div>
+                            <div>
+                                <label className="block text-xs font-bold text-gray-500 uppercase mb-2">Data de Entrega</label>
+                                <input
+                                    type="date"
+                                    value={filterDeliveryDate}
+                                    onChange={(e) => setFilterDeliveryDate(e.target.value)}
+                                    className="w-full px-4 py-2.5 rounded-xl border-none outline-none text-sm transition-all focus:ring-2 focus:ring-[#44B16F]/20"
+                                    style={{ background: 'var(--color-bg)', color: 'var(--color-text-primary)' }}
+                                />
+                            </div>
+                            <div>
+                                <label className="block text-xs font-bold text-gray-500 uppercase mb-2">Estado</label>
+                                <select
+                                    value={filterStatus}
+                                    onChange={(e) => setFilterStatus(e.target.value)}
+                                    className="w-full px-4 py-2.5 rounded-xl border-none outline-none text-sm transition-all focus:ring-2 focus:ring-[#44B16F]/20 appearance-none"
+                                    style={{ background: 'var(--color-bg)', color: 'var(--color-text-primary)' }}
+                                >
+                                    <option value="">Todos</option>
+                                    <option value="completed">Concluída</option>
+                                    <option value="pending_review">Pendente</option>
+                                    <option value="approved">Aprovada</option>
+                                    <option value="rejected">Rejeitada</option>
+                                    <option value="revision_requested">Revisão</option>
+                                </select>
+                            </div>
+                            <div className="flex items-end">
+                                <button
+                                    onClick={handleClearFilters}
+                                    className="w-full px-4 py-2.5 rounded-xl border border-gray-200 text-gray-600 font-bold text-sm hover:bg-gray-50 transition-all"
+                                >
+                                    Limpar Filtros
+                                </button>
+                            </div>
+                        </div>
+                    )}
                 </div>
 
                 <div className="overflow-x-auto">

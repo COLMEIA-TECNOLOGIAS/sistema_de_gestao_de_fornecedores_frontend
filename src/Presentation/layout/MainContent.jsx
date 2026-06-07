@@ -7,6 +7,7 @@ import MeuPerfilPage from "./MeuPerfilPage";
 import CategoriasPage from "./CategoriasPage";
 import ProdutosPage from "./ProdutosPage";
 import CotacoesPage from "./CotacoesPage";
+import LogsEventosPage from "./LogsEventosPage";
 
 export default function MainContent({ activeItem }) {
   const renderPage = () => {
@@ -20,6 +21,7 @@ export default function MainContent({ activeItem }) {
       case "meu-perfil":   return <MeuPerfilPage />;
       case "categorias":   return <CategoriasPage />;
       case "produtos":     return <ProdutosPage />;
+      case "logs-eventos": return <LogsEventosPage />;
       default:             return <DashboardPage />;
     }
   };

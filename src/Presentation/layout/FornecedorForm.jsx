@@ -45,8 +45,7 @@ export default function FornecedorFormWrapper() {
     municipality: editingFornecedor?.municipality || "Viana",
     address: editingFornecedor?.address || "",
     categories: editingFornecedor?.categories?.map(c => c.id) || [],
-    // New category multi-select (Bens, Obras, etc.)
-    selectedCategorias: editingFornecedor?.selectedCategorias || [],
+    alt_phone: editingFornecedor?.alt_phone || "",
     // Document uploads
     pacto_social: null,
     commercial_certificate: null,
@@ -107,25 +106,7 @@ export default function FornecedorFormWrapper() {
     });
   };
 
-  const handleCategoriaFixaToggle = (catId) => {
-    setFormData((prev) => {
-      const selectedCategorias = [...prev.selectedCategorias];
-      const index = selectedCategorias.indexOf(catId);
-      if (index === -1) {
-        selectedCategorias.push(catId);
-      } else {
-        selectedCategorias.splice(index, 1);
-      }
-      return { ...prev, selectedCategorias };
-    });
-    if (errors.selectedCategorias) {
-      setErrors((prev) => {
-        const newErrors = { ...prev };
-        delete newErrors.selectedCategorias;
-        return newErrors;
-      });
-    }
-  };
+    // handleCategoriaFixaToggle removed
 
   const handlePreviewFile = (file) => {
     if (!file) return;
@@ -152,8 +133,8 @@ export default function FornecedorFormWrapper() {
       }
       if (!formData.phone) newErrors.phone = "Telefone é obrigatório";
       if (!formData.nif) newErrors.nif = "NIF é obrigatório";
-      if (formData.selectedCategorias.length === 0) {
-        newErrors.selectedCategorias = "Selecione pelo menos uma categoria";
+      if (formData.categories.length === 0) {
+        newErrors.categories = "Selecione pelo menos uma categoria";
       }
     } else if (step === 2) {
       if (!formData.province) newErrors.province = "Província é obrigatória";
@@ -164,7 +145,6 @@ export default function FornecedorFormWrapper() {
         if (!formData.nif_proof) newErrors.nif_proof = "Comprovativo NIF é obrigatório";
         if (!formData.commercial_certificate) newErrors.commercial_certificate = "Certificado Comercial é obrigatório";
       }
-      if (formData.categories.length === 0) newErrors.categories = "Selecione pelo menos uma categoria de fornecimento";
     }
 
     setErrors(newErrors);
@@ -196,8 +176,8 @@ export default function FornecedorFormWrapper() {
       data.append("commercial_name", formData.commercial_name);
       data.append("email", formData.email);
       data.append("phone", formData.phone);
+      if (formData.alt_phone) data.append("alt_phone", formData.alt_phone);
       data.append("nif", formData.nif);
-      data.append("activity_type", formData.selectedCategorias.join(","));
       data.append("province", formData.province);
       data.append("municipality", formData.municipality);
       data.append("address", formData.address);
@@ -230,11 +210,6 @@ export default function FornecedorFormWrapper() {
       // Append categories as array
       formData.categories.forEach((id) => {
         data.append("categories[]", id);
-      });
-
-      // Append selected categorias (Bens, Obras, etc.)
-      formData.selectedCategorias.forEach((cat) => {
-        data.append("categorias[]", cat);
       });
 
       console.log("Submitting formData...");
@@ -414,13 +389,13 @@ export default function FornecedorFormWrapper() {
                             <button
                               key={cat.id}
                               type="button"
-                              onClick={() => handleCategoriaFixaToggle(cat.id)}
-                              className={`px-4 py-2.5 rounded-xl border-2 font-semibold text-sm transition-all ${formData.selectedCategorias.includes(cat.id)
+                              onClick={() => handleCategoryToggle(cat.id)}
+                              className={`px-4 py-2.5 rounded-xl border-2 font-semibold text-sm transition-all ${formData.categories.includes(cat.id)
                                 ? "bg-[#44B16F]/10 border-[#44B16F] text-[#44B16F] shadow-sm"
                                 : "border-gray-200 bg-gray-50 text-gray-500 hover:border-gray-300 hover:text-gray-700"
                                 }`}
                             >
-                              {formData.selectedCategorias.includes(cat.id) && (
+                              {formData.categories.includes(cat.id) && (
                                 <CheckCircle size={14} className="inline-block mr-1.5 -mt-0.5" />
                               )}
                               {cat.name}
@@ -428,32 +403,72 @@ export default function FornecedorFormWrapper() {
                           ))
                         )}
                       </div>
-                      {errors.selectedCategorias && (
+                      {errors.categories && (
                         <div className="flex items-center gap-1 mt-2 text-red-500 font-bold">
                           <AlertCircle size={14} />
-                          <span className="text-xs">{errors.selectedCategorias}</span>
+                          <span className="text-xs">{errors.categories}</span>
                         </div>
                       )}
                     </div>
                   </div>
                   <div className="space-y-6">
-                    <InputField
-                      label="Email *"
-                      name="email"
-                      type="email"
-                      placeholder="email@portal.ao"
-                      value={formData.email}
-                      onChange={handleInputChange}
-                      error={errors.email}
-                    />
-                    <InputField
-                      label="Telefone *"
-                      name="phone"
-                      placeholder="+244 9XX XXX XXX"
-                      value={formData.phone}
-                      onChange={handleInputChange}
-                      error={errors.phone}
-                    />
+                    <div>
+                        <label className="block text-sm font-bold text-gray-700 mb-2 uppercase tracking-wider">Email *</label>
+                        <input
+                            type="email"
+                            placeholder="email@portal.ao"
+                            value={formData.email}
+                            onChange={(e) => {
+                                let val = e.target.value.replace(/\s/g, '');
+                                setFormData(prev => ({...prev, email: val}));
+                                if (val && !val.includes('@')) {
+                                    setErrors(prev => ({...prev, email: "Email inválido (faltando @)"}));
+                                } else {
+                                    setErrors(prev => { const n = {...prev}; delete n.email; return n; });
+                                }
+                            }}
+                            className={`w-full px-5 py-4 bg-gray-50 border-2 rounded-2xl outline-none transition-all font-medium ${errors.email ? "border-red-500 bg-red-50" : "border-transparent focus:border-[#44B16F] focus:bg-white"}`}
+                        />
+                        {errors.email && <div className="flex items-center gap-1 mt-2 text-red-500 font-bold"><AlertCircle size={14}/><span className="text-xs">{errors.email}</span></div>}
+                    </div>
+                    <div className="grid grid-cols-2 gap-4">
+                        <div>
+                            <label className="block text-sm font-bold text-gray-700 mb-2 uppercase tracking-wider">Telefone *</label>
+                            <div className="flex items-center bg-gray-50 border-2 rounded-2xl focus-within:border-[#44B16F] focus-within:bg-white transition-all overflow-hidden" style={errors.phone ? {borderColor: 'rgb(239 68 68)', backgroundColor: 'rgb(254 242 242)'} : {}}>
+                                <span className="px-4 text-gray-500 font-medium border-r border-gray-200">+244</span>
+                                <input
+                                    type="text"
+                                    placeholder="9XX XXX XXX"
+                                    value={formData.phone}
+                                    maxLength="9"
+                                    onChange={(e) => {
+                                        let val = e.target.value.replace(/\D/g, '');
+                                        setFormData(prev => ({...prev, phone: val}));
+                                        setErrors(prev => { const n = {...prev}; delete n.phone; return n; });
+                                    }}
+                                    className="w-full py-4 px-3 bg-transparent outline-none font-medium"
+                                />
+                            </div>
+                            {errors.phone && <div className="flex items-center gap-1 mt-2 text-red-500 font-bold"><AlertCircle size={14}/><span className="text-xs">{errors.phone}</span></div>}
+                        </div>
+                        <div>
+                            <label className="block text-sm font-bold text-gray-700 mb-2 uppercase tracking-wider">Telefone 2</label>
+                            <div className="flex items-center bg-gray-50 border-2 rounded-2xl focus-within:border-[#44B16F] focus-within:bg-white transition-all overflow-hidden">
+                                <span className="px-4 text-gray-500 font-medium border-r border-gray-200">+244</span>
+                                <input
+                                    type="text"
+                                    placeholder="Opcional"
+                                    value={formData.alt_phone}
+                                    maxLength="9"
+                                    onChange={(e) => {
+                                        let val = e.target.value.replace(/\D/g, '');
+                                        setFormData(prev => ({...prev, alt_phone: val}));
+                                    }}
+                                    className="w-full py-4 px-3 bg-transparent outline-none font-medium"
+                                />
+                            </div>
+                        </div>
+                    </div>
                     <InputField
                       label="NIF *"
                       name="nif"
@@ -496,18 +511,19 @@ export default function FornecedorFormWrapper() {
                       <label className="block text-sm font-bold text-gray-700 mb-2 uppercase tracking-wider">
                         Município *
                       </label>
-                      <select
+                      <input
+                        list="municipality-list"
                         name="municipality"
                         value={formData.municipality}
                         onChange={handleInputChange}
+                        placeholder="Digite para pesquisar..."
                         className="w-full px-5 py-4 bg-gray-50 border-2 border-transparent focus:border-[#44B16F] focus:bg-white rounded-2xl outline-none transition-all font-medium"
-                      >
+                      />
+                      <datalist id="municipality-list">
                         {municipalities.map((m) => (
-                          <option key={m} value={m}>
-                            {m}
-                          </option>
+                          <option key={m} value={m} />
                         ))}
-                      </select>
+                      </datalist>
                     </div>
                   </div>
                   <div className="space-y-6">
@@ -538,37 +554,6 @@ export default function FornecedorFormWrapper() {
                 </div>
 
                 <div className="space-y-6">
-                  {/* Categories from API */}
-                  <div>
-                    <label className="block text-sm font-bold text-gray-700 mb-4 uppercase tracking-wider">
-                      Categorias de Fornecimento *
-                    </label>
-                    <div className="flex flex-wrap gap-3">
-                      {isLoadingCategories ? (
-                        <p className="text-sm text-gray-400">Carregando categorias...</p>
-                      ) : (
-                        categories.map((cat) => (
-                          <button
-                            key={cat.id}
-                            type="button"
-                            onClick={() => handleCategoryToggle(cat.id)}
-                            className={`px-6 py-3 rounded-xl border-2 font-bold text-sm transition-all ${formData.categories.includes(cat.id)
-                              ? "bg-[#44B16F]/10 border-[#44B16F] text-[#44B16F]"
-                              : "border-gray-100 bg-gray-50 text-gray-400 hover:border-gray-200"
-                              }`}
-                          >
-                            {cat.name}
-                          </button>
-                        ))
-                      )}
-                    </div>
-                    {(errors.categories || errors['categories.0']) && (
-                      <p className="text-red-500 text-xs mt-2 font-bold">
-                        {errors.categories || errors['categories.0']}
-                      </p>
-                    )}
-                  </div>
-
                   {/* Document Uploads */}
                   <div className="pt-4">
                     <label className="block text-sm font-bold text-gray-700 mb-4 uppercase tracking-wider">
@@ -576,12 +561,15 @@ export default function FornecedorFormWrapper() {
                     </label>
                     <div className="grid grid-cols-2 gap-6">
                       <FileUploadField
-                        label="Certificado Comercial *"
+                        label="Certificado Comercial"
+                        required={!editingFornecedor}
                         name="commercial_certificate"
                         file={formData.commercial_certificate}
                         onChange={handleFileChange}
                         error={errors.commercial_certificate}
                         onPreview={handlePreviewFile}
+                        helperText="Formato PDF (.pdf)"
+                        accept=".pdf"
                       />
                       <FileUploadField
                         label="Pacto Social"
@@ -590,6 +578,8 @@ export default function FornecedorFormWrapper() {
                         onChange={handleFileChange}
                         error={errors.pacto_social}
                         onPreview={handlePreviewFile}
+                        helperText="Formato PDF (.pdf)"
+                        accept=".pdf"
                       />
                       <FileUploadField
                         label="Certificado de Não Devedor (AGT/INSS)"
@@ -598,14 +588,19 @@ export default function FornecedorFormWrapper() {
                         onChange={handleFileChange}
                         error={errors.non_debtor_certificate}
                         onPreview={handlePreviewFile}
+                        helperText="Formato PDF (.pdf)"
+                        accept=".pdf"
                       />
                       <FileUploadField
-                        label="Comprovativo NIF *"
+                        label="Comprovativo NIF"
+                        required={!editingFornecedor}
                         name="nif_proof"
                         file={formData.nif_proof}
                         onChange={handleFileChange}
                         error={errors.nif_proof}
                         onPreview={handlePreviewFile}
+                        helperText="Formato PDF (.pdf)"
+                        accept=".pdf"
                       />
                       <FileUploadField
                         label="Lista de Produtos"
@@ -614,6 +609,8 @@ export default function FornecedorFormWrapper() {
                         onChange={handleFileChange}
                         error={errors.product_list}
                         onPreview={handlePreviewFile}
+                        helperText="Documento com a lista de produtos (PDF)"
+                        accept=".pdf"
                       />
                     </div>
 
@@ -654,10 +651,10 @@ export default function FornecedorFormWrapper() {
                           multiple
                           className="hidden"
                           onChange={handleMultipleFileChange}
-                          accept=".pdf,.jpg,.jpeg,.png,.doc,.docx"
+                          accept=".pdf"
                         />
                         <Upload className="text-gray-400 mb-3" size={28} />
-                        <p className="text-xs font-bold text-gray-500">Clique para carregar alvará(s)</p>
+                        <p className="text-xs font-bold text-gray-500">Clique para carregar alvará(s) - Formato PDF</p>
                       </label>
                     </div>
                   </div>
@@ -716,11 +713,12 @@ function InputField({ label, name, type = "text", placeholder, value, onChange, 
   );
 }
 
-function FileUploadField({ label, name, file, onChange, error, onPreview }) {
+function FileUploadField({ label, name, file, onChange, error, onPreview, required, helperText, accept=".pdf" }) {
   return (
     <div>
-      <label className="block text-sm font-bold text-gray-700 mb-2 uppercase tracking-wider">
+      <label className="flex items-center gap-2 text-sm font-bold text-gray-700 mb-2 uppercase tracking-wider">
         {label}
+        {required && <span className="bg-red-50 text-red-600 px-2 py-0.5 rounded-full text-[10px]">Obrigatório</span>}
       </label>
       <label
         className={`relative flex flex-col items-center justify-center p-6 border-2 border-dashed rounded-2xl cursor-pointer transition-all ${file
@@ -730,7 +728,7 @@ function FileUploadField({ label, name, file, onChange, error, onPreview }) {
             : "bg-gray-50 border-gray-200 hover:border-[#44B16F]"
           }`}
       >
-        <input type="file" name={name} className="hidden" onChange={onChange} accept=".pdf,.jpg,.jpeg,.png,.doc,.docx" />
+        <input type="file" name={name} className="hidden" onChange={onChange} accept={accept} />
         {file ? (
           <>
             <div className="w-12 h-12 bg-[#44B16F] text-white rounded-full flex items-center justify-center mb-3">
@@ -746,6 +744,7 @@ function FileUploadField({ label, name, file, onChange, error, onPreview }) {
             <p className={`text-xs font-bold ${error ? "text-red-400" : "text-gray-500"}`}>
               Clique para carregar
             </p>
+            {helperText && <p className="text-[10px] text-gray-400 mt-1 font-medium">{helperText}</p>}
           </>
         )}
       </label>
