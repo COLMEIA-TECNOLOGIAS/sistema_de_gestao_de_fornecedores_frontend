@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { createPortal } from "react-dom";
 import {
     Plus,
     Search,
@@ -221,9 +222,9 @@ export default function CategoriasPage() {
                 </div>
             </div>
 
-            {/* Modal Criar/Editar */}
-            {isModalOpen && (
-                <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
+            {/* Modal Criar/Editar — Portal para cobrir toda a tela */}
+            {isModalOpen && createPortal(
+                <div className="fixed inset-0 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm" style={{ zIndex: 9999 }}>
                     <div className="bg-white rounded-3xl w-full max-w-md shadow-2xl overflow-hidden animate-in fade-in zoom-in duration-200">
                         <div className="px-6 py-4 border-b border-gray-100 flex items-center justify-between bg-gray-50/50">
                             <h3 className="text-lg font-bold text-gray-900">
@@ -292,12 +293,13 @@ export default function CategoriasPage() {
                             </div>
                         </form>
                     </div>
-                </div>
+                </div>,
+                document.body
             )}
 
-            {/* Modal Excluir */}
-            {isDeleteModalOpen && (
-                <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
+            {/* Modal Excluir — Portal para cobrir toda a tela */}
+            {isDeleteModalOpen && createPortal(
+                <div className="fixed inset-0 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm" style={{ zIndex: 9999 }}>
                     <div className="bg-white rounded-3xl w-full max-w-sm shadow-2xl p-6 text-center animate-in fade-in zoom-in duration-200">
                         <div className="w-16 h-16 bg-red-50 text-red-500 rounded-full flex items-center justify-center mx-auto mb-4">
                             <Trash2 size={32} />
@@ -327,7 +329,8 @@ export default function CategoriasPage() {
                             </button>
                         </div>
                     </div>
-                </div>
+                </div>,
+                document.body
             )}
         </div>
     );

@@ -1,7 +1,9 @@
+import { useModalLock } from '../../hooks/useModalLock';
 import React from 'react';
 import { X, Bell, Calendar, Trash2 } from 'lucide-react';
 
 export default function ModalDetalhesNotificacao({ isOpen, onClose, notification, onDelete }) {
+    useModalLock(isOpen);
     if (!isOpen || !notification) return null;
 
     // Helper para extrair dados da notificação

@@ -1,4 +1,4 @@
-import { LayoutDashboard, Package, UserCircle, BarChart3, ShoppingCart, Settings, FileText, Tag } from "lucide-react";
+import { LayoutDashboard, Package, UserCircle, BarChart3, ShoppingCart, Settings, FileText, Tag, Activity } from "lucide-react";
 import { useAuth } from "../../context/AuthContext";
 import { PERMISSIONS } from "../../utils/permissions";
 import LogoutConfirmModal from "../Components/LogoutConfirmModal";
@@ -19,7 +19,7 @@ function Sidebar({ activeItem, onItemClick }) {
     { id: "categorias",  label: "Categorias",   icon: Settings,        permission: PERMISSIONS.CATEGORIAS },
     { id: "relatorios",  label: "Relatórios",   icon: BarChart3,       permission: PERMISSIONS.RELATORIOS },
     { id: "usuarios",    label: "Usuários",     icon: UserCircle,      permission: PERMISSIONS.USUARIOS, adminOnly: true },
-    { id: "logs-eventos",label: "Logs de Eventos", icon: FileText,     permission: PERMISSIONS.USUARIOS, adminOnly: true },
+    { id: "logs-eventos",label: "Logs de Eventos", icon: Activity,     permission: PERMISSIONS.USUARIOS, adminOnly: true },
   ];
 
   const menuItems = mainMenuItems.filter(item => {

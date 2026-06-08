@@ -1,3 +1,4 @@
+import { useModalLock } from '../../hooks/useModalLock';
 import { useState, useEffect } from "react";
 import { X, MoreVertical, FileText, Trash2, CheckCircle, MessageSquare, RefreshCw, Bell } from "lucide-react";
 import { quotationResponsesAPI, quotationRequestsAPI } from "../../services/api";
@@ -130,6 +131,7 @@ export default function ModalRespostasPedido({
         return labels[status] || status;
     };
 
+    useModalLock(isOpen);
     if (!isOpen) return null;
 
     return (

@@ -1,6 +1,8 @@
+import { useModalLock } from '../../hooks/useModalLock';
 import { X, AlertTriangle } from "lucide-react";
 
 export default function ModalConfirmarExclusaoFornecedor({ isOpen, onClose, onConfirm, fornecedor, isLoading }) {
+    useModalLock(isOpen);
     if (!isOpen || !fornecedor) return null;
 
     return (

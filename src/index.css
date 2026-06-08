@@ -85,7 +85,7 @@
    ============================================================ */
 *, *::before, *::after { box-sizing: border-box; }
 
-html { scroll-behavior: smooth; font-size: 16px; }
+html { scroll-behavior: smooth; font-size: 16px; scrollbar-gutter: stable; }
 
 body {
   font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
@@ -267,6 +267,12 @@ body {
   background: var(--color-surface); border-radius: var(--radius-2xl);
   box-shadow: var(--shadow-xl); width: 100%; overflow: hidden;
   animation: modalFadeIn 0.25s cubic-bezier(0.16,1,0.3,1) forwards;
+}
+
+/* Prevent layout shift when modal opens — body keeps scrollbar space */
+body.modal-open {
+  overflow: hidden;
+  padding-right: var(--scrollbar-width, 0px);
 }
 
 /* ============================================================

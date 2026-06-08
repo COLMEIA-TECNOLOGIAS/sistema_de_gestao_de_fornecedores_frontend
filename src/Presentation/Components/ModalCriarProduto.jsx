@@ -1,3 +1,4 @@
+import { useModalLock } from '../../hooks/useModalLock';
 import { useState, useEffect } from "react";
 import { X, Save, AlertCircle } from "lucide-react";
 import { categoriesAPI, productsAPI } from "../../services/api";
@@ -87,6 +88,7 @@ export default function ModalCriarProduto({ isOpen, onClose, onSuccess, productT
         }
     };
 
+    useModalLock(isOpen);
     if (!isOpen) return null;
 
     return (

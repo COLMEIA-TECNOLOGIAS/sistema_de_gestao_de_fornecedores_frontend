@@ -1,10 +1,13 @@
+import { useModalLock } from '../../hooks/useModalLock';
 import { useState } from 'react';
+import { createPortal } from 'react-dom';
 import { X, MessageSquare, Loader2 } from 'lucide-react';
 
 export default function ModalSolicitarRevisao({ isOpen, onClose, onSubmit, isLoading }) {
     const [reason, setReason] = useState('Preço');
     const [message, setMessage] = useState('');
 
+    useModalLock(isOpen);
     if (!isOpen) return null;
 
     const handleSubmit = (e) => {
@@ -12,11 +15,11 @@ export default function ModalSolicitarRevisao({ isOpen, onClose, onSubmit, isLoa
         onSubmit({ reason, message });
     };
 
-    return (
-        <div className="fixed inset-0 z-50 flex items-center justify-center">
+    return createPortal(
+        <div className="fixed inset-0 flex items-center justify-center" style={{ zIndex: 9999 }}>
             {/* Backdrop */}
             <div
-                className="absolute inset-0 bg-black/50 backdrop-blur-sm"
+                className="absolute inset-0 bg-black/70 backdrop-blur-sm"
                 onClick={onClose}
             />
 
@@ -86,6 +89,7 @@ export default function ModalSolicitarRevisao({ isOpen, onClose, onSubmit, isLoa
                     </div>
                 </form>
             </div>
-        </div>
+        </div>,
+        document.body
     );
 }

@@ -1,4 +1,6 @@
+import { useModalLock } from '../../hooks/useModalLock';
 import { useState, useEffect, useMemo } from 'react';
+import { createPortal } from 'react-dom';
 import { X, Package, Clock, Plus, Trash2, Search, Upload, FileText, Eye, Paperclip } from 'lucide-react';
 import { quotationRequestsAPI, suppliersAPI, productsAPI, categoriesAPI } from '../../services/api';
 
@@ -62,7 +64,8 @@ export default function ModalPedirCotacao({ isOpen, onClose, fornecedor, activit
     // Fetch fornecedores and categories when modal opens
     useEffect(() => {
         const fetchInitialData = async () => {
-            if (!isOpen) return;
+            useModalLock(isOpen);
+    if (!isOpen) return;
 
             try {
                 setIsLoadingFornecedores(true);
@@ -398,33 +401,33 @@ export default function ModalPedirCotacao({ isOpen, onClose, fornecedor, activit
         );
     };
 
-    return (
-        <div className="fixed inset-0 z-50 flex items-center justify-center">
+    return createPortal(
+        <div className="fixed inset-0 flex items-center justify-center" style={{ zIndex: 9999 }}>
             {/* Backdrop */}
             <div
-                className="absolute inset-0 bg-black/50 backdrop-blur-sm"
+                className="absolute inset-0 bg-black/70 backdrop-blur-sm"
                 onClick={handleCancel}
             />
 
             {/* Document Preview Modal */}
             {previewDoc && (
                 <div className="absolute inset-0 z-[60] bg-black/70 flex items-center justify-center">
-                    <div className="bg-white rounded-2xl shadow-2xl w-full max-w-3xl mx-4 overflow-hidden">
-                        <div className="flex items-center justify-between p-4 border-b border-gray-100">
-                            <h3 className="font-bold text-gray-800">{previewDoc.name}</h3>
-                            <button onClick={closePreview} className="p-2 hover:bg-gray-100 rounded-lg">
-                                <X size={20} className="text-gray-500" />
+                    <div className="rounded-2xl shadow-2xl w-full max-w-3xl mx-4 overflow-hidden" style={{ background: 'var(--color-surface)' }}>
+                        <div className="flex items-center justify-between p-4" style={{ borderBottom: '1px solid var(--color-border-light)' }}>
+                            <h3 className="font-bold" style={{ color: 'var(--color-text-primary)' }}>{previewDoc.name}</h3>
+                            <button onClick={closePreview} className="p-2 rounded-lg transition-colors" style={{ color: 'var(--color-text-secondary)' }}>
+                                <X size={20} />
                             </button>
                         </div>
-                        <div className="p-4 max-h-[70vh] overflow-auto bg-gray-50 flex items-center justify-center">
+                        <div className="p-4 max-h-[70vh] overflow-auto flex items-center justify-center" style={{ background: 'var(--color-bg)' }}>
                             {previewDoc.type.startsWith("image/") ? (
                                 <img src={previewDoc.url} alt={previewDoc.name} className="max-w-full max-h-[60vh] object-contain rounded-lg" />
                             ) : previewDoc.type === "application/pdf" ? (
                                 <iframe src={previewDoc.url} title={previewDoc.name} className="w-full h-[60vh] rounded-lg" />
                             ) : (
                                 <div className="text-center py-12">
-                                    <FileText size={64} className="text-gray-300 mx-auto mb-4" />
-                                    <p className="text-gray-500">Pré-visualização não disponível</p>
+                                    <FileText size={64} className="mx-auto mb-4" style={{ color: 'var(--color-text-muted)' }} />
+                                    <p style={{ color: 'var(--color-text-secondary)' }}>Pré-visualização não disponível</p>
                                 </div>
                             )}
                         </div>
@@ -433,12 +436,15 @@ export default function ModalPedirCotacao({ isOpen, onClose, fornecedor, activit
             )}
 
             {/* Modal */}
-            <div className="relative bg-white rounded-2xl shadow-2xl w-full max-w-4xl mx-4 animate-fadeIn max-h-[90vh] overflow-hidden flex flex-col">
+            <div className="relative rounded-2xl shadow-2xl w-full max-w-4xl mx-4 animate-fadeIn max-h-[90vh] overflow-hidden flex flex-col" style={{ background: 'var(--color-surface)' }}>
                 {/* Header */}
-                <div className="flex items-center justify-between px-8 py-6 border-b border-gray-100">
+                <div className="flex items-center justify-between px-8 py-6" style={{ borderBottom: '1px solid var(--color-border-light)' }}>
                     <button
                         onClick={handleCancel}
-                        className="flex items-center gap-2 text-gray-600 hover:text-gray-900 transition-colors"
+                        className="flex items-center gap-2 transition-colors font-medium"
+                        style={{ color: 'var(--color-text-secondary)' }}
+                        onMouseEnter={e => e.currentTarget.style.color = 'var(--color-text-primary)'}
+                        onMouseLeave={e => e.currentTarget.style.color = 'var(--color-text-secondary)'}
                     >
                         <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
@@ -446,7 +452,7 @@ export default function ModalPedirCotacao({ isOpen, onClose, fornecedor, activit
                         Voltar
                     </button>
                     {fornecedor && (
-                        <span className="text-sm text-gray-500">
+                        <span className="text-sm" style={{ color: 'var(--color-text-secondary)' }}>
                             {showAddProducts ? 'Cotação' : ''} - {fornecedor.commercial_name}
                         </span>
                     )}
@@ -458,17 +464,17 @@ export default function ModalPedirCotacao({ isOpen, onClose, fornecedor, activit
                         // Initial Modal - Pedir Cotação
                         <div className="flex flex-col items-center text-center">
                             {/* Icon */}
-                            <div className="w-24 h-24 rounded-2xl bg-green-50 flex items-center justify-center mb-6">
+                            <div className="w-24 h-24 rounded-2xl flex items-center justify-center mb-6" style={{ background: 'rgba(68,177,111,0.1)' }}>
                                 <Package className="w-12 h-12 text-[#44B16F]" strokeWidth={1.5} />
                             </div>
 
                             {/* Title */}
-                            <h2 className="text-3xl font-bold text-gray-900 mb-3">
+                            <h2 className="text-3xl font-bold mb-3" style={{ color: 'var(--color-text-primary)' }}>
                                 Solicitar cotação
                             </h2>
 
                             {/* Subtitle */}
-                            <p className="text-gray-500 mb-8 max-w-md">
+                            <p className="mb-8 max-w-md" style={{ color: 'var(--color-text-secondary)' }}>
                                 Adicione os produtos no qual deseja pedir a cotação
                             </p>
 
@@ -476,7 +482,10 @@ export default function ModalPedirCotacao({ isOpen, onClose, fornecedor, activit
                             <div className="flex gap-4">
                                 <button
                                     onClick={handleCancel}
-                                    className="px-8 py-3 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors font-medium"
+                                    className="px-8 py-3 rounded-lg transition-colors font-medium"
+                                    style={{ border: '1px solid var(--color-border)', color: 'var(--color-text-primary)', background: 'transparent' }}
+                                    onMouseEnter={e => e.currentTarget.style.background = 'var(--color-bg)'}
+                                    onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
                                 >
                                     Cancelar
                                 </button>
@@ -492,10 +501,10 @@ export default function ModalPedirCotacao({ isOpen, onClose, fornecedor, activit
                         // Add Products Modal
                         <div>
                             {/* Title */}
-                            <h2 className="text-3xl font-bold text-gray-900 mb-2 text-center">
+                            <h2 className="text-3xl font-bold mb-2 text-center" style={{ color: 'var(--color-text-primary)' }}>
                                 Solicitar Cotação
                             </h2>
-                            <p className="text-gray-500 text-center mb-8">
+                            <p className="text-center mb-8" style={{ color: 'var(--color-text-secondary)' }}>
                                 Complete o pedido de cotação
                             </p>
 
@@ -503,7 +512,7 @@ export default function ModalPedirCotacao({ isOpen, onClose, fornecedor, activit
                             <div className="max-w-3xl mx-auto space-y-6">
                                 {/* Assunto do Pedido */}
                                 <div>
-                                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                                    <label className="block text-sm font-medium mb-2" style={{ color: 'var(--color-text-primary)' }}>
                                         Solicitação da atividade *
                                     </label>
                                     <input
@@ -511,14 +520,15 @@ export default function ModalPedirCotacao({ isOpen, onClose, fornecedor, activit
                                         value={pedidoAssunto}
                                         onChange={(e) => setPedidoAssunto(e.target.value)}
                                         placeholder="Materiais para trabalho"
-                                        className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#44B16F] focus:border-transparent"
+                                        className="w-full px-4 py-3 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#44B16F] transition-all text-sm"
+                                        style={{ border: '1px solid var(--color-border)', background: 'var(--color-bg)', color: 'var(--color-text-primary)' }}
                                         required
                                     />
                                 </div>
 
                                 {/* Descrição da Atividade */}
                                 <div>
-                                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                                    <label className="block text-sm font-medium mb-2" style={{ color: 'var(--color-text-primary)' }}>
                                         Descrição da atividade
                                     </label>
                                     <textarea
@@ -526,13 +536,14 @@ export default function ModalPedirCotacao({ isOpen, onClose, fornecedor, activit
                                         onChange={(e) => setActivityDescription(e.target.value)}
                                         placeholder="Descreva a atividade em detalhe..."
                                         rows={2}
-                                        className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#44B16F] focus:border-transparent resize-none"
+                                        className="w-full px-4 py-3 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#44B16F] resize-none transition-all text-sm"
+                                        style={{ border: '1px solid var(--color-border)', background: 'var(--color-bg)', color: 'var(--color-text-primary)' }}
                                     />
                                 </div>
 
                                 {/* Referência Manual */}
                                 <div>
-                                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                                    <label className="block text-sm font-medium mb-2" style={{ color: 'var(--color-text-primary)' }}>
                                         Referência PP *
                                     </label>
                                     <input
@@ -540,15 +551,16 @@ export default function ModalPedirCotacao({ isOpen, onClose, fornecedor, activit
                                         value={pedidoReferencia}
                                         onChange={(e) => setPedidoReferencia(e.target.value)}
                                         placeholder="Ex: REF-2026-001"
-                                        className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#44B16F] focus:border-transparent"
+                                        className="w-full px-4 py-3 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#44B16F] transition-all text-sm"
+                                        style={{ border: '1px solid var(--color-border)', background: 'var(--color-bg)', color: 'var(--color-text-primary)' }}
                                         required
                                     />
-                                    <p className="text-xs text-gray-500 mt-1">A referência é gerada manualmente e identifica este pedido.</p>
+                                    <p className="text-xs mt-1" style={{ color: 'var(--color-text-muted)' }}>A referência é gerada manualmente e identifica este pedido.</p>
                                 </div>
 
                                 {/* Corpo da Mensagem */}
                                 <div>
-                                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                                    <label className="block text-sm font-medium mb-2" style={{ color: 'var(--color-text-primary)' }}>
                                         Corpo da mensagem
                                     </label>
                                     <textarea
@@ -556,13 +568,14 @@ export default function ModalPedirCotacao({ isOpen, onClose, fornecedor, activit
                                         onChange={(e) => setPedidoDescricao(e.target.value)}
                                         placeholder="Descreva detalhes adicionais sobre o pedido..."
                                         rows={3}
-                                        className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#44B16F] focus:border-transparent resize-none"
+                                        className="w-full px-4 py-3 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#44B16F] resize-none transition-all text-sm"
+                                        style={{ border: '1px solid var(--color-border)', background: 'var(--color-bg)', color: 'var(--color-text-primary)' }}
                                     />
                                 </div>
 
                                 {/* Prazo de Resposta */}
                                 <div>
-                                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                                    <label className="block text-sm font-medium mb-2" style={{ color: 'var(--color-text-primary)' }}>
                                         Data de entrega
                                     </label>
                                     <input
@@ -570,30 +583,31 @@ export default function ModalPedirCotacao({ isOpen, onClose, fornecedor, activit
                                         value={deadline}
                                         min={getMinDeadline()}
                                         onChange={(e) => setDeadline(e.target.value)}
-                                        className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#44B16F] focus:border-transparent"
+                                        className="w-full px-4 py-3 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#44B16F] transition-all text-sm"
+                                        style={{ border: '1px solid var(--color-border)', background: 'var(--color-bg)', color: 'var(--color-text-primary)' }}
                                     />
-                                    <p className="text-xs text-gray-500 mt-1">O prazo mínimo é de 15 dias úteis a partir de hoje.</p>
+                                    <p className="text-xs mt-1" style={{ color: 'var(--color-text-muted)' }}>O prazo mínimo é de 15 dias úteis a partir de hoje.</p>
                                 </div>
 
                                 {/* Document Attachment */}
                                 <div>
-                                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                                    <label className="block text-sm font-medium mb-2" style={{ color: 'var(--color-text-primary)' }}>
                                         <Paperclip size={14} className="inline-block mr-1 -mt-0.5" />
                                         Anexar documentos
                                     </label>
                                     {attachedDocuments.length > 0 && (
                                         <div className="mb-2 space-y-2">
                                             {attachedDocuments.map((doc, index) => (
-                                                <div key={index} className="flex items-center justify-between bg-emerald-50 border border-[#44B16F]/20 rounded-lg px-3 py-2">
+                                                <div key={index} className="flex items-center justify-between rounded-lg px-3 py-2" style={{ background: 'rgba(68,177,111,0.08)', border: '1px solid rgba(68,177,111,0.2)' }}>
                                                     <div className="flex items-center gap-2">
                                                         <FileText size={14} className="text-[#44B16F]" />
-                                                        <span className="text-xs font-medium text-gray-700 truncate max-w-[180px]">{doc.name}</span>
+                                                        <span className="text-xs font-medium truncate max-w-[180px]" style={{ color: 'var(--color-text-primary)' }}>{doc.name}</span>
                                                     </div>
                                                     <div className="flex items-center gap-1">
                                                         <button
                                                             type="button"
                                                             onClick={() => handlePreviewDocument(doc)}
-                                                            className="p-1 hover:bg-[#44B16F]/10 rounded transition-colors"
+                                                            className="p-1 rounded transition-colors"
                                                             title="Pré-visualizar"
                                                         >
                                                             <Eye size={14} className="text-[#44B16F]" />
@@ -601,7 +615,7 @@ export default function ModalPedirCotacao({ isOpen, onClose, fornecedor, activit
                                                         <button
                                                             type="button"
                                                             onClick={() => handleRemoveDocument(index)}
-                                                            className="p-1 hover:bg-red-50 rounded transition-colors"
+                                                            className="p-1 rounded transition-colors"
                                                         >
                                                             <X size={14} className="text-red-500" />
                                                         </button>
@@ -610,7 +624,7 @@ export default function ModalPedirCotacao({ isOpen, onClose, fornecedor, activit
                                             ))}
                                         </div>
                                     )}
-                                    <label className="flex items-center justify-center gap-2 px-4 py-3 border-2 border-dashed border-gray-300 rounded-lg cursor-pointer hover:border-[#44B16F] transition-colors bg-gray-50 hover:bg-emerald-50/50">
+                                    <label className="flex items-center justify-center gap-2 px-4 py-3 rounded-lg cursor-pointer transition-colors text-sm" style={{ border: '2px dashed var(--color-border)', background: 'var(--color-bg)', color: 'var(--color-text-muted)' }}>
                                         <input
                                             type="file"
                                             multiple
@@ -618,14 +632,14 @@ export default function ModalPedirCotacao({ isOpen, onClose, fornecedor, activit
                                             onChange={handleDocumentAttach}
                                             accept=".pdf,.jpg,.jpeg,.png,.doc,.docx,.xls,.xlsx"
                                         />
-                                        <Upload size={16} className="text-gray-400" />
-                                        <span className="text-xs text-gray-500 font-medium">Clique para anexar documentos</span>
+                                        <Upload size={16} />
+                                        <span className="font-medium">Clique para anexar documentos</span>
                                     </label>
                                 </div>
 
                                 {/* Licitantes with Category Filter */}
                                 <div>
-                                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                                    <label className="block text-sm font-medium mb-2" style={{ color: 'var(--color-text-primary)' }}>
                                         Licitantes *
                                     </label>
 
@@ -636,8 +650,9 @@ export default function ModalPedirCotacao({ isOpen, onClose, fornecedor, activit
                                             onClick={() => setCategoriaFiltro("")}
                                             className={`px-3 py-1.5 rounded-full text-xs font-semibold transition-all ${categoriaFiltro === ""
                                                 ? 'bg-[#44B16F] text-white shadow-sm'
-                                                : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                                                : ''
                                                 }`}
+                                            style={categoriaFiltro !== "" ? { background: 'var(--color-bg)', color: 'var(--color-text-secondary)', border: '1px solid var(--color-border)' } : {}}
                                         >
                                             Todas as categorias
                                         </button>
@@ -648,8 +663,9 @@ export default function ModalPedirCotacao({ isOpen, onClose, fornecedor, activit
                                                 onClick={() => setCategoriaFiltro(cat.id)}
                                                 className={`px-3 py-1.5 rounded-full text-xs font-semibold transition-all ${String(categoriaFiltro) === String(cat.id)
                                                     ? 'bg-[#44B16F] text-white shadow-sm'
-                                                    : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                                                    : ''
                                                     }`}
+                                                style={String(categoriaFiltro) !== String(cat.id) ? { background: 'var(--color-bg)', color: 'var(--color-text-secondary)', border: '1px solid var(--color-border)' } : {}}
                                             >
                                                 {cat.name}
                                             </button>
@@ -658,30 +674,34 @@ export default function ModalPedirCotacao({ isOpen, onClose, fornecedor, activit
 
                                     {/* Search licitantes */}
                                     <div className="relative mb-2">
-                                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={14} />
+                                        <Search className="absolute left-3 top-1/2 -translate-y-1/2" size={14} style={{ color: 'var(--color-text-muted)' }} />
                                         <input
                                             type="text"
                                             value={fornecedorSearchQuery}
                                             onChange={(e) => setFornecedorSearchQuery(e.target.value)}
                                             placeholder="Pesquisar licitantes..."
-                                            className="w-full pl-8 pr-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#44B16F] focus:border-transparent text-sm"
+                                            className="w-full pl-8 pr-3 py-2 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#44B16F] text-sm transition-all"
+                                            style={{ border: '1px solid var(--color-border)', background: 'var(--color-bg)', color: 'var(--color-text-primary)' }}
                                         />
                                     </div>
 
                                     {isLoadingFornecedores ? (
-                                        <div className="w-full px-4 py-3 border border-gray-300 rounded-lg bg-gray-50 text-gray-500 text-sm">
+                                        <div className="w-full px-4 py-3 rounded-lg text-sm" style={{ border: '1px solid var(--color-border)', background: 'var(--color-bg)', color: 'var(--color-text-muted)' }}>
                                             Carregando licitantes...
                                         </div>
                                     ) : (
-                                        <div className="border border-gray-300 rounded-lg max-h-[180px] overflow-y-auto">
+                                        <div className="rounded-lg max-h-[180px] overflow-y-auto" style={{ border: '1px solid var(--color-border)' }}>
                                             {filteredFornecedores.length === 0 ? (
-                                                <div className="p-3 text-sm text-gray-500 text-center">Nenhum licitante encontrado</div>
+                                                <div className="p-3 text-sm text-center" style={{ color: 'var(--color-text-muted)' }}>Nenhum licitante encontrado</div>
                                             ) : (
                                                 filteredFornecedores.map((forn) => (
                                                     <label
                                                         key={forn.id}
-                                                        className={`flex items-center gap-3 px-3 py-2.5 hover:bg-gray-50 cursor-pointer border-b border-gray-50 last:border-0 transition-colors ${selectedFornecedores.includes(forn.id) ? 'bg-emerald-50' : ''
-                                                            }`}
+                                                        className="flex items-center gap-3 px-3 py-2.5 cursor-pointer transition-colors"
+                                                        style={{
+                                                            borderBottom: '1px solid var(--color-border-light)',
+                                                            background: selectedFornecedores.includes(forn.id) ? 'rgba(68,177,111,0.08)' : 'transparent'
+                                                        }}
                                                     >
                                                         <input
                                                             type="checkbox"
@@ -690,10 +710,10 @@ export default function ModalPedirCotacao({ isOpen, onClose, fornecedor, activit
                                                             className="rounded border-gray-300 text-[#44B16F] focus:ring-[#44B16F]"
                                                         />
                                                         <div className="flex-1 min-w-0">
-                                                            <p className="text-sm font-medium text-gray-800 truncate">
+                                                            <p className="text-sm font-medium truncate" style={{ color: 'var(--color-text-primary)' }}>
                                                                 {forn.commercial_name || forn.legal_name || `#${forn.id}`}
                                                             </p>
-                                                            <p className="text-xs text-gray-500 truncate">{forn.email || ''}</p>
+                                                            <p className="text-xs truncate" style={{ color: 'var(--color-text-muted)' }}>{forn.email || ''}</p>
                                                         </div>
                                                         {forn.categories && forn.categories.length > 0 && (
                                                             <div className="flex flex-wrap gap-1 shrink-0">
@@ -703,7 +723,7 @@ export default function ModalPedirCotacao({ isOpen, onClose, fornecedor, activit
                                                                     </span>
                                                                 ))}
                                                                 {forn.categories.length > 2 && (
-                                                                    <span className="text-[10px] px-2 py-0.5 bg-gray-100 text-gray-500 rounded-full">
+                                                                    <span className="text-[10px] px-2 py-0.5 rounded-full" style={{ background: 'var(--color-bg)', color: 'var(--color-text-muted)' }}>
                                                                         +{forn.categories.length - 2}
                                                                     </span>
                                                                 )}
@@ -743,30 +763,30 @@ export default function ModalPedirCotacao({ isOpen, onClose, fornecedor, activit
 
                             {/* Error Message */}
                             {submitError && (
-                                <div className="bg-red-50 border border-red-200 rounded-lg p-4 flex items-start gap-3 mt-6">
-                                    <svg className="w-5 h-5 text-red-600 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <div className="rounded-lg p-4 flex items-start gap-3 mt-6" style={{ background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.2)' }}>
+                                    <svg className="w-5 h-5 text-red-500 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                                     </svg>
-                                    <p className="text-sm text-red-600">{submitError}</p>
+                                    <p className="text-sm text-red-500">{submitError}</p>
                                 </div>
                             )}
 
                             {/* Success Message */}
                             {submitSuccess && (
-                                <div className="bg-green-50 border border-green-200 rounded-lg p-4 flex items-start gap-3 mt-6">
-                                    <svg className="w-5 h-5 text-green-600 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <div className="rounded-lg p-4 flex items-start gap-3 mt-6" style={{ background: 'rgba(68,177,111,0.08)', border: '1px solid rgba(68,177,111,0.25)' }}>
+                                    <svg className="w-5 h-5 text-[#44B16F] mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
                                     </svg>
-                                    <p className="text-sm text-green-600">Pedido de cotação criado com sucesso! Redirecionando...</p>
+                                    <p className="text-sm text-[#44B16F]">Pedido de cotação criado com sucesso! Redirecionando...</p>
                                 </div>
                             )}
 
                             {/* Submit Button */}
-                            <div className="flex justify-end pt-6 mt-6 border-t border-gray-100">
+                            <div className="flex justify-end pt-6 mt-6" style={{ borderTop: '1px solid var(--color-border-light)' }}>
                                 <button
                                     onClick={handleSendExternalLink}
                                     disabled={!pedidoAssunto.trim() || selectedFornecedores.length < 3 || isSubmitting}
-                                    className="px-8 py-3 bg-[#44B16F] text-white rounded-lg hover:bg-[#3a9d5f] transition-colors font-medium shadow-sm disabled:bg-gray-300 disabled:cursor-not-allowed flex items-center gap-2"
+                                    className="px-8 py-3 bg-[#44B16F] text-white rounded-lg hover:bg-[#3a9d5f] transition-colors font-medium shadow-sm disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
                                 >
                                     {isSubmitting ? (
                                         <>
@@ -785,6 +805,7 @@ export default function ModalPedirCotacao({ isOpen, onClose, fornecedor, activit
                     )}
                 </div>
             </div>
-        </div>
+        </div>,
+        document.body
     );
 }

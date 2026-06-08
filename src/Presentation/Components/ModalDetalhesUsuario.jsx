@@ -1,6 +1,8 @@
+import { useModalLock } from '../../hooks/useModalLock';
 import { X, User, Mail, Shield, CheckCircle2, XCircle } from "lucide-react";
 
 export default function ModalDetalhesUsuario({ isOpen, onClose, user }) {
+    useModalLock(isOpen);
     if (!isOpen || !user) return null;
 
     const getRoleLabel = (role) => {

@@ -1,3 +1,4 @@
+import { useModalLock } from '../../hooks/useModalLock';
 import { useState } from "react";
 import { X, UserPlus, Send } from "lucide-react";
 import { useNavigate } from "react-router-dom";
@@ -12,6 +13,7 @@ export default function ModalCadastroFornecedor({ isOpen, onClose, fornecedor, o
         navigate('/FornecedorFormStep1', { state: { fornecedor } });
     };
 
+    useModalLock(isOpen);
     if (!isOpen) return null;
 
     // If editing an existing fornecedor, show the edit modal

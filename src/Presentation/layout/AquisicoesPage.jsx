@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { createPortal } from "react-dom";
 import { Search, SlidersHorizontal, Eye, FileText, CheckCircle, Clock, AlertCircle, TrendingUp, Truck, Plus, X, Package } from "lucide-react";
 import { quotationResponsesAPI, quotationRequestsAPI, acquisitionsAPI } from "../../services/api";
 import Toast from "../Components/Toast";
@@ -10,7 +11,6 @@ import ModalPedirCotacao from "../Components/ModalPedirCotacao";
 export default function AquisicoesPage() {
     const [isLoading, setIsLoading] = useState(true);
     const [responses, setResponses] = useState([]);
-    const [stats, setStats] = useState([]);
     const [error, setError] = useState(null);
     const [toast, setToast] = useState(null);
     const [searchTerm, setSearchTerm] = useState("");
@@ -40,17 +40,7 @@ export default function AquisicoesPage() {
 
     useEffect(() => {
         fetchResponses();
-        fetchStats();
     }, []);
-
-    const fetchStats = async () => {
-        try {
-            const data = await acquisitionsAPI.getStatsProducts();
-            setStats(Array.isArray(data) ? data : []);
-        } catch (error) {
-            console.error("Erro ao carregar estatísticas:", error);
-        }
-    };
 
     const fetchResponses = async () => {
         try {
@@ -270,7 +260,7 @@ export default function AquisicoesPage() {
     };
 
     return (
-        <div className="space-y-8 animate-fadeIn">
+        <div className="space-y-8">
             {/* Header */}
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
                 <div>
@@ -321,15 +311,15 @@ export default function AquisicoesPage() {
                 <div className="flex flex-col p-6 gap-4 border-b" style={{ borderColor: 'var(--color-border-light)' }}>
                     <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
                         <div className="flex items-center gap-4 flex-1">
-                            <div className="relative flex-1 max-w-md">
-                                <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
+                            <div className="search-bar" style={{ maxWidth: '400px', flex: 1 }}>
+                                <Search className="search-icon" size={16} />
                                 <input
                                     type="text"
                                     placeholder="Pesquisar por ID, fornecedor ou referência..."
                                     value={searchTerm}
                                     onChange={(e) => setSearchTerm(e.target.value)}
-                                    className="w-full pl-12 pr-4 py-3 border border-transparent rounded-xl focus:outline-none focus:ring-2 focus:ring-[#44B16F]/20 focus:border-[#44B16F] transition-all text-sm"
-                                    style={{ background: 'var(--color-bg)', color: 'var(--color-text-primary)' }}
+                                    className="input-field"
+                                    style={{ paddingLeft: '42px' }}
                                 />
                             </div>
                             <button 
@@ -348,33 +338,30 @@ export default function AquisicoesPage() {
                     {isFiltersVisible && (
                         <div className="grid grid-cols-1 md:grid-cols-4 gap-4 pt-4 mt-2 border-t" style={{ borderColor: 'var(--color-border-light)' }}>
                             <div>
-                                <label className="block text-xs font-bold text-gray-500 uppercase mb-2">Fornecedor</label>
+                                <label className="block text-xs font-semibold mb-1" style={{ color: 'var(--color-text-secondary)' }}>Fornecedor</label>
                                 <input
                                     type="text"
                                     value={filterSupplier}
                                     onChange={(e) => setFilterSupplier(e.target.value)}
                                     placeholder="Nome do fornecedor"
-                                    className="w-full px-4 py-2.5 rounded-xl border-none outline-none text-sm transition-all focus:ring-2 focus:ring-[#44B16F]/20"
-                                    style={{ background: 'var(--color-bg)', color: 'var(--color-text-primary)' }}
+                                    className="input-field"
                                 />
                             </div>
                             <div>
-                                <label className="block text-xs font-bold text-gray-500 uppercase mb-2">Data de Entrega</label>
+                                <label className="block text-xs font-semibold mb-1" style={{ color: 'var(--color-text-secondary)' }}>Data de Entrega</label>
                                 <input
                                     type="date"
                                     value={filterDeliveryDate}
                                     onChange={(e) => setFilterDeliveryDate(e.target.value)}
-                                    className="w-full px-4 py-2.5 rounded-xl border-none outline-none text-sm transition-all focus:ring-2 focus:ring-[#44B16F]/20"
-                                    style={{ background: 'var(--color-bg)', color: 'var(--color-text-primary)' }}
+                                    className="input-field"
                                 />
                             </div>
                             <div>
-                                <label className="block text-xs font-bold text-gray-500 uppercase mb-2">Estado</label>
+                                <label className="block text-xs font-semibold mb-1" style={{ color: 'var(--color-text-secondary)' }}>Estado</label>
                                 <select
                                     value={filterStatus}
                                     onChange={(e) => setFilterStatus(e.target.value)}
-                                    className="w-full px-4 py-2.5 rounded-xl border-none outline-none text-sm transition-all focus:ring-2 focus:ring-[#44B16F]/20 appearance-none"
-                                    style={{ background: 'var(--color-bg)', color: 'var(--color-text-primary)' }}
+                                    className="input-field appearance-none"
                                 >
                                     <option value="">Todos</option>
                                     <option value="completed">Concluída</option>
@@ -387,7 +374,7 @@ export default function AquisicoesPage() {
                             <div className="flex items-end">
                                 <button
                                     onClick={handleClearFilters}
-                                    className="w-full px-4 py-2.5 rounded-xl border border-gray-200 text-gray-600 font-bold text-sm hover:bg-gray-50 transition-all"
+                                    className="btn-secondary w-full py-2.5"
                                 >
                                     Limpar Filtros
                                 </button>
@@ -474,10 +461,11 @@ export default function AquisicoesPage() {
 
             {/* Modals Section */}
 
-            {/* Activity Registration */}
-            {isActivityModalOpen && (
-                <div className="modal-overlay" onClick={(e) => { if (e.target === e.currentTarget) setIsActivityModalOpen(false); }}>
-                    <div className="modal-container animate-modalFadeIn" style={{ maxWidth: '520px', background: 'var(--color-surface)', border: '1px solid var(--color-border-light)' }}>
+            {/* Activity Registration — rendered via Portal to escape overflow stacking context */}
+            {isActivityModalOpen && createPortal(
+                <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center" style={{ zIndex: 9999 }}>
+                    <div className="absolute inset-0" onClick={() => setIsActivityModalOpen(false)} />
+                    <div className="relative rounded-2xl shadow-2xl w-full max-w-lg mx-4 animate-fadeIn max-h-[90vh] overflow-hidden flex flex-col" style={{ background: 'var(--color-surface)', border: '1px solid var(--color-border-light)' }}>
                         {/* Header */}
                         <div className="flex items-center justify-between px-6 py-4 border-b" style={{ borderColor: 'var(--color-border-light)' }}>
                             <div>
@@ -562,7 +550,8 @@ export default function AquisicoesPage() {
                             </button>
                         </div>
                     </div>
-                </div>
+                </div>,
+                document.body
             )}
 
             {/* Other Modals */}

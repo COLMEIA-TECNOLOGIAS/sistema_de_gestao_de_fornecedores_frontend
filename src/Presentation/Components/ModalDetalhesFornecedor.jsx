@@ -1,4 +1,6 @@
+import { useModalLock } from '../../hooks/useModalLock';
 import React, { useState } from 'react';
+import { createPortal } from 'react-dom';
 import { X, FileText, MapPin, Mail, Phone, Building2, Calendar, CheckCircle, XCircle, Loader2 } from 'lucide-react';
 import api from '../../services/api';
 
@@ -10,6 +12,7 @@ export default function ModalDetalhesFornecedor({
 }) {
     const [viewingDoc, setViewingDoc] = useState(null); // URL being viewed/downloaded
 
+    useModalLock(isOpen);
     if (!isOpen || !fornecedor) return null;
 
     // Helper to format date
@@ -103,8 +106,8 @@ export default function ModalDetalhesFornecedor({
         </button>
     );
 
-    return (
-        <div className="fixed inset-0 z-50 flex items-center justify-center">
+    return createPortal(
+        <div className="fixed inset-0 flex items-center justify-center" style={{ zIndex: 9999 }}>
             {/* Backdrop */}
             <div
                 className="absolute inset-0 bg-black/50 backdrop-blur-sm"
@@ -357,6 +360,7 @@ export default function ModalDetalhesFornecedor({
                     )}
                 </div>
             </div>
-        </div>
+        </div>,
+        document.body
     );
 }

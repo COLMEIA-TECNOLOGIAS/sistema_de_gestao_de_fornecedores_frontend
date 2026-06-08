@@ -1,6 +1,8 @@
 import { useState } from 'react';
+import { createPortal } from 'react-dom';
 import { X, CheckCircle, XCircle, MessageSquare, ShoppingCart, FileText } from 'lucide-react';
 import api from '../../services/api';
+import { useModalLock } from '../../hooks/useModalLock';
 
 export default function ModalRevisarCotacao({
     isOpen,
@@ -13,6 +15,7 @@ export default function ModalRevisarCotacao({
     isAcquisition
 }) {
     const [viewingDoc, setViewingDoc] = useState(false);
+    useModalLock(isOpen);
 
     if (!isOpen || !cotacao) return null;
 
@@ -61,8 +64,8 @@ export default function ModalRevisarCotacao({
         return total.toFixed(2).replace('.', ',');
     };
 
-    return (
-        <div className="fixed inset-0 z-50 flex items-center justify-center">
+    return createPortal(
+        <div className="fixed inset-0 flex items-center justify-center" style={{ zIndex: 9999 }}>
             {/* Backdrop */}
             <div
                 className="absolute inset-0 bg-black/50 backdrop-blur-sm"
@@ -70,16 +73,16 @@ export default function ModalRevisarCotacao({
             />
 
             {/* Modal */}
-            <div className="relative bg-white rounded-2xl shadow-2xl w-full max-w-4xl mx-4 animate-fadeIn max-h-[90vh] overflow-hidden flex flex-col">
+            <div className="relative rounded-2xl shadow-2xl w-full max-w-4xl mx-4 animate-fadeIn max-h-[90vh] overflow-hidden flex flex-col" style={{ background: 'var(--color-surface)' }}>
                 {/* Header */}
-                <div className="flex items-start justify-between px-8 py-6 border-b border-gray-100">
+                <div className="flex items-start justify-between px-8 py-6" style={{ borderBottom: '1px solid var(--color-border-light)' }}>
                     <div className="flex-1">
-                        <h2 className="text-2xl font-bold text-gray-900 mb-4">
+                        <h2 className="text-2xl font-bold mb-4" style={{ color: 'var(--color-text-primary)' }}>
                             {isAcquisition ? 'Aquisição' : 'Pedido de cotação'} - {cotacao.quotation_supplier?.supplier?.commercial_name || cotacao.quotation_supplier?.supplier?.legal_name || 'Fornecedor'}
                         </h2>
 
                         {/* Endereço do fornecedor */}
-                        <div className="text-sm text-gray-600 space-y-1">
+                        <div className="text-sm space-y-1" style={{ color: 'var(--color-text-secondary)' }}>
                             <p>{cotacao.quotation_supplier?.supplier?.province || 'Angola'} - {cotacao.quotation_supplier?.supplier?.municipality || 'Luanda'}</p>
                             <p>{cotacao.quotation_supplier?.supplier?.address || 'Endereço não disponível'}</p>
                             <p>{cotacao.quotation_supplier?.supplier?.phone || '---'}</p>
@@ -102,11 +105,11 @@ export default function ModalRevisarCotacao({
                 {/* Content */}
                 <div className="px-8 py-6 overflow-y-auto flex-1">
                     {/* Informações principais em 3 colunas */}
-                    <div className="grid grid-cols-3 gap-6 mb-6 pb-6 border-b border-gray-200">
+                    <div className="grid grid-cols-3 gap-6 mb-6 pb-6" style={{ borderBottom: '1px solid var(--color-border)' }}>
                         {/* Solicitado por */}
                         <div>
-                            <h3 className="font-semibold text-gray-900 mb-2">Solicitado por:</h3>
-                            <div className="text-sm text-gray-600 space-y-1">
+                            <h3 className="font-semibold mb-2" style={{ color: 'var(--color-text-primary)' }}>Solicitado por:</h3>
+                            <div className="text-sm space-y-1" style={{ color: 'var(--color-text-secondary)' }}>
                                 <p className="font-medium">MOSAP3</p>
                                 <p>Rua Coelho na Toca 203</p>
                                 <p>607 456 442 Lisboa</p>
@@ -115,8 +118,8 @@ export default function ModalRevisarCotacao({
 
                         {/* Enviado para */}
                         <div>
-                            <h3 className="font-semibold text-gray-900 mb-2">Enviado para:</h3>
-                            <div className="text-sm text-gray-600 space-y-1">
+                            <h3 className="font-semibold mb-2" style={{ color: 'var(--color-text-primary)' }}>Enviado para:</h3>
+                            <div className="text-sm space-y-1" style={{ color: 'var(--color-text-secondary)' }}>
                                 <p className="font-medium">{cotacao.quotation_supplier?.supplier?.commercial_name || cotacao.quotation_supplier?.supplier?.legal_name || 'N/A'}</p>
                                 <p>{cotacao.quotation_supplier?.supplier?.address || 'Endereço não disponível'}</p>
                                 <p>{cotacao.quotation_supplier?.supplier?.phone || '---'}</p>
@@ -125,8 +128,8 @@ export default function ModalRevisarCotacao({
 
                         {/* Detalhes */}
                         <div>
-                            <h3 className="font-semibold text-gray-900 mb-2">Detalhes:</h3>
-                            <div className="text-sm text-gray-600 space-y-1">
+                            <h3 className="font-semibold mb-2" style={{ color: 'var(--color-text-primary)' }}>Detalhes:</h3>
+                            <div className="text-sm space-y-1" style={{ color: 'var(--color-text-secondary)' }}>
                                 <p><span className="font-medium">ID:</span> CT - {String(cotacao.id).padStart(3, '0')}</p>
                                 <p><span className="font-medium">Data:</span> {cotacao.submitted_at ? new Date(cotacao.submitted_at).toLocaleDateString('pt-AO') : 'N/A'}</p>
                                 <p><span className="font-medium">Prazo de entrega:</span> {cotacao.expected_delivery_date ? new Date(cotacao.expected_delivery_date).toLocaleDateString('pt-AO') : 'N/A'}</p>
@@ -135,23 +138,22 @@ export default function ModalRevisarCotacao({
                     </div>
 
                     {/* Título e Descrição */}
-                    {/* Título e Descrição */}
                     <div className="mb-6">
-                        <h3 className="font-semibold text-gray-900 mb-2">Título da Cotação:</h3>
-                        <p className="text-gray-700">{cotacao.quotation_supplier?.quotation_request?.title || cotacao.quotation_request?.title || 'N/A'}</p>
+                        <h3 className="font-semibold mb-2" style={{ color: 'var(--color-text-primary)' }}>Título da Cotação:</h3>
+                        <p style={{ color: 'var(--color-text-secondary)' }}>{cotacao.quotation_supplier?.quotation_request?.title || cotacao.quotation_request?.title || 'N/A'}</p>
 
                         {(cotacao.quotation_supplier?.quotation_request?.description || cotacao.quotation_request?.description) && (
                             <>
-                                <h3 className="font-semibold text-gray-900 mt-4 mb-2">Descrição:</h3>
-                                <p className="text-gray-700">{cotacao.quotation_supplier?.quotation_request?.description || cotacao.quotation_request?.description}</p>
+                                <h3 className="font-semibold mt-4 mb-2" style={{ color: 'var(--color-text-primary)' }}>Descrição:</h3>
+                                <p style={{ color: 'var(--color-text-secondary)' }}>{cotacao.quotation_supplier?.quotation_request?.description || cotacao.quotation_request?.description}</p>
                             </>
                         )}
                     </div>
 
                     {/* Tabela de Produtos */}
                     {!isAcquisition && (
-                        <div className="mb-6 pb-6 border-b-2 border-dashed border-gray-200">
-                            <div className="grid grid-cols-12 gap-4 font-bold text-gray-900 mb-4">
+                        <div className="mb-6 pb-6" style={{ borderBottom: '2px dashed var(--color-border)' }}>
+                            <div className="grid grid-cols-12 gap-4 font-bold mb-4" style={{ color: 'var(--color-text-primary)' }}>
                                 <div className="col-span-4">Produtos:</div>
                                 <div className="col-span-4">Descrição:</div>
                                 <div className="col-span-2 text-right">Unitário:</div>
@@ -161,8 +163,6 @@ export default function ModalRevisarCotacao({
                             {cotacao.items && cotacao.items.length > 0 ? (
                                 <div className="space-y-4">
                                     {cotacao.items.map((item, index) => {
-                                        // Try to get item details from the nested quotation_item object (priority)
-                                        // or find it in the original request items array (fallback)
                                         const requestItem = item.quotation_item || cotacao.quotation_supplier?.quotation_request?.items?.find(
                                             r => r.id === item.quotation_item_id
                                         );
@@ -170,31 +170,13 @@ export default function ModalRevisarCotacao({
                                         const quantity = parseFloat(requestItem?.quantity || item.quantity || 1);
                                         let unitPrice = parseFloat(item.unit_price || item.price || 0);
 
-                                        // Heuristic: If we have a total_amount for the whole quote but 0 for unit price,
-                                        // try to distribute it or assign it to the single item.
                                         if (unitPrice === 0 && (cotacao.total_amount || cotacao.amount)) {
                                             const total = parseFloat(cotacao.total_amount || cotacao.amount);
                                             if (total > 0) {
                                                 if (cotacao.items.length === 1 && quantity > 0) {
-                                                    // Single item: exact match
                                                     unitPrice = total / quantity;
                                                 } else if (cotacao.items.length > 1 && quantity > 0) {
-                                                    // Multiple items: This is technically inaccurate, but if the user demands "add the price",
-                                                    // and we ONLY have the grand total, we can try to distribute it explicitly OR
-                                                    // check if there's a stored 'estimated_price' from the request fallback we might have missed.
-
-                                                    // Better heuristic: if we have prices on SOME items, don't overwrite. 
-                                                    // If ALL items are 0, distribute evenly? No, that's misleading.
-
-                                                    // Let's at least check 'item.estimated_price' again very explicitly.
                                                     unitPrice = parseFloat(item.estimated_price || 0);
-
-                                                    // Final fallback: If still 0, and we really want to show *something* that sums up?
-                                                    // No, showing 0.00 on multi-item lines is safer than lying.
-                                                    // However, the screenshot shows 2 items (Caneta/Borracha) and Total 5000.
-                                                    // The user wants unit prices. 
-                                                    // If the technician view is restricted, we LITERALLY DO NOT HAVE THEM.
-                                                    // I will leave it as 0.00 for multi-item unless estimated_price saves us.
                                                 }
                                             }
                                         }
@@ -202,24 +184,24 @@ export default function ModalRevisarCotacao({
                                         const lineTotal = quantity * unitPrice;
 
                                         return (
-                                            <div key={index} className="grid grid-cols-12 gap-4 text-sm text-gray-700 items-center">
+                                            <div key={index} className="grid grid-cols-12 gap-4 text-sm items-center" style={{ color: 'var(--color-text-secondary)' }}>
                                                 <div className="col-span-4">
-                                                    <span className="text-gray-900">
+                                                    <span style={{ color: 'var(--color-text-primary)' }}>
                                                         {String(index + 1).padStart(2, '0')} - {requestItem ? requestItem.name : (item.name || item.product_name || `Item #${item.quotation_item_id || index + 1}`)}
                                                     </span>
                                                     {requestItem && (
-                                                        <span className="text-gray-600 ml-1">
+                                                        <span className="ml-1" style={{ color: 'var(--color-text-secondary)' }}>
                                                             ({requestItem.quantity} {requestItem.unit || 'uni'})
                                                         </span>
                                                     )}
                                                 </div>
-                                                <div className="col-span-4 text-gray-600">
+                                                <div className="col-span-4" style={{ color: 'var(--color-text-secondary)' }}>
                                                     {requestItem?.specifications || item.notes || item.description || item.specifications || '-'}
                                                 </div>
-                                                <div className="col-span-2 text-right font-medium text-gray-900">
+                                                <div className="col-span-2 text-right font-medium" style={{ color: 'var(--color-text-primary)' }}>
                                                     {(unitPrice !== undefined && unitPrice !== null) ? `${unitPrice.toLocaleString('pt-AO', { minimumFractionDigits: 2 })} AOA` : '---'}
                                                 </div>
-                                                <div className="col-span-2 text-right font-bold text-gray-900">
+                                                <div className="col-span-2 text-right font-bold" style={{ color: 'var(--color-text-primary)' }}>
                                                     {(lineTotal !== undefined && lineTotal !== null) ? `${lineTotal.toLocaleString('pt-AO', { minimumFractionDigits: 2 })} AOA` : '---'}
                                                 </div>
                                             </div>
@@ -227,36 +209,33 @@ export default function ModalRevisarCotacao({
                                     })}
                                 </div>
                             ) : (
-                                <p className="text-gray-500 text-sm">Nenhum item cotado.</p>
+                                <p className="text-sm" style={{ color: 'var(--color-text-muted)' }}>Nenhum item cotado.</p>
                             )}
                         </div>
                     )}
 
                     {/* Documentos */}
-                    <div className="mb-6 pb-6 border-b border-gray-200">
-                        <h3 className="font-semibold text-gray-900 mb-4">Documento da Proposta:</h3>
+                    <div className="mb-6 pb-6" style={{ borderBottom: '1px solid var(--color-border)' }}>
+                        <h3 className="font-semibold mb-4" style={{ color: 'var(--color-text-primary)' }}>Documento da Proposta:</h3>
                         <button
                             onClick={async () => {
                                 try {
                                     setViewingDoc(true);
 
-                                    // Enhanced ID Resolution Strategy with detailed logging
                                     console.group('📄 Documento da Proposta - Debug Info');
                                     console.log('1. Cotacao object:', cotacao);
                                     console.log('2. Is Acquisition?', isAcquisition);
 
-                                    // Check all possible ID sources
                                     const idSources = {
                                         direct_qr_id: cotacao.quotation_response_id,
                                         qs_qr_id: cotacao.quotation_supplier?.quotation_response_id,
                                         qs_pivot_id: cotacao.quotation_supplier?.id,
                                         root_id: cotacao.id,
-                                        response_id: cotacao.response_id // Sometimes responses have this
+                                        response_id: cotacao.response_id
                                     };
 
                                     console.log('3. Available ID sources:', idSources);
 
-                                    // Priority-based ID resolution
                                     let responseId = null;
                                     let idSource = null;
 
@@ -270,12 +249,9 @@ export default function ModalRevisarCotacao({
                                         responseId = cotacao.quotation_supplier.quotation_response_id;
                                         idSource = 'quotation_supplier.quotation_response_id';
                                     } else if (!isAcquisition && cotacao.id) {
-                                        // Only use cotacao.id if we're NOT in acquisition mode
-                                        // In acquisition mode, cotacao.id is the acquisition ID, not response ID
                                         responseId = cotacao.id;
                                         idSource = 'cotacao.id (fallback)';
                                     } else if (cotacao.quotation_supplier?.id) {
-                                        // Last resort - this might be a pivot ID
                                         responseId = cotacao.quotation_supplier.id;
                                         idSource = 'quotation_supplier.id (pivot - risky)';
                                     }
@@ -294,7 +270,6 @@ export default function ModalRevisarCotacao({
                                     const url = `/quotation-responses/${responseId}/document`;
                                     console.log('6. API URL:', url);
 
-                                    // Force authenticated fetch via Axios (api instance)
                                     const response = await api.get(url, {
                                         responseType: 'blob',
                                         headers: {
@@ -318,25 +293,19 @@ export default function ModalRevisarCotacao({
                                     setTimeout(() => window.URL.revokeObjectURL(objectUrl), 10000);
                                 } catch (error) {
                                     console.error("❌ Erro ao abrir documento:", error);
-                                    console.log('Error details:', {
-                                        message: error.message,
-                                        response: error.response,
-                                        status: error.response?.status,
-                                        data: error.response?.data
-                                    });
                                     console.groupEnd();
 
                                     let msg = "Erro ao carregar o documento.";
                                     const responseId = cotacao.quotation_response_id || cotacao.response_id || cotacao.id;
 
                                     if (error.response?.status === 404) {
-                                        msg = `Documento não encontrado.\n\nID da Resposta: ${responseId}\n\nPossíveis causas:\n- O fornecedor ainda não enviou o documento\n- O documento foi removido\n- ID incorreto (${responseId})`;
+                                        msg = `Documento não encontrado.\n\nID da Resposta: ${responseId}`;
                                     } else if (error.response?.status === 400) {
-                                        msg = `Requisição inválida.\n\nID usado: ${responseId}\n\nO ID fornecido pode não ser válido para esta operação.`;
+                                        msg = `Requisição inválida.\n\nID usado: ${responseId}`;
                                     } else if (error.response?.status === 403 || error.response?.status === 401) {
-                                        msg = "Sem permissão para visualizar este documento.\n\nVerifique suas credenciais de acesso.";
+                                        msg = "Sem permissão para visualizar este documento.";
                                     } else if (error.code === 'ERR_NETWORK') {
-                                        msg = "Erro de conexão com o servidor.\n\nVerifique sua conexão com a internet.";
+                                        msg = "Erro de conexão com o servidor.";
                                     }
 
                                     alert(msg);
@@ -345,7 +314,8 @@ export default function ModalRevisarCotacao({
                                 }
                             }}
                             disabled={viewingDoc}
-                            className="flex items-center gap-2 px-4 py-2 bg-blue-50 text-blue-600 rounded-lg hover:bg-blue-100 transition-colors font-medium border border-blue-200"
+                            className="flex items-center gap-2 px-4 py-2 rounded-lg transition-colors font-medium border"
+                            style={{ background: 'rgba(59,130,246,0.08)', color: '#3b82f6', borderColor: 'rgba(59,130,246,0.2)' }}
                         >
                             <FileText size={18} />
                             {viewingDoc ? 'Carregando...' : 'Visualizar Proposta (PDF/Imagem)'}
@@ -355,8 +325,8 @@ export default function ModalRevisarCotacao({
                     {/* Total */}
                     {!isAcquisition && (
                         <div className="flex justify-end items-center mt-4">
-                            <span className="text-xl font-bold text-gray-900 mr-2">Total:</span>
-                            <span className="text-4xl font-black text-black tracking-tight">
+                            <span className="text-xl font-bold mr-2" style={{ color: 'var(--color-text-primary)' }}>Total:</span>
+                            <span className="text-4xl font-black tracking-tight" style={{ color: 'var(--color-text-primary)' }}>
                                 {(() => {
                                     const calculated = cotacao.items && cotacao.items.length > 0 ? calcularTotal() : '0,00';
                                     if (calculated === '0,00' && (cotacao.total_amount || cotacao.amount)) {
@@ -370,10 +340,13 @@ export default function ModalRevisarCotacao({
                 </div>
 
                 {/* Footer com botões */}
-                <div className="px-8 py-6 border-t border-gray-100 flex items-center justify-end gap-3">
+                <div className="px-8 py-6 flex items-center justify-end gap-3" style={{ borderTop: '1px solid var(--color-border-light)' }}>
                     <button
                         onClick={onClose}
-                        className="px-6 py-2.5 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors font-medium text-sm"
+                        className="px-6 py-2.5 rounded-lg transition-colors font-medium text-sm"
+                        style={{ border: '1px solid var(--color-border)', color: 'var(--color-text-primary)', background: 'transparent' }}
+                        onMouseEnter={e => e.currentTarget.style.background = 'var(--color-bg)'}
+                        onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
                     >
                         Fechar
                     </button>
@@ -381,7 +354,8 @@ export default function ModalRevisarCotacao({
                     {onRejeitar && (
                         <button
                             onClick={handleRejeitar}
-                            className="px-6 py-2.5 bg-red-50 text-red-600 border border-red-100 rounded-lg hover:bg-red-100 transition-colors font-medium text-sm flex items-center gap-2"
+                            className="px-6 py-2.5 rounded-lg transition-colors font-medium text-sm flex items-center gap-2"
+                            style={{ background: 'rgba(239,68,68,0.08)', color: '#ef4444', border: '1px solid rgba(239,68,68,0.2)' }}
                         >
                             <XCircle size={18} />
                             Rejeitar
@@ -391,7 +365,8 @@ export default function ModalRevisarCotacao({
                     {onSolicitarRevisao && (
                         <button
                             onClick={handleSolicitarRevisao}
-                            className="px-6 py-2.5 bg-amber-50 text-amber-700 border border-amber-100 rounded-lg hover:bg-amber-100 transition-colors font-medium text-sm flex items-center gap-2"
+                            className="px-6 py-2.5 rounded-lg transition-colors font-medium text-sm flex items-center gap-2"
+                            style={{ background: 'rgba(245,158,11,0.08)', color: '#d97706', border: '1px solid rgba(245,158,11,0.2)' }}
                         >
                             <MessageSquare size={18} />
                             Solicitar Revisão
@@ -401,7 +376,8 @@ export default function ModalRevisarCotacao({
                     {onAprovar && (
                         <button
                             onClick={handleAprovar}
-                            className="px-6 py-2.5 bg-emerald-50 text-emerald-700 border border-emerald-100 rounded-lg hover:bg-emerald-100 transition-colors font-medium text-sm flex items-center gap-2"
+                            className="px-6 py-2.5 rounded-lg transition-colors font-medium text-sm flex items-center gap-2"
+                            style={{ background: 'rgba(68,177,111,0.08)', color: '#44B16F', border: '1px solid rgba(68,177,111,0.2)' }}
                         >
                             <CheckCircle size={18} />
                             Aprovar
@@ -419,6 +395,7 @@ export default function ModalRevisarCotacao({
                     )}
                 </div>
             </div>
-        </div>
+        </div>,
+        document.body
     );
 }

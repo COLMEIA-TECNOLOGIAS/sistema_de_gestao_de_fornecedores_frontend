@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { X, TrendingUp, DollarSign, BarChart2 } from 'lucide-react';
 import { productsAPI } from '../../services/api';
 
@@ -32,8 +33,8 @@ export default function ModalProdutoAnalytics({ isOpen, onClose, product }) {
 
     if (!isOpen) return null;
 
-    return (
-        <div className="fixed inset-0 z-50 flex items-center justify-center">
+    return createPortal(
+        <div className="fixed inset-0 flex items-center justify-center" style={{ zIndex: 9999 }}>
             {/* Backdrop */}
             <div
                 className="absolute inset-0 bg-black/50 backdrop-blur-sm"
@@ -142,6 +143,7 @@ export default function ModalProdutoAnalytics({ isOpen, onClose, product }) {
                     </button>
                 </div>
             </div>
-        </div>
+        </div>,
+        document.body
     );
 }

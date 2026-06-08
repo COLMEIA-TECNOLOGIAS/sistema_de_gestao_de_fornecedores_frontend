@@ -1,5 +1,7 @@
+import { useModalLock } from '../../hooks/useModalLock';
 import { X, UserPlus, Eye, EyeOff, Edit, Save } from "lucide-react";
 import { useState, useEffect } from "react";
+import { createPortal } from "react-dom";
 import { usersAPI } from "../../services/api";
 
 export default function ModalNovoUsuario({ isOpen, onClose, onSuccess, userToEdit }) {
@@ -85,10 +87,11 @@ export default function ModalNovoUsuario({ isOpen, onClose, onSuccess, userToEdi
         }
     };
 
+    useModalLock(isOpen);
     if (!isOpen) return null;
 
-    return (
-        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50">
+    return createPortal(
+        <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center" style={{ zIndex: 9999 }}>
             <div className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl mx-4 overflow-hidden animate-fadeIn">
                 {/* Header */}
                 <div className="flex items-center justify-between p-6 border-b border-gray-200">
@@ -255,6 +258,7 @@ export default function ModalNovoUsuario({ isOpen, onClose, onSuccess, userToEdi
                     </div>
                 </form>
             </div>
-        </div>
+        </div>,
+        document.body
     );
 }

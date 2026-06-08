@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { Routes, Route, Navigate } from 'react-router-dom'
 import { AuthProvider, useAuth } from './context/AuthContext'
+import { AdminRoute } from './Presentation/Components/RoleProtectedRoute'
 import SplashScreen from './Presentation/Components/SplashScreen.jsx'
 import LoginPage from './Presentation/Pages/Login/LoginPage.jsx'
 import SuccessPasswordReset from './Presentation/Pages/Login/SuccessPasswordReset..jsx'
@@ -66,7 +67,7 @@ function AppRoutes() {
       <Route path="/aquisicoes" element={<ProtectedRoute><DashboardLayout /></ProtectedRoute>} />
       <Route path="/categorias" element={<ProtectedRoute><DashboardLayout /></ProtectedRoute>} />
       <Route path="/produtos" element={<ProtectedRoute><DashboardLayout /></ProtectedRoute>} />
-      <Route path="/logs-eventos" element={<ProtectedRoute><DashboardLayout /></ProtectedRoute>} />
+      <Route path="/logs-eventos" element={<ProtectedRoute><AdminRoute><DashboardLayout /></AdminRoute></ProtectedRoute>} />
       <Route path="/meu-perfil" element={<ProtectedRoute><DashboardLayout /></ProtectedRoute>} />
       <Route path="/AddFornecedorPage" element={<ProtectedRoute><AddFornecedorPage /></ProtectedRoute>} />
       <Route path="/FornecedorFormStep1" element={<ProtectedRoute><FornecedorFormStep1 /></ProtectedRoute>} />
