@@ -126,6 +126,7 @@ export default function FornecedorFormWrapper() {
     if (step === 1) {
       if (!formData.legal_name) newErrors.legal_name = "Nome legal é obrigatório";
       if (!formData.commercial_name) newErrors.commercial_name = "Nome comercial é obrigatório";
+      if (!formData.activity_type) newErrors.activity_type = "Tipo de atividade é obrigatório";
       if (!formData.email) {
         newErrors.email = "Email é obrigatório";
       } else if (!formData.email.includes("@")) {
@@ -178,6 +179,7 @@ export default function FornecedorFormWrapper() {
       data.append("phone", formData.phone);
       if (formData.alt_phone) data.append("alt_phone", formData.alt_phone);
       data.append("nif", formData.nif);
+      data.append("activity_type", formData.activity_type);
       data.append("province", formData.province);
       data.append("municipality", formData.municipality);
       data.append("address", formData.address);
@@ -373,6 +375,14 @@ export default function FornecedorFormWrapper() {
                       value={formData.commercial_name}
                       onChange={handleInputChange}
                       error={errors.commercial_name}
+                    />
+                    <InputField
+                      label="Tipo de Atividade *"
+                      name="activity_type"
+                      placeholder="Ex: Prestação de Serviços, Comércio..."
+                      value={formData.activity_type}
+                      onChange={handleInputChange}
+                      error={errors.activity_type}
                     />
 
                     {/* Categoria (from API categories table) */}

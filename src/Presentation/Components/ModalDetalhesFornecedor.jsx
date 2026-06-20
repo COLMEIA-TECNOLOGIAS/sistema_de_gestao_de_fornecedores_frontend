@@ -195,6 +195,11 @@ export default function ModalDetalhesFornecedor({
                                         <div>
                                             <p className="text-xs text-gray-500 font-medium">Telefone</p>
                                             <p className="text-gray-900 font-medium">{fornecedor.phone}</p>
+                                            {fornecedor.alt_phone && (
+                                                <p className="text-gray-600 font-medium text-sm mt-0.5">
+                                                    Alt: {fornecedor.alt_phone}
+                                                </p>
+                                            )}
                                         </div>
                                     </div>
                                 </div>

@@ -307,4 +307,12 @@ export const reportsAPI = {
     },
 };
 
+// Audit Logs API
+export const auditLogsAPI = {
+    getAll: async (params = {}) => {
+        const response = await api.get('/audit-logs', { params });
+        return response.data;
+    },
+};
+
 export default api;
