@@ -3,6 +3,7 @@ import { Search, SlidersHorizontal, Activity, Calendar, Users, Clock, AlertCircl
 import { auditLogsAPI } from "../../services/api";
 import { useAuth } from "../../context/AuthContext";
 import ModalDetalhesLog from "../Components/ModalDetalhesLog";
+import ErrorBoundary from "../Components/ErrorBoundary";
 
 export default function LogsEventosPage() {
     const { isAdmin } = useAuth();
@@ -337,11 +338,13 @@ export default function LogsEventosPage() {
                 )}
             </div>
 
-            <ModalDetalhesLog
-                isOpen={isDetailsModalOpen}
-                onClose={() => setIsDetailsModalOpen(false)}
-                log={selectedLog}
-            />
+            <ErrorBoundary>
+                <ModalDetalhesLog
+                    isOpen={isDetailsModalOpen}
+                    onClose={() => setIsDetailsModalOpen(false)}
+                    log={selectedLog}
+                />
+            </ErrorBoundary>
         </div>
     );
 }
