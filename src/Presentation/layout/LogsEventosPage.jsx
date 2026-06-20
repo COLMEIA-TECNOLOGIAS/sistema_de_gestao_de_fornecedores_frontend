@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect, useCallback } from "react";
+import { useState, useMemo, useEffect, useCallback, useRef } from "react";
 import { Search, SlidersHorizontal, Activity, Calendar, Users, Clock, AlertCircle, Loader2 } from "lucide-react";
 import { auditLogsAPI } from "../../services/api";
 import { useAuth } from "../../context/AuthContext";
@@ -24,18 +24,36 @@ export default function LogsEventosPage() {
     const [selectedLog, setSelectedLog] = useState(null);
     const [isDetailsModalOpen, setIsDetailsModalOpen] = useState(false);
 
+    // Debounce search so we don't fire on every keystroke
+    const [debouncedSearch, setDebouncedSearch] = useState("");
+    const debounceTimer = useRef(null);
+
+    const handleSearchChange = (value) => {
+        setSearchTerm(value);
+        setCurrentPage(1);
+        clearTimeout(debounceTimer.current);
+        debounceTimer.current = setTimeout(() => {
+            setDebouncedSearch(value);
+        }, 500);
+    };
+
+    useEffect(() => {
+        return () => clearTimeout(debounceTimer.current);
+    }, []);
+
     const fetchLogs = useCallback(async () => {
         setIsLoading(true);
         try {
             const params = {
                 page: currentPage,
                 per_page: itemsPerPage,
-                search: searchTerm || undefined,
-                user: filterUser || undefined,
-                event: filterEvent || undefined,
-                start_date: filterPeriodStart || undefined,
-                end_date: filterPeriodEnd || undefined,
             };
+            if (debouncedSearch) params.search = debouncedSearch;
+            if (filterUser) params.user = filterUser;
+            if (filterEvent) params.event = filterEvent;
+            if (filterPeriodStart) params.start_date = filterPeriodStart;
+            if (filterPeriodEnd) params.end_date = filterPeriodEnd;
+
             const res = await auditLogsAPI.getAll(params);
             setLogs(res.data || []);
             setTotalEvents(res.total || 0);
@@ -45,31 +63,24 @@ export default function LogsEventosPage() {
         } finally {
             setIsLoading(false);
         }
-    }, [currentPage, searchTerm, filterUser, filterEvent, filterPeriodStart, filterPeriodEnd]);
+    }, [currentPage, debouncedSearch, filterUser, filterEvent, filterPeriodStart, filterPeriodEnd]);
 
     useEffect(() => {
         fetchLogs();
     }, [fetchLogs]);
 
     const getEventBadge = (event) => {
-        switch (event) {
-            case 'supplier_created':
-            case 'created':
-                return { label: 'Criação', classes: 'bg-green-100 text-green-700 border-green-200' };
-            case 'document_updated':
-            case 'updated':
-                return { label: 'Atualização', classes: 'bg-blue-100 text-blue-700 border-blue-200' };
-            case 'deleted':
-                return { label: 'Exclusão', classes: 'bg-red-100 text-red-700 border-red-200' };
-            case 'login':
-                return { label: 'Login', classes: 'bg-purple-100 text-purple-700 border-purple-200' };
-            case 'logout':
-                return { label: 'Logout', classes: 'bg-gray-100 text-gray-700 border-gray-200' };
-            case 'document_uploaded':
-                return { label: 'Upload Documento', classes: 'bg-orange-100 text-orange-700 border-orange-200' };
-            default:
-                return { label: event, classes: 'bg-gray-100 text-gray-700 border-gray-200' };
-        }
+        if (!event) return { label: '-', classes: 'bg-gray-100 text-gray-600 border-gray-200' };
+        const lower = event.toLowerCase();
+        if (lower.includes('login')) return { label: 'Login', classes: 'bg-purple-100 text-purple-700 border-purple-200' };
+        if (lower.includes('logout')) return { label: 'Logout', classes: 'bg-gray-100 text-gray-600 border-gray-200' };
+        if (lower.includes('cadastro') || lower.includes('criação') || lower.includes('created')) return { label: 'Criação', classes: 'bg-green-100 text-green-700 border-green-200' };
+        if (lower.includes('atualiz') || lower.includes('updated')) return { label: 'Atualização', classes: 'bg-blue-100 text-blue-700 border-blue-200' };
+        if (lower.includes('exclus') || lower.includes('deleted') || lower.includes('remov')) return { label: 'Exclusão', classes: 'bg-red-100 text-red-700 border-red-200' };
+        if (lower.includes('upload') || lower.includes('document')) return { label: 'Documento', classes: 'bg-orange-100 text-orange-700 border-orange-200' };
+        if (lower.includes('aprovad') || lower.includes('approv')) return { label: 'Aprovação', classes: 'bg-emerald-100 text-emerald-700 border-emerald-200' };
+        if (lower.includes('rejeit') || lower.includes('reject')) return { label: 'Rejeição', classes: 'bg-rose-100 text-rose-700 border-rose-200' };
+        return { label: event, classes: 'bg-gray-100 text-gray-600 border-gray-200' };
     };
 
     const handleSort = (key) => {
@@ -117,6 +128,7 @@ export default function LogsEventosPage() {
 
     const handleClearFilters = () => {
         setSearchTerm("");
+        setDebouncedSearch("");
         setFilterPeriodStart("");
         setFilterPeriodEnd("");
         setFilterUser("");
@@ -159,7 +171,7 @@ export default function LogsEventosPage() {
                                     type="text"
                                     placeholder="Pesquisar utilizador, evento ou detalhes..."
                                     value={searchTerm}
-                                    onChange={(e) => { setSearchTerm(e.target.value); setCurrentPage(1); }}
+                                    onChange={(e) => handleSearchChange(e.target.value)}
                                     className="w-full pl-12 pr-4 py-3 border border-transparent rounded-xl focus:outline-none focus:ring-2 focus:ring-[#44B16F]/20 focus:border-[#44B16F] transition-all text-sm"
                                     style={{ background: 'var(--color-bg)', color: 'var(--color-text-primary)' }}
                                 />
@@ -196,14 +208,14 @@ export default function LogsEventosPage() {
                                     style={{ background: 'var(--color-bg)', color: 'var(--color-text-primary)' }}
                                 >
                                     <option value="">Todos</option>
-                                    <option value="supplier_created">Criação de Fornecedor</option>
-                                    <option value="created">Criação</option>
-                                    <option value="document_updated">Atualização de Documento</option>
-                                    <option value="updated">Atualização</option>
-                                    <option value="deleted">Exclusão</option>
-                                    <option value="login">Login</option>
-                                    <option value="logout">Logout</option>
-                                    <option value="document_uploaded">Upload de Documento</option>
+                                    <option value="Login">Login</option>
+                                    <option value="Logout">Logout</option>
+                                    <option value="Cadastro de Supplier">Cadastro de Fornecedor</option>
+                                    <option value="Atualização de Supplier">Atualização de Fornecedor</option>
+                                    <option value="Exclusão de Supplier">Exclusão de Fornecedor</option>
+                                    <option value="Cadastro de User">Cadastro de Utilizador</option>
+                                    <option value="Atualização de User">Atualização de Utilizador</option>
+                                    <option value="Exclusão de User">Exclusão de Utilizador</option>
                                 </select>
                             </div>
                             <div>
