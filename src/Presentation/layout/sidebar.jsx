@@ -14,9 +14,7 @@ function Sidebar({ activeItem, onItemClick }) {
   const mainMenuItems = [
     { id: "dashboard",   label: "Dashboard",   icon: LayoutDashboard, permission: PERMISSIONS.DASHBOARD },
     { id: "fornecedores",label: "Fornecedores", icon: Package,         permission: PERMISSIONS.FORNECEDORES },
-    { id: "cotacoes",    label: "Cotações",     icon: FileText,        permission: PERMISSIONS.COTACOES },
     { id: "aquisicoes",  label: "Aquisições",   icon: ShoppingCart,    permission: PERMISSIONS.AQUISICOES },
-    { id: "categorias",  label: "Categorias",   icon: Settings,        permission: PERMISSIONS.CATEGORIAS },
     { id: "relatorios",  label: "Relatórios",   icon: BarChart3,       permission: PERMISSIONS.RELATORIOS },
     { id: "usuarios",    label: "Usuários",     icon: UserCircle,      permission: PERMISSIONS.USUARIOS, adminOnly: true },
     { id: "logs-eventos",label: "Logs de Eventos", icon: Activity,     permission: PERMISSIONS.USUARIOS, adminOnly: true },

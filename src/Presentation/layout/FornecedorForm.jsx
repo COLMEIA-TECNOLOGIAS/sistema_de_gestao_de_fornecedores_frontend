@@ -1,4 +1,4 @@
-import { ArrowLeft, AlertCircle, FileText, CheckCircle, Upload, X, Eye } from "lucide-react";
+import { ArrowLeft, AlertCircle, FileText, CheckCircle, Upload, X, Eye, Plus } from "lucide-react";
 import { useState, useEffect, useRef, useCallback } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { suppliersAPI, categoriesAPI } from "../../services/api";
@@ -13,6 +13,9 @@ export default function FornecedorFormWrapper() {
   const [isLoadingCategories, setIsLoadingCategories] = useState(false);
   const [toast, setToast] = useState(null);
   const [previewFile, setPreviewFile] = useState(null);
+  const [isCreatingCategory, setIsCreatingCategory] = useState(false);
+  const [newCategoryName, setNewCategoryName] = useState('');
+  const [isSubmittingCategory, setIsSubmittingCategory] = useState(false);
   const navigate = useNavigate();
   const location = useLocation();
   const editingFornecedor = location.state?.fornecedor || null;
@@ -104,6 +107,25 @@ export default function FornecedorFormWrapper() {
       }
       return { ...prev, categories };
     });
+  };
+
+  const handleCreateCategory = async () => {
+    if (!newCategoryName.trim()) return;
+    try {
+      setIsSubmittingCategory(true);
+      const res = await categoriesAPI.create({ name: newCategoryName });
+      const created = res.data || res;
+      setCategories(prev => [...prev, created]);
+      handleCategoryToggle(created.id);
+      setNewCategoryName('');
+      setIsCreatingCategory(false);
+      setToast({ type: 'success', message: 'Categoria criada com sucesso' });
+    } catch (err) {
+      console.error(err);
+      setToast({ type: 'error', message: 'Erro ao criar categoria' });
+    } finally {
+      setIsSubmittingCategory(false);
+    }
   };
 
     // handleCategoriaFixaToggle removed
@@ -384,42 +406,6 @@ export default function FornecedorFormWrapper() {
                       onChange={handleInputChange}
                       error={errors.activity_type}
                     />
-
-                    {/* Categoria (from API categories table) */}
-                    <div>
-                      <label className="block text-sm font-bold text-gray-700 mb-2 uppercase tracking-wider">
-                        Categoria *
-                      </label>
-                      <p className="text-xs text-gray-500 mb-3">Selecione uma ou mais categorias</p>
-                      <div className="flex flex-wrap gap-3">
-                        {isLoadingCategories ? (
-                          <p className="text-sm text-gray-400">Carregando categorias...</p>
-                        ) : (
-                          categories.map((cat) => (
-                            <button
-                              key={cat.id}
-                              type="button"
-                              onClick={() => handleCategoryToggle(cat.id)}
-                              className={`px-4 py-2.5 rounded-xl border-2 font-semibold text-sm transition-all ${formData.categories.includes(cat.id)
-                                ? "bg-[#44B16F]/10 border-[#44B16F] text-[#44B16F] shadow-sm"
-                                : "border-gray-200 bg-gray-50 text-gray-500 hover:border-gray-300 hover:text-gray-700"
-                                }`}
-                            >
-                              {formData.categories.includes(cat.id) && (
-                                <CheckCircle size={14} className="inline-block mr-1.5 -mt-0.5" />
-                              )}
-                              {cat.name}
-                            </button>
-                          ))
-                        )}
-                      </div>
-                      {errors.categories && (
-                        <div className="flex items-center gap-1 mt-2 text-red-500 font-bold">
-                          <AlertCircle size={14} />
-                          <span className="text-xs">{errors.categories}</span>
-                        </div>
-                      )}
-                    </div>
                   </div>
                   <div className="space-y-6">
                     <div>
@@ -487,6 +473,44 @@ export default function FornecedorFormWrapper() {
                       onChange={handleInputChange}
                       error={errors.nif}
                     />
+
+                    {/* Categoria (from API categories table) */}
+                    <div>
+                      <label className="block text-sm font-bold text-gray-700 mb-2 uppercase tracking-wider">
+                        Categoria *
+                      </label>
+                      <p className="text-xs text-gray-500 mb-3">Selecione uma ou mais categorias</p>
+                      <div className="flex flex-wrap gap-3">
+                        {isLoadingCategories ? (
+                          <p className="text-sm text-gray-400">Carregando categorias...</p>
+                        ) : (
+                          <>
+                            {categories.map((cat) => (
+                              <button
+                                key={cat.id}
+                                type="button"
+                                onClick={() => handleCategoryToggle(cat.id)}
+                                className={`px-4 py-2.5 rounded-xl border-2 font-semibold text-sm transition-all ${formData.categories.includes(cat.id)
+                                  ? "bg-[#44B16F]/10 border-[#44B16F] text-[#44B16F] shadow-sm"
+                                  : "border-gray-200 bg-gray-50 text-gray-500 hover:border-gray-300 hover:text-gray-700"
+                                  }`}
+                              >
+                                {formData.categories.includes(cat.id) && (
+                                  <CheckCircle size={14} className="inline-block mr-1.5 -mt-0.5" />
+                                )}
+                                {cat.name}
+                              </button>
+                            ))}
+                          </>
+                        )}
+                      </div>
+                      {errors.categories && (
+                        <div className="flex items-center gap-1 mt-2 text-red-500 font-bold">
+                          <AlertCircle size={14} />
+                          <span className="text-xs">{errors.categories}</span>
+                        </div>
+                      )}
+                    </div>
                   </div>
                 </div>
               </div>
@@ -559,7 +583,7 @@ export default function FornecedorFormWrapper() {
             {currentStep === 3 && (
               <div className="space-y-8">
                 <div className="border-b border-gray-100 pb-6 mb-8">
-                  <h2 className="text-3xl font-bold text-gray-900 mb-2">Categorias e Documentos</h2>
+                  <h2 className="text-3xl font-bold text-gray-900 mb-2">Documentos</h2>
                   <p className="text-gray-500">Complete as informações finais para o cadastro.</p>
                 </div>
 

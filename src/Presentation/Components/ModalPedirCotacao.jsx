@@ -6,11 +6,11 @@ import { quotationRequestsAPI, suppliersAPI, productsAPI, categoriesAPI } from '
 
 // CATEGORIAS_FILTRO will be fetched from API now
 
-export default function ModalPedirCotacao({ isOpen, onClose, fornecedor, activityName = '', buyerEmail = '' }) {
-    const [showAddProducts, setShowAddProducts] = useState(false);
+export default function ModalPedirCotacao({ isOpen, onClose, fornecedor, activityName = '', activityDescription = '', activityReference = '', buyerEmail = '' }) {
+    const [showAddProducts, setShowAddProducts] = useState(true);
     const [pedidoAssunto, setPedidoAssunto] = useState('');
     const [pedidoDescricao, setPedidoDescricao] = useState('');
-    const [activityDescription, setActivityDescription] = useState('');
+    const [activityDesc, setActivityDesc] = useState('');
     const [deadline, setDeadline] = useState('');
     const [pedidoReferencia, setPedidoReferencia] = useState('');
     const [pedidoBuyerEmail, setPedidoBuyerEmail] = useState('');
@@ -42,6 +42,8 @@ export default function ModalPedirCotacao({ isOpen, onClose, fornecedor, activit
     const [attachedDocuments, setAttachedDocuments] = useState([]);
     const [previewDoc, setPreviewDoc] = useState(null);
 
+    useModalLock(isOpen);
+
     // User session for auto-signature
     const [currentUser, setCurrentUser] = useState(null);
 
@@ -53,49 +55,44 @@ export default function ModalPedirCotacao({ isOpen, onClose, fornecedor, activit
         }
     }, []);
 
-    // If activityName or buyerEmail is given, pre-fill
+    // If activityName, activityDescription, activityReference or buyerEmail is given, pre-fill
     useEffect(() => {
         if (isOpen) {
             if (activityName) setPedidoAssunto(activityName);
+            if (activityDescription) setActivityDesc(activityDescription);
+            if (activityReference) setPedidoReferencia(activityReference);
             if (buyerEmail) setPedidoBuyerEmail(buyerEmail);
         }
-    }, [activityName, buyerEmail, isOpen]);
+    }, [activityName, activityDescription, activityReference, buyerEmail, isOpen]);
 
-    // Fetch fornecedores and categories when modal opens
+    // Reset state and fetch fornecedores and categories when modal opens
     useEffect(() => {
-        const fetchInitialData = async () => {
-            useModalLock(isOpen);
-    if (!isOpen) return;
+        if (!isOpen) return;
 
+        // Reset to full form view so suppliers and categories are visible
+        setShowAddProducts(true);
+
+        const fetchInitialData = async () => {
             try {
                 setIsLoadingFornecedores(true);
                 setIsLoadingCategories(true);
 
                 const [suppliersRes, categoriesRes] = await Promise.all([
                     suppliersAPI.getAll().catch(err => {
-                        console.warn('Using fallback mock suppliers');
-                        return {
-                            data: [
-                                { id: 1, commercial_name: 'Colmeia Tecnologias', legal_name: 'Colmeia Lda', email: 'contacto@colmeia.ao', nif: '5000123456' },
-                                { id: 2, commercial_name: 'Yetuware', legal_name: 'Yetuware Soluções', email: 'yetu@yetuware.com', nif: '5000789012' },
-                                { id: 3, commercial_name: 'AngoMart', legal_name: 'AngoMart Distribuidora', email: 'info@angomart.ao', nif: '5000555666' },
-                                { id: 4, commercial_name: 'Mabunda Comercial', legal_name: 'Mabunda Lda', email: 'mabunda@gmail.com', nif: '5000888999' }
-                            ]
-                        };
+                        console.warn('Erro ao buscar fornecedores:', err);
+                        return { data: [] };
                     }),
                     categoriesAPI.getAll().catch(err => {
-                        console.warn('Using fallback mock categories');
-                        return [
-                            { id: 1, name: 'Tecnologia' },
-                            { id: 2, name: 'Mobiliário' },
-                            { id: 3, name: 'Alimentação' },
-                            { id: 4, name: 'Logística' }
-                        ];
+                        console.warn('Erro ao buscar categorias:', err);
+                        return [];
                     })
                 ]);
 
-                setFornecedoresList(suppliersRes.data || []);
-                setCategories(categoriesRes || []);
+                const suppliers = Array.isArray(suppliersRes) ? suppliersRes : (suppliersRes?.data || []);
+                const cats = Array.isArray(categoriesRes) ? categoriesRes : (categoriesRes?.data || []);
+
+                setFornecedoresList(suppliers);
+                setCategories(cats);
 
                 // Se um fornecedor foi passado como prop, seleciona-o automaticamente
                 if (fornecedor) {
@@ -180,10 +177,9 @@ export default function ModalPedirCotacao({ isOpen, onClose, fornecedor, activit
     };
 
     const handleCancel = () => {
-        setShowAddProducts(false);
         setPedidoAssunto('');
         setPedidoDescricao('');
-        setActivityDescription('');
+        setActivityDesc('');
         setDeadline('');
         setProductName('');
         setProductDescription('');
@@ -263,7 +259,7 @@ export default function ModalPedirCotacao({ isOpen, onClose, fornecedor, activit
     };
 
     // Calculate min date: 15 business days from today
-    const getMinDeadline = () => {
+    const minDeadline = (() => {
         const date = new Date();
         let businessDays = 0;
         while (businessDays < 15) {
@@ -272,7 +268,7 @@ export default function ModalPedirCotacao({ isOpen, onClose, fornecedor, activit
             if (day !== 0 && day !== 6) businessDays++;
         }
         return date.toISOString().slice(0, 16);
-    };
+    })();
 
     // Build description without auto-signature
     const getDescriptionWithSignature = () => {
@@ -326,7 +322,7 @@ export default function ModalPedirCotacao({ isOpen, onClose, fornecedor, activit
                 formData.append('ocultar_referencia_automatica', '1');
                 formData.append('hide_auto_reference', '1');
                 formData.append('description', descriptionWithSignature);
-                formData.append('activity_description', activityDescription);
+                formData.append('activity_description', activityDesc);
                 formData.append('deadline', formattedDeadline);
 
                 finalProductsList.forEach((product, index) => {
@@ -358,7 +354,7 @@ export default function ModalPedirCotacao({ isOpen, onClose, fornecedor, activit
                     ocultar_referencia_automatica: true,
                     hide_auto_reference: true,
                     description: descriptionWithSignature,
-                    activity_description: activityDescription,
+                    activity_description: activityDesc,
                     deadline: formattedDeadline,
                     items: finalProductsList.map(product => ({
                         name: product.name,
@@ -377,8 +373,12 @@ export default function ModalPedirCotacao({ isOpen, onClose, fornecedor, activit
             // Envia automaticamente o pedido criado por email aos fornecedores (mudando status para enviado)
             const createdId = response?.id || response?.data?.id;
             if (createdId) {
-                console.log('Enviando cotação criada automaticamente para os fornecedores:', createdId);
-                await quotationRequestsAPI.send(createdId);
+                try {
+                    console.log('Enviando cotação criada automaticamente para os fornecedores:', createdId);
+                    await quotationRequestsAPI.send(createdId);
+                } catch (sendErr) {
+                    console.warn('Pedido criado, mas falhou ao enviar notificação aos fornecedores:', sendErr);
+                }
             }
 
             setSubmitSuccess(true);
@@ -510,53 +510,9 @@ export default function ModalPedirCotacao({ isOpen, onClose, fornecedor, activit
 
                             {/* Single Column Layout */}
                             <div className="max-w-3xl mx-auto space-y-6">
-                                {/* Assunto do Pedido */}
-                                <div>
-                                    <label className="block text-sm font-medium mb-2" style={{ color: 'var(--color-text-primary)' }}>
-                                        Solicitação da atividade *
-                                    </label>
-                                    <input
-                                        type="text"
-                                        value={pedidoAssunto}
-                                        onChange={(e) => setPedidoAssunto(e.target.value)}
-                                        placeholder="Materiais para trabalho"
-                                        className="w-full px-4 py-3 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#44B16F] transition-all text-sm"
-                                        style={{ border: '1px solid var(--color-border)', background: 'var(--color-bg)', color: 'var(--color-text-primary)' }}
-                                        required
-                                    />
-                                </div>
-
-                                {/* Descrição da Atividade */}
-                                <div>
-                                    <label className="block text-sm font-medium mb-2" style={{ color: 'var(--color-text-primary)' }}>
-                                        Descrição da atividade
-                                    </label>
-                                    <textarea
-                                        value={activityDescription}
-                                        onChange={(e) => setActivityDescription(e.target.value)}
-                                        placeholder="Descreva a atividade em detalhe..."
-                                        rows={2}
-                                        className="w-full px-4 py-3 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#44B16F] resize-none transition-all text-sm"
-                                        style={{ border: '1px solid var(--color-border)', background: 'var(--color-bg)', color: 'var(--color-text-primary)' }}
-                                    />
-                                </div>
-
-                                {/* Referência Manual */}
-                                <div>
-                                    <label className="block text-sm font-medium mb-2" style={{ color: 'var(--color-text-primary)' }}>
-                                        Referência PP *
-                                    </label>
-                                    <input
-                                        type="text"
-                                        value={pedidoReferencia}
-                                        onChange={(e) => setPedidoReferencia(e.target.value)}
-                                        placeholder="Ex: REF-2026-001"
-                                        className="w-full px-4 py-3 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#44B16F] transition-all text-sm"
-                                        style={{ border: '1px solid var(--color-border)', background: 'var(--color-bg)', color: 'var(--color-text-primary)' }}
-                                        required
-                                    />
-                                    <p className="text-xs mt-1" style={{ color: 'var(--color-text-muted)' }}>A referência é gerada manualmente e identifica este pedido.</p>
-                                </div>
+                                {/* Hidden fields — values are pre-filled from activity registration */}
+                                <input type="hidden" value={pedidoAssunto} onChange={(e) => setPedidoAssunto(e.target.value)} />
+                                <input type="hidden" value={pedidoReferencia} onChange={(e) => setPedidoReferencia(e.target.value)} />
 
                                 {/* Corpo da Mensagem */}
                                 <div>
@@ -581,7 +537,7 @@ export default function ModalPedirCotacao({ isOpen, onClose, fornecedor, activit
                                     <input
                                         type="datetime-local"
                                         value={deadline}
-                                        min={getMinDeadline()}
+                                        min={minDeadline}
                                         onChange={(e) => setDeadline(e.target.value)}
                                         className="w-full px-4 py-3 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#44B16F] transition-all text-sm"
                                         style={{ border: '1px solid var(--color-border)', background: 'var(--color-bg)', color: 'var(--color-text-primary)' }}

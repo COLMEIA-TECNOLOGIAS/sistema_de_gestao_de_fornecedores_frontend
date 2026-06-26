@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { useLocation } from "react-router-dom";
 import { createPortal } from "react-dom";
 import { Search, SlidersHorizontal, Eye, FileText, CheckCircle, Clock, AlertCircle, TrendingUp, Truck, Plus, X, Package } from "lucide-react";
 import { quotationResponsesAPI, quotationRequestsAPI, acquisitionsAPI } from "../../services/api";
@@ -7,10 +8,14 @@ import DashboardTableSkeleton from "../Components/DashboardTableSkeleton";
 import ModalRevisarCotacao from "../Components/ModalRevisarCotacao";
 import ModalSolicitarRevisao from "../Components/ModalSolicitarRevisao";
 import ModalPedirCotacao from "../Components/ModalPedirCotacao";
+import ModalRespostasPedido from "../Components/ModalRespostasPedido";
 
 export default function AquisicoesPage() {
+    const location = useLocation();
     const [isLoading, setIsLoading] = useState(true);
     const [responses, setResponses] = useState([]);
+    const [atividades, setAtividades] = useState([]);
+    const [activeTab, setActiveTab] = useState('atividades'); // 'atividades' | 'aquisicoes'
     const [error, setError] = useState(null);
     const [toast, setToast] = useState(null);
     const [searchTerm, setSearchTerm] = useState("");
@@ -24,6 +29,8 @@ export default function AquisicoesPage() {
     // Modal states
     const [selectedResponse, setSelectedResponse] = useState(null);
     const [isRevisarModalOpen, setIsRevisarModalOpen] = useState(false);
+    const [isRespostasModalOpen, setIsRespostasModalOpen] = useState(false);
+    const [selectedActivity, setSelectedActivity] = useState(null);
     const [isSolicitarRevisaoModalOpen, setIsSolicitarRevisaoModalOpen] = useState(false);
     const [isSubmittingReview, setIsSubmittingReview] = useState(false);
 
@@ -33,33 +40,36 @@ export default function AquisicoesPage() {
     const [isActivityModalOpen, setIsActivityModalOpen] = useState(false);
     const [activityName, setActivityName] = useState("");
     const [activityDescription, setActivityDescription] = useState("");
+    const [activityReference, setActivityReference] = useState("");
     const [buyerEmail, setBuyerEmail] = useState("");
     const [isCotacaoModalOpen, setIsCotacaoModalOpen] = useState(false);
     const [currentActivityName, setCurrentActivityName] = useState("");
+    const [currentActivityDescription, setCurrentActivityDescription] = useState("");
+    const [currentActivityReference, setCurrentActivityReference] = useState("");
 
 
     useEffect(() => {
-        fetchResponses();
-    }, []);
+        fetchData();
+        if (location.state?.openDetails) {
+            handleOpenDetails(location.state.openDetails);
+        }
+    }, [location.state]);
 
-    const fetchResponses = async () => {
+    const fetchData = async () => {
         try {
             setIsLoading(true);
             setError(null);
 
-            const data = await acquisitionsAPI.getAll();
+            const [acqData, reqData] = await Promise.all([
+                acquisitionsAPI.getAll().catch(() => []),
+                quotationRequestsAPI.getAll().catch(() => [])
+            ]);
 
-            if (data.data) {
-                setResponses(data.data);
-            } else if (Array.isArray(data)) {
-                setResponses(data);
-            } else {
-                setResponses([]);
-            }
-
+            setResponses(acqData.data || (Array.isArray(acqData) ? acqData : []));
+            setAtividades(reqData.data || (Array.isArray(reqData) ? reqData : []));
         } catch (err) {
-            console.error("Erro ao carregar aquisições:", err);
-            setError("Erro ao carregar lista de aquisições.");
+            console.error("Erro ao carregar dados:", err);
+            setError("Erro ao carregar dados.");
         } finally {
             setIsLoading(false);
         }
@@ -99,17 +109,25 @@ export default function AquisicoesPage() {
     };
 
     const filteredResponses = responses.filter(resp => {
+        // ... (existing filter code)
         const matchSearch = resp.id.toString().includes(searchTerm) ||
             (resp.supplier?.commercial_name || "").toLowerCase().includes(searchTerm.toLowerCase()) ||
             (resp.reference_number || "").toLowerCase().includes(searchTerm.toLowerCase());
             
         const matchSupplier = filterSupplier === "" || (resp.supplier?.commercial_name || "").toLowerCase().includes(filterSupplier.toLowerCase());
-        
         const matchDeliveryDate = filterDeliveryDate === "" || (resp.expected_delivery_date && resp.expected_delivery_date.startsWith(filterDeliveryDate));
-        
         const matchStatus = filterStatus === "" || resp.status === filterStatus;
         
         return matchSearch && matchSupplier && matchDeliveryDate && matchStatus;
+    });
+
+    const filteredAtividades = atividades.filter(act => {
+        const matchSearch = act.id.toString().includes(searchTerm) ||
+            (act.title || "").toLowerCase().includes(searchTerm.toLowerCase()) ||
+            (act.reference_number || "").toLowerCase().includes(searchTerm.toLowerCase());
+        
+        const matchStatus = filterStatus === "" || act.status === filterStatus;
+        return matchSearch && matchStatus;
     });
 
     const handleClearFilters = () => {
@@ -121,6 +139,20 @@ export default function AquisicoesPage() {
 
     const handleOpenDetails = async (aquisicao) => {
         try {
+            // If it's a quotation response from ModalRespostasPedido (has supplier, not a placeholder)
+            if (aquisicao.supplier && aquisicao.id && !String(aquisicao.id).startsWith('pending-')) {
+                setSelectedResponse(aquisicao);
+                setIsRevisarModalOpen(true);
+                return;
+            }
+
+            // If it's a quotation request (no quotation_response_id), open the responses modal instead
+            if (!aquisicao.quotation_response_id && !aquisicao.response_id) {
+                setSelectedActivity(aquisicao);
+                setIsRespostasModalOpen(true);
+                return;
+            }
+
             let responseDetails = aquisicao;
 
             if (aquisicao.quotation_response_id) {
@@ -138,15 +170,6 @@ export default function AquisicoesPage() {
                         console.warn("Failed fallback to acquisition details", acqErr);
                     }
                 }
-            } else {
-                try {
-                    if (acquisitionsAPI.getById) {
-                        const acqRes = await acquisitionsAPI.getById(aquisicao.id);
-                        responseDetails = acqRes.data || acqRes;
-                    }
-                } catch (acqErr) {
-                    console.warn("Failed to load acquisition details", acqErr);
-                }
             }
 
             // Data normalization
@@ -155,6 +178,9 @@ export default function AquisicoesPage() {
                     supplier: responseDetails.supplier,
                     quotation_request: responseDetails.quotation_request || {}
                 };
+            }
+            if (!responseDetails.supplier && responseDetails.quotation_supplier?.supplier) {
+                responseDetails.supplier = responseDetails.quotation_supplier.supplier;
             }
 
             if (!responseDetails.expected_delivery_date && aquisicao.expected_delivery_date) {
@@ -229,7 +255,7 @@ export default function AquisicoesPage() {
             await quotationResponsesAPI.requestRevision(idToReview, reason, message);
             showToast('success', 'Solicitação de revisão enviada!');
             setIsSolicitarRevisaoModalOpen(false);
-            fetchResponses();
+            fetchData();
         } catch (err) {
             console.error('Erro ao solicitar revisão:', err);
             showToast('error', 'Erro ao solicitar revisão');
@@ -244,7 +270,7 @@ export default function AquisicoesPage() {
         try {
             await acquisitionsAPI.confirmDelivery(aquisicao.id);
             showToast("success", "Entrega confirmada com sucesso!");
-            fetchResponses();
+            fetchData();
         } catch (e) {
             console.error("Erro ao confirmar entrega:", e);
             showToast("error", "Erro ao confirmar entrega.");
@@ -255,6 +281,8 @@ export default function AquisicoesPage() {
     const handleCreateActivity = () => {
         if (!activityName.trim()) return;
         setCurrentActivityName(activityName);
+        setCurrentActivityDescription(activityDescription);
+        setCurrentActivityReference(activityReference);
         setIsActivityModalOpen(false);
         setIsCotacaoModalOpen(true);
     };
@@ -269,7 +297,7 @@ export default function AquisicoesPage() {
                 </div>
                 <div className="flex items-center gap-3">
                     <button
-                        onClick={() => setIsCotacaoModalOpen(true)}
+                        onClick={() => setIsActivityModalOpen(true)}
                         className="btn-primary"
                     >
                         <Plus size={18} />
@@ -278,32 +306,45 @@ export default function AquisicoesPage() {
                 </div>
             </div>
 
-            {/* Stats Section hidden as requested */}
-            {/* stats.length > 0 && (
-                <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
-                    <h2 className="text-lg font-bold text-gray-800 mb-4 flex items-center gap-2">
-                        <TrendingUp size={20} className="text-[#44B16F]" />
-                        Produtos Mais Adquiridos
-                    </h2>
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-                        {stats.map((item, index) => (
-                            <div key={index} className="bg-gray-50 p-4 rounded-xl border border-gray-100 hover:shadow-md transition-shadow">
-                                <p className="font-bold text-gray-800 truncate" title={item.product_name}>{item.product_name}</p>
-                                <div className="flex justify-between items-end mt-3">
-                                    <div>
-                                        <p className="text-[10px] text-gray-500 uppercase tracking-widest font-semibold">Quantidade</p>
-                                        <p className="text-2xl font-bold text-[#44B16F] mt-1">{item.total_quantity}</p>
-                                    </div>
-                                    <div className="text-right">
-                                        <p className="text-[10px] text-gray-500 uppercase tracking-widest font-semibold">Aquisições</p>
-                                        <p className="text-sm font-bold text-gray-700 mt-1">{item.acquisition_count}</p>
-                                    </div>
-                                </div>
-                            </div>
-                        ))}
-                    </div>
-                </div>
-            ) */}
+            {/* Tabs com contadores */}
+            <div className="flex border-b" style={{ borderColor: 'var(--color-border-light)' }}>
+                <button
+                    onClick={() => setActiveTab('atividades')}
+                    className={`px-6 py-3 font-semibold text-sm transition-all flex items-center gap-2 ${activeTab === 'atividades' ? 'text-[#44B16F] border-b-2 border-[#44B16F]' : 'text-gray-500 hover:text-gray-800'}`}
+                >
+                    Atividades
+                    <span className={`px-2 py-0.5 rounded-full text-xs font-bold ${activeTab === 'atividades' ? 'bg-[#44B16F]/10 text-[#44B16F]' : 'bg-gray-100 text-gray-500'}`}>
+                        {atividades.length}
+                    </span>
+                </button>
+                <button
+                    onClick={() => setActiveTab('concluidas')}
+                    className={`px-6 py-3 font-semibold text-sm transition-all flex items-center gap-2 ${activeTab === 'concluidas' ? 'text-[#44B16F] border-b-2 border-[#44B16F]' : 'text-gray-500 hover:text-gray-800'}`}
+                >
+                    Ativ. Concluídas
+                    <span className={`px-2 py-0.5 rounded-full text-xs font-bold ${activeTab === 'concluidas' ? 'bg-[#44B16F]/10 text-[#44B16F]' : 'bg-gray-100 text-gray-500'}`}>
+                        {atividades.filter(a => a.status === 'completed' || a.status === 'approved').length}
+                    </span>
+                </button>
+                <button
+                    onClick={() => setActiveTab('canceladas')}
+                    className={`px-6 py-3 font-semibold text-sm transition-all flex items-center gap-2 ${activeTab === 'canceladas' ? 'text-red-500 border-b-2 border-red-400' : 'text-gray-500 hover:text-gray-800'}`}
+                >
+                    Ativ. Canceladas
+                    <span className={`px-2 py-0.5 rounded-full text-xs font-bold ${activeTab === 'canceladas' ? 'bg-red-50 text-red-500' : 'bg-gray-100 text-gray-500'}`}>
+                        {atividades.filter(a => a.status === 'cancelled').length}
+                    </span>
+                </button>
+                <button
+                    onClick={() => setActiveTab('aquisicoes')}
+                    className={`px-6 py-3 font-semibold text-sm transition-all flex items-center gap-2 ${activeTab === 'aquisicoes' ? 'text-[#44B16F] border-b-2 border-[#44B16F]' : 'text-gray-500 hover:text-gray-800'}`}
+                >
+                    Aquisições Confirmadas
+                    <span className={`px-2 py-0.5 rounded-full text-xs font-bold ${activeTab === 'aquisicoes' ? 'bg-[#44B16F]/10 text-[#44B16F]' : 'bg-gray-100 text-gray-500'}`}>
+                        {responses.length}
+                    </span>
+                </button>
+            </div>
 
             {/* Content Area */}
 
@@ -388,9 +429,9 @@ export default function AquisicoesPage() {
                         <thead style={{ background: 'var(--color-bg)', borderBottom: '1px solid var(--color-border-light)' }}>
                             <tr>
                                 <th className="px-6 py-5 text-left text-[10px] font-black uppercase tracking-widest" style={{ color: 'var(--color-text-muted)' }}>ID</th>
-                                <th className="px-6 py-5 text-left text-[10px] font-black uppercase tracking-widest" style={{ color: 'var(--color-text-muted)' }}>Procedência</th>
-                                <th className="px-6 py-5 text-left text-[10px] font-black uppercase tracking-widest" style={{ color: 'var(--color-text-muted)' }}>Fornecedor</th>
-                                <th className="px-6 py-5 text-left text-[10px] font-black uppercase tracking-widest" style={{ color: 'var(--color-text-muted)' }}>Data Entrega</th>
+                                <th className="px-6 py-5 text-left text-[10px] font-black uppercase tracking-widest" style={{ color: 'var(--color-text-muted)' }}>{activeTab === 'atividades' ? 'Atividade / Referência' : 'Procedência'}</th>
+                                <th className="px-6 py-5 text-left text-[10px] font-black uppercase tracking-widest" style={{ color: 'var(--color-text-muted)' }}>{activeTab === 'atividades' ? 'Fornecedores' : 'Fornecedor'}</th>
+                                <th className="px-6 py-5 text-left text-[10px] font-black uppercase tracking-widest" style={{ color: 'var(--color-text-muted)' }}>Data Limite / Entrega</th>
                                 <th className="px-6 py-5 text-left text-[10px] font-black uppercase tracking-widest" style={{ color: 'var(--color-text-muted)' }}>Estado</th>
                                 <th className="px-6 py-5 text-center text-[10px] font-black uppercase tracking-widest" style={{ color: 'var(--color-text-muted)' }}>Acções</th>
                             </tr>
@@ -402,56 +443,145 @@ export default function AquisicoesPage() {
                                 <tr>
                                     <td colSpan="6" className="px-6 py-12 text-center text-red-500 font-bold">{error}</td>
                                 </tr>
-                            ) : filteredResponses.length === 0 ? (
-                                <tr>
-                                    <td colSpan="6" className="px-6 py-12 text-center text-gray-400 font-bold uppercase tracking-widest text-[10px]">
-                                        Nenhuma aquisição encontrada
-                                    </td>
-                                </tr>
+                            ) : activeTab !== 'aquisicoes' ? (
+                                (() => {
+                                    const tabAtividades = activeTab === 'atividades'
+                                        ? filteredAtividades
+                                        : activeTab === 'concluidas'
+                                        ? filteredAtividades.filter(a => a.status === 'completed' || a.status === 'approved')
+                                        : filteredAtividades.filter(a => a.status === 'cancelled');
+                                    return tabAtividades.length === 0 ? (
+                                        <tr>
+                                            <td colSpan="6" className="px-6 py-12 text-center text-gray-400 font-bold uppercase tracking-widest text-[10px]">
+                                                Nenhuma atividade encontrada
+                                            </td>
+                                        </tr>
+                                    ) : (
+                                        tabAtividades.map((act) => (
+                                            <tr key={act.id} className="transition-colors group cursor-pointer" onClick={() => { setSelectedActivity(act); setIsRespostasModalOpen(true); }} onMouseEnter={e => e.currentTarget.style.background = 'var(--color-bg)'} onMouseLeave={e => e.currentTarget.style.background = 'transparent'} style={{ borderBottom: '1px solid var(--color-border-light)' }}>
+                                                <td className="px-6 py-6 text-sm font-bold" style={{ color: 'var(--color-text-primary)' }}>#{act.id}</td>
+                                                <td className="px-6 py-6 font-bold text-sm" style={{ color: 'var(--color-text-primary)' }}>
+                                                    {act.title}
+                                                    {act.reference_number && <div className="text-xs font-normal" style={{ color: 'var(--color-text-secondary)' }}>Ref: {act.reference_number}</div>}
+                                                </td>
+                                                <td className="px-6 py-6">
+                                                    {(() => {
+                                                        const suppliers = act.suppliers || act.quotation_suppliers || [];
+                                                        if (suppliers.length > 0) {
+                                                            return (
+                                                                <div className="inline-flex flex-col gap-1.5 p-2 rounded-lg border min-w-[140px]" style={{ borderColor: 'rgba(68,177,111,0.2)', background: 'rgba(68,177,111,0.04)' }}>
+                                                                    {suppliers.slice(0, 3).map((s) => (
+                                                                        <span
+                                                                            key={s.id}
+                                                                            className="group relative inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold cursor-pointer transition-all"
+                                                                            style={{ background: 'rgba(68,177,111,0.1)', color: '#44B16F' }}
+                                                                        >
+                                                                            {s.commercial_name || s.legal_name || s.name || `#${s.id}`}
+                                                                            <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 hidden group-hover:block z-50">
+                                                                                <div className="bg-gray-900 text-white text-xs rounded-lg px-3 py-2 shadow-lg whitespace-nowrap">
+                                                                                    <p className="font-semibold">{s.commercial_name || s.legal_name}</p>
+                                                                                    {s.email && <p className="text-gray-300">{s.email}</p>}
+                                                                                    {s.nif && <p className="text-gray-300">NIF: {s.nif}</p>}
+                                                                                    {s.categories?.length > 0 && (
+                                                                                        <p className="text-gray-300">{s.categories.map(c => c.name).join(', ')}</p>
+                                                                                    )}
+                                                                                </div>
+                                                                                <div className="absolute top-full left-1/2 -translate-x-1/2 w-0 h-0 border-l-4 border-r-4 border-t-4 border-transparent border-t-gray-900"></div>
+                                                                            </div>
+                                                                        </span>
+                                                                    ))}
+                                                                    {suppliers.length > 3 && (
+                                                                        <span className="text-xs font-medium px-2 py-1 rounded-full" style={{ color: 'var(--color-text-muted)', background: 'var(--color-bg)' }}>
+                                                                            +{suppliers.length - 3}
+                                                                        </span>
+                                                                    )}
+                                                                </div>
+                                                            );
+                                                        }
+                                                        return (
+                                                            <span className="text-sm font-semibold" style={{ color: 'var(--color-text-muted)' }}>
+                                                                Nenhum fornecedor
+                                                            </span>
+                                                        );
+                                                    })()}
+                                                </td>
+                                                <td className="px-6 py-6 text-sm font-medium" style={{ color: 'var(--color-text-secondary)' }}>
+                                                    {formatDate(act.deadline)}
+                                                </td>
+                                                <td className="px-6 py-6">
+                                                    {getStatusBadge(act.status)}
+                                                </td>
+                                                <td className="px-6 py-6 font-medium">
+                                                    <div className="flex items-center justify-center gap-2">
+                                                        <button
+                                                            onClick={(e) => {
+                                                                e.stopPropagation();
+                                                                setSelectedActivity(act);
+                                                                setIsRespostasModalOpen(true);
+                                                            }}
+                                                            className="p-2 text-emerald-600 rounded-lg transition-all hover:bg-gray-100"
+                                                            title="Ver Detalhes"
+                                                        >
+                                                            <Eye size={18} />
+                                                        </button>
+                                                    </div>
+                                                </td>
+                                            </tr>
+                                        ))
+                                    );
+                                })()
                             ) : (
-                                filteredResponses.map((resp) => (
-                                    <tr key={resp.id} className="transition-colors group" onMouseEnter={e => e.currentTarget.style.background = 'var(--color-bg)'} onMouseLeave={e => e.currentTarget.style.background = 'transparent'} style={{ borderBottom: '1px solid var(--color-border-light)' }}>
-                                        <td className="px-6 py-6 text-sm font-bold" style={{ color: 'var(--color-text-primary)' }}>#{resp.id}</td>
-                                        <td className="px-6 py-6 font-bold text-sm" style={{ color: 'var(--color-text-primary)' }}>
-                                            Cotação #{resp.quotation_request_id}
+                                filteredResponses.length === 0 ? (
+                                    <tr>
+                                        <td colSpan="6" className="px-6 py-12 text-center text-gray-400 font-bold uppercase tracking-widest text-[10px]">
+                                            Nenhuma aquisição encontrada
                                         </td>
-                                        <td className="px-6 py-6">
-                                            <span className="text-sm font-semibold" style={{ color: 'var(--color-text-secondary)' }}>
-                                                {resp.supplier?.commercial_name || resp.supplier?.legal_name || "N/A"}
-                                            </span>
-                                        </td>
-                                        <td className="px-6 py-6 text-sm font-medium" style={{ color: 'var(--color-text-secondary)' }}>
-                                            {formatDate(resp.expected_delivery_date)}
-                                        </td>
-                                        <td className="px-6 py-6">
-                                            {getStatusBadge(resp.status)}
-                                        </td>
-                                        <td className="px-6 py-6 font-medium">
-                                            <div className="flex items-center justify-center gap-2">
-                                                <button
-                                                    onClick={() => handleOpenDetails(resp)}
-                                                    className="p-2 text-emerald-600 rounded-lg transition-all"
-                                                    title="Ver Detalhes"
-                                                    onMouseEnter={e => e.currentTarget.style.background = 'var(--color-bg)'}
-                                                    onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
-                                                >
-                                                    <Eye size={18} />
-                                                </button>
-                                                {resp.status !== 'completed' && (
+                                    </tr>
+                                ) : (
+                                    filteredResponses.map((resp) => (
+                                        <tr key={resp.id} className="transition-colors group" onMouseEnter={e => e.currentTarget.style.background = 'var(--color-bg)'} onMouseLeave={e => e.currentTarget.style.background = 'transparent'} style={{ borderBottom: '1px solid var(--color-border-light)' }}>
+                                            <td className="px-6 py-6 text-sm font-bold" style={{ color: 'var(--color-text-primary)' }}>#{resp.id}</td>
+                                            <td className="px-6 py-6 font-bold text-sm" style={{ color: 'var(--color-text-primary)' }}>
+                                                Cotação #{resp.quotation_request_id || resp.quotation_response_id}
+                                            </td>
+                                            <td className="px-6 py-6">
+                                                <span className="text-sm font-semibold" style={{ color: 'var(--color-text-secondary)' }}>
+                                                    {resp.supplier?.commercial_name || resp.supplier?.legal_name || "N/A"}
+                                                </span>
+                                            </td>
+                                            <td className="px-6 py-6 text-sm font-medium" style={{ color: 'var(--color-text-secondary)' }}>
+                                                {formatDate(resp.expected_delivery_date)}
+                                            </td>
+                                            <td className="px-6 py-6">
+                                                {getStatusBadge(resp.status)}
+                                            </td>
+                                            <td className="px-6 py-6 font-medium">
+                                                <div className="flex items-center justify-center gap-2">
                                                     <button
-                                                        onClick={() => handleConfirmDelivery(resp)}
-                                                        className="p-2 text-blue-600 rounded-lg transition-all"
-                                                        title="Confirmar Entrega"
+                                                        onClick={() => handleOpenDetails(resp)}
+                                                        className="p-2 text-emerald-600 rounded-lg transition-all"
+                                                        title="Ver Detalhes"
                                                         onMouseEnter={e => e.currentTarget.style.background = 'var(--color-bg)'}
                                                         onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
                                                     >
-                                                        <Truck size={18} />
+                                                        <Eye size={18} />
                                                     </button>
-                                                )}
-                                            </div>
-                                        </td>
-                                    </tr>
-                                ))
+                                                    {resp.status !== 'completed' && (
+                                                        <button
+                                                            onClick={() => handleConfirmDelivery(resp)}
+                                                            className="p-2 text-blue-600 rounded-lg transition-all"
+                                                            title="Confirmar Entrega"
+                                                            onMouseEnter={e => e.currentTarget.style.background = 'var(--color-bg)'}
+                                                            onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
+                                                        >
+                                                            <Truck size={18} />
+                                                        </button>
+                                                    )}
+                                                </div>
+                                            </td>
+                                        </tr>
+                                    ))
+                                )
                             )}
                         </tbody>
                     </table>
@@ -497,7 +627,18 @@ export default function AquisicoesPage() {
                             </div>
 
                             <div className="space-y-1.5">
-                                <label className="block text-xs font-semibold" style={{ color: 'var(--color-text-secondary)' }}>Justificativa</label>
+                                <label className="block text-xs font-semibold" style={{ color: 'var(--color-text-secondary)' }}>Referência PP</label>
+                                <input
+                                    type="text"
+                                    value={activityReference}
+                                    onChange={(e) => setActivityReference(e.target.value)}
+                                    placeholder="Ex: REF-2026-001"
+                                    className="input-field"
+                                />
+                            </div>
+
+                            <div className="space-y-1.5">
+                                <label className="block text-xs font-semibold" style={{ color: 'var(--color-text-secondary)' }}>Descrição da atividade</label>
                                 <textarea
                                     value={activityDescription}
                                     onChange={(e) => setActivityDescription(e.target.value)}
@@ -507,35 +648,15 @@ export default function AquisicoesPage() {
                                 />
                             </div>
 
-                            <div className="space-y-1.5">
-                                <label className="block text-xs font-semibold" style={{ color: 'var(--color-text-secondary)' }}>
-                                    Convite ao Comprador Final <span style={{ color: 'var(--color-text-muted)', fontWeight: 400 }}>(opcional)</span>
-                                </label>
-                                <input
-                                    type="email"
-                                    value={buyerEmail}
-                                    onChange={(e) => setBuyerEmail(e.target.value)}
-                                    placeholder="email@comprador.ao"
-                                    className="input-field"
-                                />
-                                <p className="text-xs" style={{ color: 'var(--color-text-muted)' }}>O comprador final receberá um convite para acompanhar o processo de cotação.</p>
-                            </div>
 
-                            <div className="flex items-start gap-3 p-4" style={{ background: 'var(--color-primary-light)', borderRadius: '4px', border: '1px solid rgba(68,177,111,0.15)' }}>
-                                <div className="w-9 h-9 flex items-center justify-center text-white flex-shrink-0" style={{ background: 'var(--color-primary)', borderRadius: '4px' }}>
-                                    <Package size={18} />
-                                </div>
-                                <div>
-                                    <p className="text-sm font-semibold" style={{ color: 'var(--color-primary-dark)' }}>Fluxo de Solicitação</p>
-                                    <p className="text-xs mt-0.5" style={{ color: 'var(--color-text-secondary)' }}>Você será redirecionado para compor a lista de itens e convocar fornecedores certificados para este processo.</p>
-                                </div>
-                            </div>
+
+                            
                         </div>
 
                         {/* Footer */}
                         <div className="flex items-center justify-end gap-3 px-6 py-4 border-t" style={{ borderColor: 'var(--color-border-light)', background: 'var(--color-bg)' }}>
                             <button
-                                onClick={() => { setIsActivityModalOpen(false); setActivityName(""); setActivityDescription(""); setBuyerEmail(""); }}
+                                onClick={() => { setIsActivityModalOpen(false); setActivityName(""); setActivityDescription(""); setActivityReference(""); setBuyerEmail(""); }}
                                 className="btn-secondary"
                             >
                                 Cancelar
@@ -546,7 +667,7 @@ export default function AquisicoesPage() {
                                 className="btn-primary"
                             >
                                 <FileText size={16} />
-                                Iniciar Request
+                                Pedir Cotação
                             </button>
                         </div>
                     </div>
@@ -560,12 +681,17 @@ export default function AquisicoesPage() {
                 onClose={() => {
                     setIsCotacaoModalOpen(false);
                     setCurrentActivityName("");
+                    setCurrentActivityDescription("");
+                    setCurrentActivityReference("");
                     setActivityName("");
                     setActivityDescription("");
+                    setActivityReference("");
                     setBuyerEmail("");
-                    fetchResponses();
+                    fetchData();
                 }}
                 activityName={currentActivityName}
+                activityDescription={currentActivityDescription}
+                activityReference={currentActivityReference}
                 buyerEmail={buyerEmail}
             />
 
@@ -573,7 +699,39 @@ export default function AquisicoesPage() {
                 isOpen={isRevisarModalOpen}
                 onClose={() => setIsRevisarModalOpen(false)}
                 cotacao={selectedResponse}
-                isAcquisition={true}
+                isAcquisition={selectedResponse?.quotation_response_id ? false : true}
+            />
+
+            <ModalRespostasPedido
+                isOpen={isRespostasModalOpen}
+                onClose={() => {
+                    setIsRespostasModalOpen(false);
+                    setSelectedActivity(null);
+                    fetchData();
+                }}
+                quotationRequestId={selectedActivity?.id}
+                quotationRequestTitle={selectedActivity?.title}
+                onOpenRevisarModal={(resposta) => handleOpenDetails(resposta)}
+                onAprovar={async (id) => {
+                    try {
+                        await quotationResponsesAPI.approve(id);
+                        showToast('success', 'Proposta aprovada com sucesso!');
+                        fetchData();
+                    } catch (err) {
+                        showToast('error', 'Erro ao aprovar proposta');
+                    }
+                }}
+                onRejeitar={async (id) => {
+                    try {
+                        await quotationResponsesAPI.reject(id);
+                        showToast('success', 'Proposta rejeitada');
+                        fetchData();
+                    } catch (err) {
+                        showToast('error', 'Erro ao rejeitar proposta');
+                    }
+                }}
+                onSolicitarRevisao={(id) => { showToast('info', 'Revisão solicitada'); fetchData(); }}
+                onGerarAquisicao={(id) => { showToast('info', 'Aquisição gerada'); fetchData(); }}
             />
 
             <ModalSolicitarRevisao

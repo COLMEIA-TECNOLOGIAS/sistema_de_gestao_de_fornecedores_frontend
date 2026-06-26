@@ -1,5 +1,5 @@
 import { useModalLock } from '../../hooks/useModalLock';
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { X, MoreVertical, FileText, Trash2, CheckCircle, MessageSquare, RefreshCw, Bell } from "lucide-react";
 import { quotationResponsesAPI, quotationRequestsAPI } from "../../services/api";
 import FornecedorTableSkeleton from "./FornecedorTableSkeleton";
@@ -21,6 +21,8 @@ export default function ModalRespostasPedido({
     const [openMenuId, setOpenMenuId] = useState(null);
     const [requestDetails, setRequestDetails] = useState(null);
 
+    const fetchIdRef = useRef(0);
+
     // Fetch responses when modal opens or quotation request changes
     useEffect(() => {
         if (isOpen && quotationRequestId) {
@@ -29,12 +31,14 @@ export default function ModalRespostasPedido({
     }, [isOpen, quotationRequestId]);
 
     const fetchData = async () => {
+        const fetchId = ++fetchIdRef.current;
         try {
             setIsLoading(true);
             setError(null);
 
             // Fetch the quotation request to get the list of invited suppliers
             const requestResponse = await quotationRequestsAPI.getById(quotationRequestId);
+            if (fetchIdRef.current !== fetchId) return;
             const requestData = requestResponse.data || requestResponse;
             setRequestDetails(requestData);
 
@@ -42,6 +46,7 @@ export default function ModalRespostasPedido({
             const responsesResponse = await quotationResponsesAPI.getAll({
                 quotation_request_id: quotationRequestId
             });
+            if (fetchIdRef.current !== fetchId) return;
             const responsesData = responsesResponse.data || [];
 
             // Merge: For each supplier invited, find their response
@@ -162,6 +167,61 @@ export default function ModalRespostasPedido({
                             <p className="text-red-600 text-sm">
                                 <strong>Erro:</strong> {error}
                             </p>
+                        </div>
+                    )}
+
+                    {/* Request Details */}
+                    {requestDetails && (
+                        <div className="mb-6 p-5 rounded-xl" style={{ background: 'var(--color-bg)', border: '1px solid var(--color-border)' }}>
+                            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
+                                <div>
+                                    <span className="font-semibold block" style={{ color: 'var(--color-text-primary)' }}>Referência</span>
+                                    <span style={{ color: 'var(--color-text-secondary)' }}>{requestDetails.reference_number || 'N/A'}</span>
+                                </div>
+                                <div>
+                                    <span className="font-semibold block" style={{ color: 'var(--color-text-primary)' }}>Descrição da Atividade</span>
+                                    <span style={{ color: 'var(--color-text-secondary)' }}>{requestDetails.activity_description || '-'}</span>
+                                </div>
+                                <div>
+                                    <span className="font-semibold block" style={{ color: 'var(--color-text-primary)' }}>Data Limite</span>
+                                    <span style={{ color: 'var(--color-text-secondary)' }}>{requestDetails.deadline ? new Date(requestDetails.deadline).toLocaleDateString('pt-AO') : 'N/A'}</span>
+                                </div>
+                                <div>
+                                    <span className="font-semibold block" style={{ color: 'var(--color-text-primary)' }}>Email do Comprador</span>
+                                    <span style={{ color: 'var(--color-text-secondary)' }}>{requestDetails.buyer_email || requestDetails.buyer || 'N/A'}</span>
+                                </div>
+                            </div>
+                            {requestDetails.description && (
+                                <div className="mt-3 pt-3" style={{ borderTop: '1px solid var(--color-border-light)' }}>
+                                    <span className="font-semibold block text-sm" style={{ color: 'var(--color-text-primary)' }}>Corpo da Mensagem</span>
+                                    <p className="text-sm mt-1" style={{ color: 'var(--color-text-secondary)' }}>{requestDetails.description}</p>
+                                </div>
+                            )}
+                            {requestDetails.items && requestDetails.items.length > 0 && (
+                                <div className="mt-3 pt-3" style={{ borderTop: '1px solid var(--color-border-light)' }}>
+                                    <span className="font-semibold block text-sm mb-2" style={{ color: 'var(--color-text-primary)' }}>Itens Solicitados</span>
+                                    <div className="flex flex-wrap gap-2">
+                                        {requestDetails.items.map((item, idx) => (
+                                            <span key={idx} className="inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-medium" style={{ background: 'rgba(68,177,111,0.1)', color: '#44B16F' }}>
+                                                {item.name} {item.quantity ? `(${item.quantity} ${item.unit || 'un'})` : ''}
+                                            </span>
+                                        ))}
+                                    </div>
+                                </div>
+                            )}
+                            {requestDetails.suppliers && requestDetails.suppliers.length > 0 && (
+                                <div className="mt-3 pt-3" style={{ borderTop: '1px solid var(--color-border-light)' }}>
+                                    <span className="font-semibold block text-sm mb-2" style={{ color: 'var(--color-text-primary)' }}>Fornecedores Selecionados</span>
+                                    <div className="flex flex-wrap gap-2">
+                                        {requestDetails.suppliers.map((s, idx) => (
+                                            <span key={s.id || idx} className="inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-medium" style={{ background: 'rgba(59,130,246,0.1)', color: '#3b82f6' }}>
+                                                {s.commercial_name || s.legal_name || s.name || `#${s.id}`}
+                                                {s.email && <span className="opacity-70">({s.email})</span>}
+                                            </span>
+                                        ))}
+                                    </div>
+                                </div>
+                            )}
                         </div>
                     )}
 

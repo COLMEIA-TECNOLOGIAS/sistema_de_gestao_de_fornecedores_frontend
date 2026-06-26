@@ -78,14 +78,14 @@ export default function ModalRevisarCotacao({
                 <div className="flex items-start justify-between px-8 py-6" style={{ borderBottom: '1px solid var(--color-border-light)' }}>
                     <div className="flex-1">
                         <h2 className="text-2xl font-bold mb-4" style={{ color: 'var(--color-text-primary)' }}>
-                            {isAcquisition ? 'Aquisição' : 'Pedido de cotação'} - {cotacao.quotation_supplier?.supplier?.commercial_name || cotacao.quotation_supplier?.supplier?.legal_name || 'Fornecedor'}
+                            {isAcquisition ? 'Aquisição' : 'Pedido de cotação'} - {cotacao.quotation_supplier?.supplier?.commercial_name || cotacao.quotation_supplier?.supplier?.legal_name || cotacao.supplier?.commercial_name || cotacao.supplier?.legal_name || 'Fornecedor'}
                         </h2>
 
                         {/* Endereço do fornecedor */}
                         <div className="text-sm space-y-1" style={{ color: 'var(--color-text-secondary)' }}>
-                            <p>{cotacao.quotation_supplier?.supplier?.province || 'Angola'} - {cotacao.quotation_supplier?.supplier?.municipality || 'Luanda'}</p>
-                            <p>{cotacao.quotation_supplier?.supplier?.address || 'Endereço não disponível'}</p>
-                            <p>{cotacao.quotation_supplier?.supplier?.phone || '---'}</p>
+                            <p>{cotacao.quotation_supplier?.supplier?.province || cotacao.supplier?.province || 'Angola'} - {cotacao.quotation_supplier?.supplier?.municipality || cotacao.supplier?.municipality || 'Luanda'}</p>
+                            <p>{cotacao.quotation_supplier?.supplier?.address || cotacao.supplier?.address || 'Endereço não disponível'}</p>
+                            <p>{cotacao.quotation_supplier?.supplier?.phone || cotacao.supplier?.phone || '---'}</p>
                         </div>
                     </div>
 
@@ -111,8 +111,7 @@ export default function ModalRevisarCotacao({
                             <h3 className="font-semibold mb-2" style={{ color: 'var(--color-text-primary)' }}>Solicitado por:</h3>
                             <div className="text-sm space-y-1" style={{ color: 'var(--color-text-secondary)' }}>
                                 <p className="font-medium">MOSAP3</p>
-                                <p>Rua Coelho na Toca 203</p>
-                                <p>607 456 442 Lisboa</p>
+                                <p>Avenida Rei Katyavala, Edifício Avenca Plaza Nº43/45, 3º Andar Maculusso -Luanda.</p>
                             </div>
                         </div>
 
@@ -120,9 +119,9 @@ export default function ModalRevisarCotacao({
                         <div>
                             <h3 className="font-semibold mb-2" style={{ color: 'var(--color-text-primary)' }}>Enviado para:</h3>
                             <div className="text-sm space-y-1" style={{ color: 'var(--color-text-secondary)' }}>
-                                <p className="font-medium">{cotacao.quotation_supplier?.supplier?.commercial_name || cotacao.quotation_supplier?.supplier?.legal_name || 'N/A'}</p>
-                                <p>{cotacao.quotation_supplier?.supplier?.address || 'Endereço não disponível'}</p>
-                                <p>{cotacao.quotation_supplier?.supplier?.phone || '---'}</p>
+                                <p className="font-medium">{cotacao.quotation_supplier?.supplier?.commercial_name || cotacao.quotation_supplier?.supplier?.legal_name || cotacao.supplier?.commercial_name || cotacao.supplier?.legal_name || 'N/A'}</p>
+                                <p>{cotacao.quotation_supplier?.supplier?.address || cotacao.supplier?.address || 'Endereço não disponível'}</p>
+                                <p>{cotacao.quotation_supplier?.supplier?.phone || cotacao.supplier?.phone || '---'}</p>
                             </div>
                         </div>
 
@@ -140,12 +139,12 @@ export default function ModalRevisarCotacao({
                     {/* Título e Descrição */}
                     <div className="mb-6">
                         <h3 className="font-semibold mb-2" style={{ color: 'var(--color-text-primary)' }}>Título da Cotação:</h3>
-                        <p style={{ color: 'var(--color-text-secondary)' }}>{cotacao.quotation_supplier?.quotation_request?.title || cotacao.quotation_request?.title || 'N/A'}</p>
+                        <p style={{ color: 'var(--color-text-secondary)' }}>{cotacao.quotation_supplier?.quotation_request?.title || cotacao.quotation_request?.title || cotacao.title || 'N/A'}</p>
 
-                        {(cotacao.quotation_supplier?.quotation_request?.description || cotacao.quotation_request?.description) && (
+                        {(cotacao.quotation_supplier?.quotation_request?.description || cotacao.quotation_request?.description || cotacao.description) && (
                             <>
                                 <h3 className="font-semibold mt-4 mb-2" style={{ color: 'var(--color-text-primary)' }}>Descrição:</h3>
-                                <p style={{ color: 'var(--color-text-secondary)' }}>{cotacao.quotation_supplier?.quotation_request?.description || cotacao.quotation_request?.description}</p>
+                                <p style={{ color: 'var(--color-text-secondary)' }}>{cotacao.quotation_supplier?.quotation_request?.description || cotacao.quotation_request?.description || cotacao.description}</p>
                             </>
                         )}
                     </div>
@@ -248,7 +247,7 @@ export default function ModalRevisarCotacao({
                                     } else if (cotacao.quotation_supplier?.quotation_response_id) {
                                         responseId = cotacao.quotation_supplier.quotation_response_id;
                                         idSource = 'quotation_supplier.quotation_response_id';
-                                    } else if (!isAcquisition && cotacao.id) {
+                                    } else if (cotacao.id) {
                                         responseId = cotacao.id;
                                         idSource = 'cotacao.id (fallback)';
                                     } else if (cotacao.quotation_supplier?.id) {

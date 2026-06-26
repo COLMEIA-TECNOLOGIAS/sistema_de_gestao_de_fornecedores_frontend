@@ -109,13 +109,6 @@ export default function DashboardPage() {
                 </div>
                 <div className="flex items-center gap-2">
                     <button
-                        onClick={() => navigate('/relatorios')}
-                        className="btn-secondary text-sm"
-                        style={{ padding: '8px 16px' }}
-                    >
-                        Exportar
-                    </button>
-                    <button
                         onClick={fetchDashboardData}
                         className="btn-primary text-sm"
                         style={{ padding: '8px 16px' }}
@@ -140,7 +133,7 @@ export default function DashboardPage() {
 
                     {/* Card 1 — HIGHLIGHTED (gradient verde, como azul na referência) */}
                     <button
-                        onClick={() => navigate('/cotacoes')}
+                        onClick={() => navigate('/aquisicoes')}
                         className="rounded-xl p-6 text-left w-full relative overflow-hidden group transition-all duration-200"
                         style={{
                             background: 'linear-gradient(135deg, var(--color-primary) 0%, var(--color-primary-dark) 100%)',
@@ -182,7 +175,7 @@ export default function DashboardPage() {
 
                     {/* Card 2 */}
                     <button
-                        onClick={() => navigate('/cotacoes')}
+                        onClick={() => navigate('/aquisicoes')}
                         className="card p-6 text-left w-full group transition-all duration-200"
                         onMouseEnter={e => { e.currentTarget.style.transform = 'translateY(-2px)'; e.currentTarget.style.boxShadow = 'var(--shadow-md)'; }}
                         onMouseLeave={e => { e.currentTarget.style.transform = 'translateY(0)'; e.currentTarget.style.boxShadow = 'var(--shadow-sm)'; }}
@@ -234,7 +227,7 @@ export default function DashboardPage() {
 
                     {/* Card 4 */}
                     <button
-                        onClick={() => navigate('/cotacoes')}
+                        onClick={() => navigate('/aquisicoes')}
                         className="card p-6 text-left w-full group transition-all duration-200"
                         onMouseEnter={e => { e.currentTarget.style.transform = 'translateY(-2px)'; e.currentTarget.style.boxShadow = 'var(--shadow-md)'; }}
                         onMouseLeave={e => { e.currentTarget.style.transform = 'translateY(0)'; e.currentTarget.style.boxShadow = 'var(--shadow-sm)'; }}
@@ -273,7 +266,7 @@ export default function DashboardPage() {
                         </h2>
                     </div>
                     <button
-                        onClick={() => navigate('/cotacoes')}
+                        onClick={() => navigate('/aquisicoes')}
                         className="text-sm font-medium flex items-center gap-1 transition-colors"
                         style={{ color: 'var(--color-primary)' }}
                         onMouseEnter={e => e.currentTarget.style.color = 'var(--color-primary-dark)'}
@@ -306,7 +299,11 @@ export default function DashboardPage() {
                                 </tr>
                             ) : dashboardData?.recent_quotations?.length > 0 ? (
                                 dashboardData.recent_quotations.map((q) => (
-                                    <tr key={q.id} className="table-row">
+                                    <tr 
+                                        key={q.id} 
+                                        className="table-row cursor-pointer hover:bg-gray-50"
+                                        onClick={() => navigate('/aquisicoes', { state: { openDetails: q } })}
+                                    >
                                         <td className="table-cell">
                                             <span className="font-semibold text-sm" style={{ color: 'var(--color-primary)' }}>
                                                 {q.reference_number}

@@ -22,6 +22,12 @@ export default function FornecedoresPage() {
     // Toast state
     const [toast, setToast] = useState(null);
 
+    // Categories UI states
+    const [isCategoryModalOpen, setIsCategoryModalOpen] = useState(false);
+    const [newCategoryName, setNewCategoryName] = useState("");
+    const [newCategoryDesc, setNewCategoryDesc] = useState("");
+    const [isSubmittingCategory, setIsSubmittingCategory] = useState(false);
+
     // Data states for Fornecedores
     const [isLoading, setIsLoading] = useState(true);
     const [fornecedores, setFornecedores] = useState([]);
@@ -230,12 +236,21 @@ export default function FornecedoresPage() {
                         Gerencie os fornecedores cadastrados no sistema.
                     </p>
                 </div>
-                <button
-                    onClick={() => setIsModalOpen(true)}
-                    className="btn-primary"
-                >
-                    + Adicionar Fornecedor
-                </button>
+                {activeTab === 'categorias' ? (
+                    <button
+                        onClick={() => setIsCategoryModalOpen(true)}
+                        className="btn-primary"
+                    >
+                        + Adicionar Categoria
+                    </button>
+                ) : (
+                    <button
+                        onClick={() => setIsModalOpen(true)}
+                        className="btn-primary"
+                    >
+                        + Adicionar Fornecedor
+                    </button>
+                )}
             </div>
 
             {/* Tabs Section */}
@@ -251,6 +266,12 @@ export default function FornecedoresPage() {
                     className={`tab-item ${activeTab === "convites" ? 'active' : ''}`}
                 >
                     Convites Enviados
+                </button>
+                <button
+                    onClick={() => { setActiveTab("categorias"); setCurrentPage(1); }}
+                    className={`tab-item ${activeTab === "categorias" ? 'active' : ''}`}
+                >
+                    Categorias
                 </button>
             </div>
 
@@ -362,15 +383,76 @@ export default function FornecedoresPage() {
                 </div>
             </div>
 
-            {/* Fornecedores Table */}
-            <div className="card overflow-hidden">
-                {error && (
-                    <div className="p-4 bg-red-50 border-b border-red-200">
-                        <p className="text-red-600 text-sm">
-                            <strong>Erro:</strong> {error}
-                        </p>
+            {/* Content Area */}
+            {activeTab === "categorias" ? (
+                <div className="card overflow-hidden">
+                    <div className="overflow-x-auto">
+                        <table className="w-full">
+                            <thead style={{ background: 'var(--color-bg)', borderBottom: '1px solid var(--color-border)' }}>
+                                <tr>
+                                    <th className="px-6 py-4 text-left text-sm font-semibold" style={{ color: 'var(--color-text-secondary)' }}>ID</th>
+                                    <th className="px-6 py-4 text-left text-sm font-semibold" style={{ color: 'var(--color-text-secondary)' }}>Nome</th>
+                                    <th className="px-6 py-4 text-left text-sm font-semibold" style={{ color: 'var(--color-text-secondary)' }}>Descrição</th>
+                                    <th className="px-6 py-4 text-left text-sm font-semibold" style={{ color: 'var(--color-text-secondary)' }}>Data de Registo</th>
+                                    <th className="px-6 py-4 text-center text-sm font-semibold" style={{ color: 'var(--color-text-secondary)' }}>Ações</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {isLoading ? (
+                                    <tr>
+                                        <td colSpan="5" className="px-6 py-12 text-center text-gray-500">
+                                            <Loader2 size={24} className="animate-spin mx-auto" />
+                                        </td>
+                                    </tr>
+                                ) : categories.length === 0 ? (
+                                    <tr>
+                                        <td colSpan="5" className="px-6 py-12 text-center text-gray-500">
+                                            Nenhuma categoria encontrada
+                                        </td>
+                                    </tr>
+                                ) : (
+                                    categories.map(cat => (
+                                        <tr key={cat.id} className="transition-colors border-b border-gray-100 hover:bg-gray-50">
+                                            <td className="px-6 py-4 font-medium text-gray-500">#{cat.id}</td>
+                                            <td className="px-6 py-4 font-semibold text-gray-900">{cat.name}</td>
+                                            <td className="px-6 py-4 text-gray-600">{cat.description || '-'}</td>
+                                            <td className="px-6 py-4 text-gray-500">
+                                                {cat.created_at ? new Date(cat.created_at).toLocaleDateString('pt-AO') : '-'}
+                                            </td>
+                                            <td className="px-6 py-4 text-center">
+                                                <button
+                                                    onClick={async () => {
+                                                        if (window.confirm("Tem certeza que deseja remover esta categoria?")) {
+                                                            try {
+                                                                await categoriesAPI.delete(cat.id);
+                                                                showToast("success", "Categoria removida com sucesso");
+                                                                fetchSuppliersAndCategories();
+                                                            } catch (err) {
+                                                                showToast("error", "Erro ao remover categoria");
+                                                            }
+                                                        }
+                                                    }}
+                                                    className="p-2 hover:bg-red-50 rounded-lg text-gray-400 hover:text-red-500 transition-colors"
+                                                >
+                                                    <Trash2 size={18} />
+                                                </button>
+                                            </td>
+                                        </tr>
+                                    ))
+                                )}
+                            </tbody>
+                        </table>
                     </div>
-                )}
+                </div>
+            ) : (
+                <div className="card overflow-hidden">
+                    {error && (
+                        <div className="p-4 bg-red-50 border-b border-red-200">
+                            <p className="text-red-600 text-sm">
+                                <strong>Erro:</strong> {error}
+                            </p>
+                        </div>
+                    )}
 
                 <div className="overflow-x-auto">
                     <table className="w-full">
@@ -649,6 +731,7 @@ export default function FornecedoresPage() {
                     </div>
                 )}
             </div>
+            )}
 
             {/* Toast Notification */}
             {toast && (
@@ -702,6 +785,71 @@ export default function FornecedoresPage() {
                 fornecedor={selectedFornecedor}
                 isLoading={isDeleting}
             />
+
+            {/* Category Modal */}
+            {isCategoryModalOpen && (
+                <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+                    <div className="bg-white rounded-2xl max-w-md w-full p-6 shadow-2xl animate-scaleIn">
+                        <h2 className="text-xl font-bold mb-4">Nova Categoria</h2>
+                        <div className="space-y-4">
+                            <div>
+                                <label className="block text-sm font-bold text-gray-700 mb-2">Nome</label>
+                                <input
+                                    type="text"
+                                    value={newCategoryName}
+                                    onChange={e => setNewCategoryName(e.target.value)}
+                                    className="w-full p-3 border rounded-xl outline-none focus:border-[#44B16F] bg-gray-50 focus:bg-white transition-all"
+                                    placeholder="Ex: Material de Escritório"
+                                />
+                            </div>
+                            <div>
+                                <label className="block text-sm font-bold text-gray-700 mb-2">Descrição (Opcional)</label>
+                                <textarea
+                                    value={newCategoryDesc}
+                                    onChange={e => setNewCategoryDesc(e.target.value)}
+                                    className="w-full p-3 border rounded-xl outline-none focus:border-[#44B16F] bg-gray-50 focus:bg-white transition-all resize-none"
+                                    placeholder="Descrição da categoria..."
+                                    rows={3}
+                                />
+                            </div>
+                        </div>
+                        <div className="flex gap-3 justify-end mt-6">
+                            <button
+                                onClick={() => setIsCategoryModalOpen(false)}
+                                className="px-4 py-2 font-bold text-gray-500 hover:bg-gray-100 rounded-lg transition-colors"
+                            >
+                                Cancelar
+                            </button>
+                            <button
+                                onClick={async () => {
+                                    if (!newCategoryName.trim()) {
+                                        showToast('error', 'O nome da categoria é obrigatório');
+                                        return;
+                                    }
+                                    setIsSubmittingCategory(true);
+                                    try {
+                                        await categoriesAPI.create({ name: newCategoryName, description: newCategoryDesc });
+                                        showToast('success', 'Categoria criada com sucesso!');
+                                        setIsCategoryModalOpen(false);
+                                        setNewCategoryName('');
+                                        setNewCategoryDesc('');
+                                        fetchSuppliersAndCategories();
+                                    } catch (err) {
+                                        showToast('error', 'Erro ao criar categoria');
+                                    } finally {
+                                        setIsSubmittingCategory(false);
+                                    }
+                                }}
+                                disabled={isSubmittingCategory}
+                                className="px-4 py-2 font-bold text-white bg-[#44B16F] hover:bg-[#3a9d5f] rounded-lg transition-colors flex items-center gap-2"
+                            >
+                                {isSubmittingCategory && <Loader2 size={16} className="animate-spin" />}
+                                Criar Categoria
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     );
 } 
