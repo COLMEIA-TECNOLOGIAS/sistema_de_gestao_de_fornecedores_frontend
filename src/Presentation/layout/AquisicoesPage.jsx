@@ -616,7 +616,7 @@ export default function AquisicoesPage() {
                         {/* Body */}
                         <div className="p-6 space-y-4">
                             <div className="space-y-1.5">
-                                <label className="block text-xs font-semibold" style={{ color: 'var(--color-text-secondary)' }}>Denominação da Atividade</label>
+                                <label className="block text-xs font-semibold" style={{ color: 'var(--color-text-secondary)' }}>Titulo da Atividade</label>
                                 <input
                                     type="text"
                                     value={activityName}

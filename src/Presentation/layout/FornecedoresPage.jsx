@@ -90,11 +90,7 @@ export default function FornecedoresPage() {
     useEffect(() => {
         let result = fornecedores;
 
-        if (activeTab === 'convites') {
-            result = result.filter(f => !f.is_active && (f.registration_status === 'invited' || f.registration_status === 'completed'));
-        } else {
-            result = result.filter(f => f.is_active || (f.registration_status !== 'invited' && f.registration_status !== 'completed'));
-        }
+        result = result.filter(f => f.is_active || (f.registration_status !== 'invited' && f.registration_status !== 'completed'));
 
         if (searchQuery) {
             const lowerQuery = searchQuery.toLowerCase();
@@ -260,12 +256,6 @@ export default function FornecedoresPage() {
                     className={`tab-item ${activeTab === "fornecedores" ? 'active' : ''}`}
                 >
                     Fornecedores
-                </button>
-                <button
-                    onClick={() => { setActiveTab("convites"); setCurrentPage(1); }}
-                    className={`tab-item ${activeTab === "convites" ? 'active' : ''}`}
-                >
-                    Convites Enviados
                 </button>
                 <button
                     onClick={() => { setActiveTab("categorias"); setCurrentPage(1); }}

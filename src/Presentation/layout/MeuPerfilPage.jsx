@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { User, Mail, Shield, Camera, Save, Loader2, AlertCircle, CheckCircle2 } from "lucide-react";
+import { User, Mail, Shield, Save, Loader2, AlertCircle, CheckCircle2 } from "lucide-react";
 import { useAuth } from "../../context/AuthContext";
 import { usersAPI } from "../../services/api";
 
@@ -69,16 +69,11 @@ export default function MeuPerfilPage() {
                         <div className="h-32 bg-gradient-to-r from-[#44B16F] to-[#368d58]"></div>
                         <div className="px-6 pb-6">
                             <div className="relative -mt-16 mb-4 flex justify-center">
-                                <div className="relative">
-                                    <img
-                                        src={userAvatar}
-                                        alt={formData.name}
-                                        className="w-32 h-32 rounded-full border-4 border-white bg-white shadow-md object-cover"
-                                    />
-                                    <button className="absolute bottom-0 right-0 p-2 bg-white rounded-full shadow-lg border border-gray-100 text-gray-600 hover:text-[#44B16F] transition-colors">
-                                        <Camera size={18} />
-                                    </button>
-                                </div>
+                                <img
+                                    src={userAvatar}
+                                    alt={formData.name}
+                                    className="w-32 h-32 rounded-full border-4 border-white bg-white shadow-md object-cover"
+                                />
                             </div>
                             <div className="text-center">
                                 <h3 className="text-xl font-bold text-gray-900">{formData.name}</h3>
@@ -173,24 +168,6 @@ export default function MeuPerfilPage() {
                         </form>
                     </div>
 
-                    <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 md:p-8">
-                        <h3 className="text-lg font-bold text-gray-900 mb-6 flex items-center gap-2">
-                            <Shield size={20} className="text-[#44B16F]" />
-                            Segurança
-                        </h3>
-                        <p className="text-gray-500 text-sm mb-6">
-                            Para alterar sua senha ou outras configurações de segurança, entre em contato com o administrador do sistema.
-                        </p>
-                        <div className="flex items-center justify-between p-4 bg-yellow-50 border border-yellow-100 rounded-xl">
-                            <div className="flex items-center gap-3 text-yellow-800">
-                                <AlertCircle size={20} />
-                                <span className="text-sm font-medium">A autenticação de dois fatores não está ativa.</span>
-                            </div>
-                            <button disabled className="text-sm font-bold text-yellow-800 hover:underline opacity-50 cursor-not-allowed">
-                                Ativar
-                            </button>
-                        </div>
-                    </div>
                 </div>
             </div>
         </div>
