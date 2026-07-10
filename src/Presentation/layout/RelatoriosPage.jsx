@@ -325,7 +325,7 @@ export default function RelatoriosPage() {
             ))}
           </div>
 
-          {(period === 'custom' || true) && (
+          {period === 'custom' && (
             <div className="flex items-center gap-2 bg-white p-2 rounded-xl border border-gray-200 shadow-sm">
               <input
                 type="date"

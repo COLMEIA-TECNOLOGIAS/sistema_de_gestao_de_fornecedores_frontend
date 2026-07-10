@@ -143,7 +143,9 @@ function Navbar({ userName: propUserName, userRole: propUserRole, userAvatar: pr
         const date = new Date(notification.created_at);
         if (!isNaN(date.getTime())) timeDisplay = date.toLocaleString('pt-AO');
       }
-    } catch (e) {}
+    } catch (e) {
+      // ignore
+    }
     return {
       title: notification.title || sv.title || "Notificação",
       message: notification.message || sv.message || sv.description || "Nova notificação",

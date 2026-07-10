@@ -593,10 +593,9 @@ export default function AquisicoesPage() {
 
             {/* Activity Registration — rendered via Portal to escape overflow stacking context */}
             {isActivityModalOpen && createPortal(
-                <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center" style={{ zIndex: 9999 }}>
+                <div key="activity-modal" className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center" style={{ zIndex: 9999 }}>
                     <div className="absolute inset-0" onClick={() => setIsActivityModalOpen(false)} />
                     <div className="relative rounded-2xl shadow-2xl w-full max-w-lg mx-4 animate-fadeIn max-h-[90vh] overflow-hidden flex flex-col" style={{ background: 'var(--color-surface)', border: '1px solid var(--color-border-light)' }}>
-                        {/* Header */}
                         <div className="flex items-center justify-between px-6 py-4 border-b" style={{ borderColor: 'var(--color-border-light)' }}>
                             <div>
                                 <h2 className="text-lg font-bold" style={{ color: 'var(--color-text-primary)' }}>Nova Atividade</h2>
@@ -613,7 +612,6 @@ export default function AquisicoesPage() {
                             </button>
                         </div>
 
-                        {/* Body */}
                         <div className="p-6 space-y-4">
                             <div className="space-y-1.5">
                                 <label className="block text-xs font-semibold" style={{ color: 'var(--color-text-secondary)' }}>Titulo da Atividade</label>
@@ -637,23 +635,9 @@ export default function AquisicoesPage() {
                                 />
                             </div>
 
-                            <div className="space-y-1.5">
-                                <label className="block text-xs font-semibold" style={{ color: 'var(--color-text-secondary)' }}>Descrição da atividade</label>
-                                <textarea
-                                    value={activityDescription}
-                                    onChange={(e) => setActivityDescription(e.target.value)}
-                                    placeholder="Descreva o propósito desta aquisição..."
-                                    rows={3}
-                                    className="input-field resize-none"
-                                />
-                            </div>
-
-
-
-                            
+                          
                         </div>
 
-                        {/* Footer */}
                         <div className="flex items-center justify-end gap-3 px-6 py-4 border-t" style={{ borderColor: 'var(--color-border-light)', background: 'var(--color-bg)' }}>
                             <button
                                 onClick={() => { setIsActivityModalOpen(false); setActivityName(""); setActivityDescription(""); setActivityReference(""); setBuyerEmail(""); }}
