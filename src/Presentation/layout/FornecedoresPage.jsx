@@ -1,15 +1,17 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { Search, SlidersHorizontal, MoreVertical, Trash2, Eye, FileText, CheckCircle, Send, Loader2 } from "lucide-react";
+import { useAuth } from "../../context/AuthContext";
 import ModalCadastroFornecedor from "../Components/ModalCadastroFornecedor";
 import ModalPedirCotacao from "../Components/ModalPedirCotacao";
 import ModalDetalhesFornecedor from "../Components/ModalDetalhesFornecedor";
 import ModalConfirmarExclusaoFornecedor from "../Components/ModalConfirmarExclusaoFornecedor";
 import Toast from "../Components/Toast";
 import FornecedorTableSkeleton from "../Components/FornecedorTableSkeleton";
-import { suppliersAPI, categoriesAPI } from "../../services/api";
+import { suppliersAPI, categoriesAPI, pendingDeletionsAPI } from "../../services/api";
 
 export default function FornecedoresPage() {
+    const { user, isAdmin } = useAuth();
     const navigate = useNavigate();
     // Modal states
     const [isModalOpen, setIsModalOpen] = useState(false);
@@ -170,8 +172,14 @@ export default function FornecedoresPage() {
 
         setIsDeleting(true);
         try {
-            await suppliersAPI.delete(selectedFornecedor.id);
-            showToast('success', 'Fornecedor eliminado com sucesso!');
+            if (isAdmin) {
+                await suppliersAPI.delete(selectedFornecedor.id);
+                showToast('success', 'Fornecedor eliminado com sucesso!');
+            } else {
+                const name = selectedFornecedor.commercial_name || selectedFornecedor.legal_name || 'Fornecedor';
+                await pendingDeletionsAPI.requestDelete('supplier', selectedFornecedor.id, name, user?.name || 'Técnico');
+                showToast('success', 'Pedido de exclusão enviado ao administrador!');
+            }
             await reloadSuppliers();
             setIsDeleteModalOpen(false);
             setSelectedFornecedor(null);
@@ -774,6 +782,7 @@ export default function FornecedoresPage() {
                 onConfirm={confirmDeleteFornecedor}
                 fornecedor={selectedFornecedor}
                 isLoading={isDeleting}
+                isAdmin={isAdmin}
             />
 
             {/* Category Modal */}

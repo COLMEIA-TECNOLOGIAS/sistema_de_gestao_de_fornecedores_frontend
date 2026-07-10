@@ -1,7 +1,7 @@
 import { useModalLock } from '../../hooks/useModalLock';
-import { X, AlertTriangle } from "lucide-react";
+import { X, AlertTriangle, Clock } from "lucide-react";
 
-export default function ModalConfirmarExclusaoFornecedor({ isOpen, onClose, onConfirm, fornecedor, isLoading }) {
+export default function ModalConfirmarExclusaoFornecedor({ isOpen, onClose, onConfirm, fornecedor, isLoading, isAdmin = true }) {
     useModalLock(isOpen);
     if (!isOpen || !fornecedor) return null;
 
@@ -11,10 +11,16 @@ export default function ModalConfirmarExclusaoFornecedor({ isOpen, onClose, onCo
                 {/* Header */}
                 <div className="flex items-center justify-between p-6 border-b border-gray-200">
                     <div className="flex items-center gap-3">
-                        <div className="p-2 bg-red-100 rounded-lg">
-                            <AlertTriangle className="w-5 h-5 text-red-600" />
+                        <div className={`p-2 rounded-lg ${isAdmin ? 'bg-red-100' : 'bg-orange-100'}`}>
+                            {isAdmin ? (
+                                <AlertTriangle className="w-5 h-5 text-red-600" />
+                            ) : (
+                                <Clock className="w-5 h-5 text-orange-500" />
+                            )}
                         </div>
-                        <h2 className="text-xl font-bold text-gray-900">Eliminar Fornecedor</h2>
+                        <h2 className="text-xl font-bold text-gray-900">
+                            {isAdmin ? 'Eliminar Fornecedor' : 'Solicitar Eliminação'}
+                        </h2>
                     </div>
                     <button
                         onClick={onClose}
@@ -28,10 +34,13 @@ export default function ModalConfirmarExclusaoFornecedor({ isOpen, onClose, onCo
                 {/* Content */}
                 <div className="p-6">
                     <p className="text-gray-600 text-center text-lg">
-                        Tens certeza que quer eliminar <span className="font-bold text-gray-900">{fornecedor.commercial_name || fornecedor.legal_name}</span>?
+                        {isAdmin ? 'Tens certeza que quer eliminar' : 'Solicitar ao administrador a eliminação de'}{' '}
+                        <span className="font-bold text-gray-900">{fornecedor.commercial_name || fornecedor.legal_name}</span>?
                     </p>
                     <p className="text-gray-500 text-sm text-center mt-2">
-                        Esta ação não pode ser desfeita e removerá todos os dados associados.
+                        {isAdmin
+                            ? 'Esta ação não pode ser desfeita e removerá todos os dados associados.'
+                            : 'O administrador receberá a solicitação e poderá aprovar ou recusar a eliminação.'}
                     </p>
                 </div>
 
@@ -47,7 +56,7 @@ export default function ModalConfirmarExclusaoFornecedor({ isOpen, onClose, onCo
                     <button
                         onClick={() => onConfirm(fornecedor)}
                         disabled={isLoading}
-                        className="px-6 py-2.5 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors font-medium flex items-center gap-2 disabled:opacity-50"
+                        className={`px-6 py-2.5 text-white rounded-lg transition-colors font-medium flex items-center gap-2 disabled:opacity-50 ${isAdmin ? 'bg-red-600 hover:bg-red-700' : 'bg-orange-500 hover:bg-orange-600'}`}
                     >
                         {isLoading ? (
                             <>
@@ -55,10 +64,10 @@ export default function ModalConfirmarExclusaoFornecedor({ isOpen, onClose, onCo
                                     <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
                                     <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
                                 </svg>
-                                Eliminando...
+                                {isAdmin ? 'Eliminando...' : 'Enviando pedido...'}
                             </>
                         ) : (
-                            'Sim, eliminar'
+                            isAdmin ? 'Sim, eliminar' : 'Enviar pedido'
                         )}
                     </button>
                 </div>

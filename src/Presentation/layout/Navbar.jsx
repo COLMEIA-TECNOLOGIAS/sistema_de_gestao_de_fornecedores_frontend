@@ -1,11 +1,12 @@
-import { Bell, Trash2, Check, Loader2, User, LogOut, ChevronDown, Sun, Moon } from "lucide-react";
+import { Bell, Trash2, Check, Loader2, User, LogOut, ChevronDown, Sun, Moon, AlertTriangle } from "lucide-react";
 import { useState, useRef, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../../context/AuthContext";
 import { useTheme } from "../../context/ThemeContext";
-import { notificationsAPI } from "../../services/api";
+import { notificationsAPI, pendingDeletionsAPI } from "../../services/api";
 import ModalDetalhesNotificacao from "../Components/ModalDetalhesNotificacao";
 import LogoutConfirmModal from "../Components/LogoutConfirmModal";
+import ModalAprovacoesExclusao from "../Components/ModalAprovacoesExclusao";
 
 const PAGE_TITLES = {
   dashboard:    "Dashboard",
@@ -41,11 +42,13 @@ function Navbar({ userName: propUserName, userRole: propUserRole, userAvatar: pr
   const [unreadCount, setUnreadCount] = useState(0);
   const [isLoadingNotifications, setIsLoadingNotifications] = useState(false);
   const [selectedNotification, setSelectedNotification] = useState(null);
+  const [isAprovacoesModalOpen, setIsAprovacoesModalOpen] = useState(false);
+  const [pendingApprovalsCount, setPendingApprovalsCount] = useState(0);
 
   const dropdownRef = useRef(null);
   const notificationsRef = useRef(null);
   const navigate = useNavigate();
-  const { user, logout } = useAuth();
+  const { user, logout, isAdmin } = useAuth();
 
   const fetchNotifications = async () => {
     try {
@@ -68,6 +71,22 @@ function Navbar({ userName: propUserName, userRole: propUserRole, userAvatar: pr
     const interval = setInterval(fetchNotifications, 60000);
     return () => clearInterval(interval);
   }, []);
+
+  // Poll pending approvals count (admin only)
+  useEffect(() => {
+    if (!isAdmin) return;
+    const fetchPendingCount = async () => {
+      try {
+        const data = await pendingDeletionsAPI.getAll();
+        setPendingApprovalsCount(Array.isArray(data) ? data.length : 0);
+      } catch (e) {
+        // ignore
+      }
+    };
+    fetchPendingCount();
+    const interval = setInterval(fetchPendingCount, 15000);
+    return () => clearInterval(interval);
+  }, [isAdmin]);
 
   useEffect(() => {
     function handleClickOutside(event) {
@@ -185,6 +204,31 @@ function Navbar({ userName: propUserName, userRole: propUserRole, userAvatar: pr
               {isDark ? <Sun size={18} style={{ color: '#FBBF24' }} /> : <Moon size={18} />}
             </span>
           </button>
+
+          {/* Admin Approvals */}
+          {isAdmin && (
+            <button
+              onClick={() => {
+                setIsAprovacoesModalOpen(true);
+                setPendingApprovalsCount(0); // Reset badge when opened
+              }}
+              className="relative p-2.5 rounded-xl transition-colors"
+              style={{ color: pendingApprovalsCount > 0 ? '#F97316' : 'var(--color-text-secondary)' }}
+              onMouseEnter={e => e.currentTarget.style.background = 'var(--color-bg)'}
+              onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
+              title={`Aprovações Pendentes${pendingApprovalsCount > 0 ? ` (${pendingApprovalsCount})` : ''}`}
+            >
+              <AlertTriangle size={18} />
+              {pendingApprovalsCount > 0 && (
+                <span
+                  className="absolute top-1.5 right-1.5 flex items-center justify-center rounded-full text-white font-bold"
+                  style={{ background: '#F97316', fontSize: '9px', width: '15px', height: '15px' }}
+                >
+                  {pendingApprovalsCount > 9 ? '9+' : pendingApprovalsCount}
+                </span>
+              )}
+            </button>
+          )}
 
           {/* Notifications */}
           <div className="relative" ref={notificationsRef}>
@@ -381,11 +425,17 @@ function Navbar({ userName: propUserName, userRole: propUserRole, userAvatar: pr
         onConfirm={handleLogoutConfirm}
         isLoading={isLoggingOut}
       />
+      {/* Modals */}
+      <ModalAprovacoesExclusao
+        isOpen={isAprovacoesModalOpen}
+        onClose={() => setIsAprovacoesModalOpen(false)}
+      />
+
       <ModalDetalhesNotificacao
         isOpen={!!selectedNotification}
-        notification={selectedNotification}
         onClose={() => setSelectedNotification(null)}
-        onDelete={(id) => handleDeleteNotification(id)}
+        notification={selectedNotification}
+        onDelete={handleDeleteNotification}
       />
     </>
   );

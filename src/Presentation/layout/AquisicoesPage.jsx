@@ -1,8 +1,9 @@
 import { useState, useEffect } from "react";
 import { useLocation } from "react-router-dom";
 import { createPortal } from "react-dom";
-import { Search, SlidersHorizontal, Eye, FileText, CheckCircle, Clock, AlertCircle, TrendingUp, Truck, Plus, X, Package } from "lucide-react";
-import { quotationResponsesAPI, quotationRequestsAPI, acquisitionsAPI } from "../../services/api";
+import { Search, SlidersHorizontal, Eye, FileText, CheckCircle, Clock, AlertCircle, TrendingUp, Truck, Plus, X, Package, Trash2 } from "lucide-react";
+import { quotationResponsesAPI, quotationRequestsAPI, acquisitionsAPI, pendingDeletionsAPI } from "../../services/api";
+import { useAuth } from "../../context/AuthContext";
 import Toast from "../Components/Toast";
 import DashboardTableSkeleton from "../Components/DashboardTableSkeleton";
 import ModalRevisarCotacao from "../Components/ModalRevisarCotacao";
@@ -12,6 +13,7 @@ import ModalRespostasPedido from "../Components/ModalRespostasPedido";
 
 export default function AquisicoesPage() {
     const location = useLocation();
+    const { user, isAdmin } = useAuth();
     const [isLoading, setIsLoading] = useState(true);
     const [responses, setResponses] = useState([]);
     const [atividades, setAtividades] = useState([]);
@@ -277,6 +279,24 @@ export default function AquisicoesPage() {
         }
     };
 
+    const handleDeleteAtividade = async (e, act) => {
+        e.stopPropagation();
+        if (!window.confirm(`Deseja eliminar a atividade "${act.title}"?`)) return;
+        try {
+            if (isAdmin) {
+                await quotationRequestsAPI.delete(act.id);
+                showToast('success', 'Atividade eliminada com sucesso!');
+                fetchData();
+            } else {
+                await pendingDeletionsAPI.requestDelete('quotation_request', act.id, act.title || `Atividade #${act.id}`, user?.name || 'Técnico');
+                showToast('success', 'Pedido de exclusão enviado ao administrador!');
+            }
+        } catch (err) {
+            console.error('Erro ao eliminar atividade:', err);
+            showToast('error', 'Erro ao eliminar atividade');
+        }
+    };
+
     // Handle creating activity and opening quotation
     const handleCreateActivity = () => {
         if (!activityName.trim()) return;
@@ -523,6 +543,13 @@ export default function AquisicoesPage() {
                                                             title="Ver Detalhes"
                                                         >
                                                             <Eye size={18} />
+                                                        </button>
+                                                        <button
+                                                            onClick={(e) => handleDeleteAtividade(e, act)}
+                                                            className="p-2 text-red-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-all"
+                                                            title={isAdmin ? 'Eliminar' : 'Solicitar eliminação'}
+                                                        >
+                                                            <Trash2 size={18} />
                                                         </button>
                                                     </div>
                                                 </td>

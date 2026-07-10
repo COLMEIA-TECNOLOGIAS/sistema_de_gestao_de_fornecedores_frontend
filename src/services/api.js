@@ -315,4 +315,53 @@ export const auditLogsAPI = {
     },
 };
 
+// Pending Deletions API (Simulated for Frontend)
+export const pendingDeletionsAPI = {
+    getAll: async () => {
+        const data = localStorage.getItem('pendingDeletions');
+        return data ? JSON.parse(data) : [];
+    },
+    requestDelete: async (type, id, itemName, technicianName) => {
+        const data = localStorage.getItem('pendingDeletions');
+        const pending = data ? JSON.parse(data) : [];
+        const newRequest = {
+            id: Date.now(),
+            type, // 'supplier' | 'quotation_request'
+            itemId: id,
+            itemName,
+            technicianName,
+            status: 'pending',
+            createdAt: new Date().toISOString()
+        };
+        pending.push(newRequest);
+        localStorage.setItem('pendingDeletions', JSON.stringify(pending));
+        return newRequest;
+    },
+    approve: async (id) => {
+        const data = localStorage.getItem('pendingDeletions');
+        let pending = data ? JSON.parse(data) : [];
+        const req = pending.find(p => p.id === id);
+        
+        if (req) {
+            // Se aprovar, temos que apagar da API original também.
+            if (req.type === 'supplier') {
+                await suppliersAPI.delete(req.itemId);
+            } else if (req.type === 'quotation_request') {
+                await quotationRequestsAPI.delete(req.itemId);
+            }
+        }
+        
+        pending = pending.filter(p => p.id !== id);
+        localStorage.setItem('pendingDeletions', JSON.stringify(pending));
+        return true;
+    },
+    reject: async (id) => {
+        const data = localStorage.getItem('pendingDeletions');
+        let pending = data ? JSON.parse(data) : [];
+        pending = pending.filter(p => p.id !== id);
+        localStorage.setItem('pendingDeletions', JSON.stringify(pending));
+        return true;
+    }
+};
+
 export default api;
