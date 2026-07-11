@@ -543,13 +543,15 @@ export default function AquisicoesPage() {
                                                         >
                                                             <Eye size={18} />
                                                         </button>
-                                                        <button
-                                                            onClick={(e) => handleDeleteAtividade(e, act)}
-                                                            className="p-2 text-red-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-all"
-                                                            title={'Eliminar'}
-                                                        >
-                                                            <Trash2 size={18} />
-                                                        </button>
+                                                        {isAdmin && (
+                                                            <button
+                                                                onClick={(e) => handleDeleteAtividade(e, act)}
+                                                                className="p-2 text-red-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-all"
+                                                                title={'Eliminar'}
+                                                            >
+                                                                <Trash2 size={18} />
+                                                            </button>
+                                                        )}
                                                     </div>
                                                 </td>
                                             </tr>

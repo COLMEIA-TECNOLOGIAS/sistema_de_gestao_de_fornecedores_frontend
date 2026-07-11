@@ -648,16 +648,20 @@ export default function FornecedoresPage() {
                                                                 <span style={{ color: 'var(--color-text-secondary)' }}>Pedir Cotação</span>
                                                             </button>
                                                         ) : null}
-                                                        <div className="my-1 border-t border-gray-100"></div>
-                                                        <button
-                                                            onClick={() => handleDeleteFornecedor(f)}
-                                                            className="w-full px-4 py-3 text-left text-sm flex items-center gap-3 transition-colors rounded-lg mx-1"
-                                                            onMouseEnter={e => e.currentTarget.style.background = 'var(--color-bg)'}
-                                                            onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
-                                                        >
-                                                            <Trash2 size={16} style={{ color: 'var(--color-text-muted)' }} />
-                                                            <span style={{ color: 'var(--color-text-secondary)' }}>Remover</span>
-                                                        </button>
+                                                        {isAdmin && (
+                                                            <>
+                                                                <div className="my-1 border-t border-gray-100"></div>
+                                                                <button
+                                                                    onClick={() => handleDeleteFornecedor(f)}
+                                                                    className="w-full px-4 py-3 text-left text-sm flex items-center gap-3 transition-colors rounded-lg mx-1"
+                                                                    onMouseEnter={e => e.currentTarget.style.background = 'var(--color-bg)'}
+                                                                    onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
+                                                                >
+                                                                    <Trash2 size={16} style={{ color: 'var(--color-text-muted)' }} />
+                                                                    <span style={{ color: 'var(--color-text-secondary)' }}>Remover</span>
+                                                                </button>
+                                                            </>
+                                                        )}
                                                     </div>
                                                 )}
                                                 </div>
