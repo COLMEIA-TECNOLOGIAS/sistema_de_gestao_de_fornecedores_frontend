@@ -281,16 +281,15 @@ export default function AquisicoesPage() {
 
     const handleDeleteAtividade = async (e, act) => {
         e.stopPropagation();
+        if (!isAdmin) {
+            showToast('error', 'Não tem permissão para eliminar pedidos de cotação.');
+            return;
+        }
         if (!window.confirm(`Deseja eliminar a atividade "${act.title}"?`)) return;
         try {
-            if (isAdmin) {
-                await quotationRequestsAPI.delete(act.id);
-                showToast('success', 'Atividade eliminada com sucesso!');
-                fetchData();
-            } else {
-                await pendingDeletionsAPI.requestDelete('quotation_request', act.id, act.title || `Atividade #${act.id}`, user?.name || 'Técnico');
-                showToast('success', 'Pedido de exclusão enviado ao administrador!');
-            }
+            await quotationRequestsAPI.delete(act.id);
+            showToast('success', 'Atividade eliminada com sucesso!');
+            fetchData();
         } catch (err) {
             console.error('Erro ao eliminar atividade:', err);
             showToast('error', 'Erro ao eliminar atividade');
@@ -547,7 +546,7 @@ export default function AquisicoesPage() {
                                                         <button
                                                             onClick={(e) => handleDeleteAtividade(e, act)}
                                                             className="p-2 text-red-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-all"
-                                                            title={isAdmin ? 'Eliminar' : 'Solicitar eliminação'}
+                                                            title={'Eliminar'}
                                                         >
                                                             <Trash2 size={18} />
                                                         </button>

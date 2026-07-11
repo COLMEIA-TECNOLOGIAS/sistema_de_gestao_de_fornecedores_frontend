@@ -205,8 +205,8 @@ function Navbar({ userName: propUserName, userRole: propUserRole, userAvatar: pr
             </span>
           </button>
 
-          {/* Admin Approvals */}
-          {isAdmin && (
+          {/* Admin Approvals (Ocultado temporariamente) */}
+          {false && isAdmin && (
             <button
               onClick={() => {
                 setIsAprovacoesModalOpen(true);

@@ -162,9 +162,13 @@ export default function FornecedoresPage() {
     };
 
     const handleDeleteFornecedor = (fornecedor) => {
+        setOpenMenuId(null);
+        if (!isAdmin) {
+            showToast('error', 'Não tem permissão para eliminar fornecedores.');
+            return;
+        }
         setSelectedFornecedor(fornecedor);
         setIsDeleteModalOpen(true);
-        setOpenMenuId(null);
     };
 
     const confirmDeleteFornecedor = async () => {
@@ -172,14 +176,8 @@ export default function FornecedoresPage() {
 
         setIsDeleting(true);
         try {
-            if (isAdmin) {
-                await suppliersAPI.delete(selectedFornecedor.id);
-                showToast('success', 'Fornecedor eliminado com sucesso!');
-            } else {
-                const name = selectedFornecedor.commercial_name || selectedFornecedor.legal_name || 'Fornecedor';
-                await pendingDeletionsAPI.requestDelete('supplier', selectedFornecedor.id, name, user?.name || 'Técnico');
-                showToast('success', 'Pedido de exclusão enviado ao administrador!');
-            }
+            await suppliersAPI.delete(selectedFornecedor.id);
+            showToast('success', 'Fornecedor eliminado com sucesso!');
             await reloadSuppliers();
             setIsDeleteModalOpen(false);
             setSelectedFornecedor(null);
