@@ -2,6 +2,7 @@ import { createContext, useContext, useState, useEffect, useCallback, useMemo } 
 import { authAPI } from '../services/api';
 import {
     hasPermission as checkPermission,
+    hasWritePermission as checkWritePermission,
     isAdmin as checkIsAdmin,
     canManageUsers as checkCanManageUsers,
     canDeleteRecords as checkCanDeleteRecords,
@@ -60,11 +61,17 @@ export function AuthProvider({ children }) {
         }
     };
 
-    // Função para verificar permissão do usuário atual
+    // Função para verificar permissão de leitura do usuário atual
     const hasPermission = useCallback((permission) => {
-        if (!user?.role) return false;
-        return checkPermission(user.role, permission);
-    }, [user?.role]);
+        if (!user) return false;
+        return checkPermission(user, permission);
+    }, [user]);
+
+    // Função para verificar permissão de escrita/edição do usuário atual
+    const hasWritePermission = useCallback((permission) => {
+        if (!user) return false;
+        return checkWritePermission(user, permission);
+    }, [user]);
 
     // Verifica se o usuário é admin
     const isAdmin = useMemo(() => {
@@ -124,6 +131,7 @@ export function AuthProvider({ children }) {
         updateUser,
         // Funções de permissão
         hasPermission,
+        hasWritePermission,
         isAdmin,
         canManageUsers,
         canDeleteRecords,

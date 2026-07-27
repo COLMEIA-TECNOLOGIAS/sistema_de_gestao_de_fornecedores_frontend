@@ -6,6 +6,8 @@ import AquisicoesPage from "./AquisicoesPage";
 import MeuPerfilPage from "./MeuPerfilPage";
 import ProdutosPage from "./ProdutosPage";
 import LogsEventosPage from "./LogsEventosPage";
+import CriarUtilizadorPage from "./CriarUtilizadorPage";
+import PermissoesPage from "./PermissoesPage";
 
 export default function MainContent({ activeItem }) {
   const renderPage = () => {
@@ -13,6 +15,8 @@ export default function MainContent({ activeItem }) {
       case "dashboard":    return <DashboardPage />;
       case "fornecedores": return <FornecedoresPage />;
       case "usuarios":     return <UsuariosPage />;
+      case "criar-utilizador": return <CriarUtilizadorPage />;
+      case "permissoes":   return <PermissoesPage />;
       case "relatorios":   return <RelatoriosPage />;
       case "aquisicoes":   return <AquisicoesPage />;
       case "meu-perfil":   return <MeuPerfilPage />;

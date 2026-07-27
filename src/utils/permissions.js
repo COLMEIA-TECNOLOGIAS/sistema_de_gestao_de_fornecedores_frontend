@@ -66,17 +66,44 @@ export const ROLE_PERMISSIONS = {
 
 /**
  * Verifica se um usuário tem permissão para acessar um módulo específico
- * @param {string} userRole - O role do usuário
+ * @param {Object|string} userOrRole - O objeto do usuário ou o role (para retrocompatibilidade)
  * @param {string} permission - A permissão a ser verificada
  * @returns {boolean}
  */
-export function hasPermission(userRole, permission) {
+export function hasPermission(userOrRole, permission) {
+    const isUserObject = typeof userOrRole === 'object' && userOrRole !== null;
+    const userRole = isUserObject ? userOrRole.role : userOrRole;
+    
+    // 1. Verificar permissões granulares (se existirem)
+    if (isUserObject && userOrRole.permissions && userOrRole.permissions[permission]) {
+        return userOrRole.permissions[permission].access === true;
+    }
+
+    // 2. Fallback para as permissões base do Role
     const roleConfig = ROLE_PERMISSIONS[userRole];
     if (!roleConfig) {
         console.warn(`Role desconhecido: ${userRole}`);
         return false;
     }
     return roleConfig.permissions.includes(permission);
+}
+
+/**
+ * Verifica se o usuário tem permissão de ESCRITA/EDIÇÃO num módulo
+ * @param {Object} user - O objeto do usuário
+ * @param {string} permission - A permissão a ser verificada
+ * @returns {boolean}
+ */
+export function hasWritePermission(user, permission) {
+    if (!user) return false;
+    
+    if (user.permissions && user.permissions[permission]) {
+        return user.permissions[permission].access === true && user.permissions[permission].level === 'write';
+    }
+    
+    // Fallback para Role: Admin tem sempre write. Technician tem write onde tem acesso (simplificação do fallback)
+    if (user.role === ROLES.ADMIN) return true;
+    return hasPermission(user, permission);
 }
 
 /**

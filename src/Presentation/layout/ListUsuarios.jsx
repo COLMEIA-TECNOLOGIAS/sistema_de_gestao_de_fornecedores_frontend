@@ -1,14 +1,12 @@
-import { Plus, Search, Eye, Edit2, Trash2, ChevronLeft, ChevronRight, X, Calendar, Shield } from "lucide-react";
+import { Search, Eye, Edit2, Trash2, ChevronLeft, ChevronRight, Shield } from "lucide-react";
 import { useState, useEffect } from "react";
 import api from "../../services/api";
-import ModalNovoUsuario from "../Components/ModalNovoUsuario";
 import UsuarioTableSkeleton from "../Components/UsuarioTableSkeleton";
 import { useAuth } from "../../context/AuthContext";
 import { getRoleName } from "../../utils/permissions";
 
 export default function UsuariosManagementPage() {
   const [searchQuery, setSearchQuery] = useState("");
-  const [showModal, setShowModal] = useState(false);
   const [usuarios, setUsuarios] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -44,10 +42,7 @@ export default function UsuariosManagementPage() {
     }
   };
 
-  const handleUserCreated = () => {
-    setShowModal(false);
-    fetchUsuarios(); // Recarrega a lista de usuários
-  };
+
 
   return (
     <main className="flex-1 bg-gray-50 p-8 mt-16">
@@ -65,13 +60,6 @@ export default function UsuariosManagementPage() {
 
         {/* Barra de ações */}
         <div className="flex items-center justify-between mb-6">
-          <button
-            onClick={() => setShowModal(true)}
-            className="flex items-center gap-2 px-5 py-2.5 bg-white border-2 border-[#44B16F] text-[#44B16F] rounded-lg font-medium hover:bg-[#44B16F]/5 transition-colors"
-          >
-            <Plus size={20} />
-            ADD NOVO USUÁRIO
-          </button>
 
           <div className="relative">
             <Search size={20} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
@@ -239,12 +227,7 @@ export default function UsuariosManagementPage() {
           </div>
         </div>
 
-        {/* Modal de Adicionar Usuário */}
-        <ModalNovoUsuario
-          isOpen={showModal}
-          onClose={() => setShowModal(false)}
-          onSuccess={handleUserCreated}
-        />
+
       </div>
     </main>
   );

@@ -85,8 +85,8 @@ export default function FornecedorFormWrapper() {
     // Document uploads
     pacto_social: null,
     commercial_certificate: null,
-    agt_certificate: null,
-    inss_certificate: null,
+    non_debtor_certificate_agt: null,
+    non_debtor_certificate_inss: null,
     nif_proof: null,
     product_list: null,
     commercial_licenses: [], // Multiple files
@@ -249,11 +249,11 @@ export default function FornecedorFormWrapper() {
       if (formData.commercial_certificate) {
         data.append("commercial_certificate", formData.commercial_certificate);
       }
-      if (formData.agt_certificate) {
-        data.append("agt_certificate", formData.agt_certificate);
+      if (formData.non_debtor_certificate_agt) {
+        data.append("non_debtor_certificate_agt", formData.non_debtor_certificate_agt);
       }
-      if (formData.inss_certificate) {
-        data.append("inss_certificate", formData.inss_certificate);
+      if (formData.non_debtor_certificate_inss) {
+        data.append("non_debtor_certificate_inss", formData.non_debtor_certificate_inss);
       }
       if (formData.nif_proof instanceof File) {
         data.append("nif_proof", formData.nif_proof);
@@ -659,24 +659,24 @@ export default function FornecedorFormWrapper() {
                         accept=".pdf"
                       />
                       <FileUploadField
-                        label="Certificado de Não devedor AGT"
-                        name="agt_certificate"
-                        file={formData.agt_certificate}
+                        label="Certificado de Não Devedor AGT"
+                        name="non_debtor_certificate_agt"
+                        file={formData.non_debtor_certificate_agt}
                         onChange={handleFileChange}
-                        error={errors.agt_certificate}
+                        error={errors.non_debtor_certificate_agt}
                         onPreview={handlePreviewFile}
-                        helperText="Formato PDF (.pdf)"
-                        accept=".pdf"
+                        helperText="PDF, JPG ou PNG (máx 5MB) — Opcional"
+                        accept=".pdf,.jpg,.jpeg,.png"
                       />
                       <FileUploadField
-                        label="Certificado de Não devedor INSS"
-                        name="inss_certificate"
-                        file={formData.inss_certificate}
+                        label="Certificado de Não Devedor INSS"
+                        name="non_debtor_certificate_inss"
+                        file={formData.non_debtor_certificate_inss}
                         onChange={handleFileChange}
-                        error={errors.inss_certificate}
+                        error={errors.non_debtor_certificate_inss}
                         onPreview={handlePreviewFile}
-                        helperText="Formato PDF (.pdf)"
-                        accept=".pdf"
+                        helperText="PDF, JPG ou PNG (máx 5MB) — Opcional"
+                        accept=".pdf,.jpg,.jpeg,.png"
                       />
                       <FileUploadField
                         label="Comprovativo NIF"

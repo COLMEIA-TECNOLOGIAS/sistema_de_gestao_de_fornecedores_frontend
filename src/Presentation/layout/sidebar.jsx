@@ -1,4 +1,4 @@
-import { LayoutDashboard, Package, UserCircle, BarChart3, ShoppingCart, Settings, FileText, Tag, Activity } from "lucide-react";
+import { LayoutDashboard, Package, UserCircle, BarChart3, ShoppingCart, Settings, FileText, Tag, Activity, ChevronDown, ChevronRight, Users, UserPlus, Shield } from "lucide-react";
 import { useAuth } from "../../context/AuthContext";
 import { PERMISSIONS } from "../../utils/permissions";
 import LogoutConfirmModal from "../Components/LogoutConfirmModal";
@@ -9,14 +9,32 @@ function Sidebar({ activeItem, onItemClick }) {
   const { hasPermission, isAdmin, logout } = useAuth();
   const [isLogoutModalOpen, setIsLogoutModalOpen] = useState(false);
   const [isLoggingOut, setIsLoggingOut] = useState(false);
+  // Default expanded for "usuarios" if we are in one of its paths
+  const isUsuariosActive = ["usuarios", "criar-utilizador", "permissoes"].includes(activeItem);
+  const [expandedMenus, setExpandedMenus] = useState({ "usuarios": isUsuariosActive });
   const navigate = useNavigate();
+
+  const toggleMenu = (id) => {
+    setExpandedMenus(prev => ({ ...prev, [id]: !prev[id] }));
+  };
 
   const mainMenuItems = [
     { id: "dashboard",   label: "Dashboard",   icon: LayoutDashboard, permission: PERMISSIONS.DASHBOARD },
     { id: "fornecedores",label: "Fornecedores", icon: Package,         permission: PERMISSIONS.FORNECEDORES },
     { id: "aquisicoes",  label: "Aquisições",   icon: ShoppingCart,    permission: PERMISSIONS.AQUISICOES },
     { id: "relatorios",  label: "Relatórios e Análises", icon: BarChart3,     permission: PERMISSIONS.RELATORIOS },
-    { id: "usuarios",    label: "Gestão de utilizadores",     icon: UserCircle,      permission: PERMISSIONS.USUARIOS, adminOnly: true },
+    { 
+      id: "usuarios_group", // Use a different ID so activeItem doesn't conflict directly unless we click it
+      label: "Gestão de utilizadores", 
+      icon: UserCircle, 
+      permission: PERMISSIONS.USUARIOS, 
+      adminOnly: true,
+      subItems: [
+        { id: "usuarios", label: "Lista de Utilizadores", icon: Users },
+        { id: "criar-utilizador", label: "Criar Utilizador", icon: UserPlus },
+        { id: "permissoes", label: "Gestão de Permissões", icon: Shield }
+      ]
+    },
     { id: "logs-eventos",label: "Gestão de Logs", icon: Activity,        permission: PERMISSIONS.DASHBOARD, adminOnly: true },
     { id: "config",      label: "Configurações", icon: Settings,        permission: PERMISSIONS.CONFIGURACOES, adminOnly: true },
   ];
@@ -70,16 +88,54 @@ function Sidebar({ activeItem, onItemClick }) {
           <div className="space-y-0.5">
             {menuItems.map((item) => {
               const Icon = item.icon;
-              const isActive = activeItem === item.id;
+              const hasSub = item.subItems && item.subItems.length > 0;
+              const isGroupActive = hasSub && item.subItems.some(sub => sub.id === activeItem);
+              const isActive = activeItem === item.id || isGroupActive;
+              const isExpanded = expandedMenus[item.id];
+
               return (
-                <button
-                  key={item.id}
-                  onClick={() => handleItemClick(item.id)}
-                  className={`sidebar-item ${isActive ? 'active' : ''}`}
-                >
-                  <Icon size={17} className="flex-shrink-0" />
-                  <span className="whitespace-nowrap">{item.label}</span>
-                </button>
+                <div key={item.id} className="flex flex-col">
+                  <button
+                    onClick={() => {
+                      if (hasSub) {
+                        toggleMenu(item.id);
+                      } else {
+                        handleItemClick(item.id);
+                      }
+                    }}
+                    className={`sidebar-item ${isActive && !hasSub ? 'active' : ''}`}
+                    style={hasSub && isGroupActive && !isExpanded ? { color: 'var(--color-primary)', fontWeight: 600 } : {}}
+                  >
+                    <Icon size={17} className="flex-shrink-0" />
+                    <span className="whitespace-nowrap flex-1 text-left">{item.label}</span>
+                    {hasSub && (
+                      <span className="ml-auto flex-shrink-0 opacity-60">
+                        {isExpanded ? <ChevronDown size={15} /> : <ChevronRight size={15} />}
+                      </span>
+                    )}
+                  </button>
+                  
+                  {/* Submenus */}
+                  {hasSub && isExpanded && (
+                    <div className="flex flex-col mt-1 mb-1 ml-4 border-l-2 border-gray-100 dark:border-gray-800 space-y-0.5" style={{ paddingLeft: '8px' }}>
+                      {item.subItems.map((sub) => {
+                        const SubIcon = sub.icon;
+                        const isSubActive = activeItem === sub.id;
+                        return (
+                          <button
+                            key={sub.id}
+                            onClick={() => handleItemClick(sub.id)}
+                            className={`sidebar-item ${isSubActive ? 'active' : ''}`}
+                            style={{ padding: '8px 12px', fontSize: '0.8125rem' }}
+                          >
+                            {SubIcon && <SubIcon size={15} className="flex-shrink-0" />}
+                            <span className="whitespace-nowrap">{sub.label}</span>
+                          </button>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
               );
             })}
           </div>

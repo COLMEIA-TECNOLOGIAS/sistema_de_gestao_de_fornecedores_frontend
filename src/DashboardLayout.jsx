@@ -14,7 +14,7 @@ export default function DashboardLayout() {
   // Update activeItem based on URL
   useEffect(() => {
     const path = location.pathname.split("/")[1];
-    const validPaths = ["dashboard", "fornecedores", "usuarios", "relatorios", "aquisicoes", "meu-perfil", "produtos", "logs-eventos"];
+    const validPaths = ["dashboard", "fornecedores", "usuarios", "criar-utilizador", "permissoes", "relatorios", "aquisicoes", "meu-perfil", "produtos", "logs-eventos"];
     if (path && validPaths.includes(path)) {
       setActiveItem(path);
     }
@@ -35,6 +35,8 @@ export default function DashboardLayout() {
       dashboard:    PERMISSIONS.DASHBOARD,
       fornecedores: PERMISSIONS.FORNECEDORES,
       usuarios:     PERMISSIONS.USUARIOS,
+      "criar-utilizador": PERMISSIONS.USUARIOS,
+      permissoes:   PERMISSIONS.USUARIOS,
       relatorios:   PERMISSIONS.RELATORIOS,
       aquisicoes:   PERMISSIONS.AQUISICOES,
       produtos:     PERMISSIONS.PRODUTOS,
