@@ -11,6 +11,8 @@ export default function FornecedorFormWrapper() {
   const [isLoading, setIsLoading] = useState(false);
   const [categories, setCategories] = useState([]);
   const [isLoadingCategories, setIsLoadingCategories] = useState(false);
+  const [provincesData, setProvincesData] = useState([]);
+  const [isLoadingGeography, setIsLoadingGeography] = useState(false);
   const [toast, setToast] = useState(null);
   const [previewFile, setPreviewFile] = useState(null);
   const [isCreatingCategory, setIsCreatingCategory] = useState(false);
@@ -37,13 +39,44 @@ export default function FornecedorFormWrapper() {
     fetchCategories();
   }, []);
 
+  useEffect(() => {
+    const fetchGeography = async () => {
+      try {
+        setIsLoadingGeography(true);
+        const res = await fetch("https://angolaprovinciasapi.ggwp.com.br/api/v1/provincias");
+        if (res.ok) {
+          const json = await res.json();
+          console.log("API de províncias retornou:", json);
+          
+          let list = [];
+          if (json && Array.isArray(json.data)) {
+            list = json.data;
+          } else if (Array.isArray(json)) {
+            list = json;
+          }
+          
+          if (list.length > 0) {
+            setProvincesData(list);
+          } else {
+            console.warn("API de províncias não retornou itens válidos.");
+          }
+        } else {
+          console.error("Erro na API de províncias, status:", res.status);
+        }
+      } catch (err) {
+        console.error("Erro no fetch de províncias:", err);
+      } finally {
+        setIsLoadingGeography(false);
+      }
+    };
+    fetchGeography();
+  }, []);
+
   const [formData, setFormData] = useState({
-    legal_name: editingFornecedor?.legal_name || "",
-    commercial_name: editingFornecedor?.commercial_name || "",
+    company_name: editingFornecedor?.company_name || editingFornecedor?.commercial_name || "",
     email: editingFornecedor?.email || "",
     phone: editingFornecedor?.phone || "",
     nif: editingFornecedor?.nif || "",
-    activity_type: editingFornecedor?.activity_type || "",
     province: editingFornecedor?.province || "Luanda",
     municipality: editingFornecedor?.municipality || "Viana",
     address: editingFornecedor?.address || "",
@@ -52,7 +85,8 @@ export default function FornecedorFormWrapper() {
     // Document uploads
     pacto_social: null,
     commercial_certificate: null,
-    non_debtor_certificate: null,
+    agt_certificate: null,
+    inss_certificate: null,
     nif_proof: null,
     product_list: null,
     commercial_licenses: [], // Multiple files
@@ -62,7 +96,13 @@ export default function FornecedorFormWrapper() {
 
   const handleInputChange = (e) => {
     const { name, value } = e.target;
-    setFormData((prev) => ({ ...prev, [name]: value }));
+    setFormData((prev) => {
+      const newData = { ...prev, [name]: value };
+      if (name === "province") {
+        newData.municipality = "";
+      }
+      return newData;
+    });
     if (errors[name]) {
       setErrors((prev) => {
         const newErrors = { ...prev };
@@ -146,9 +186,7 @@ export default function FornecedorFormWrapper() {
   const validateStep = (step) => {
     const newErrors = {};
     if (step === 1) {
-      if (!formData.legal_name) newErrors.legal_name = "Nome legal é obrigatório";
-      if (!formData.commercial_name) newErrors.commercial_name = "Nome comercial é obrigatório";
-      if (!formData.activity_type) newErrors.activity_type = "Tipo de atividade é obrigatório";
+      if (!formData.company_name) newErrors.company_name = "Nome da Empresa é obrigatório";
       if (!formData.email) {
         newErrors.email = "Email é obrigatório";
       } else if (!formData.email.includes("@")) {
@@ -195,13 +233,11 @@ export default function FornecedorFormWrapper() {
       const data = new FormData();
 
       // Append all text fields
-      data.append("legal_name", formData.legal_name);
-      data.append("commercial_name", formData.commercial_name);
+      data.append("company_name", formData.company_name);
       data.append("email", formData.email);
       data.append("phone", formData.phone);
       if (formData.alt_phone) data.append("alt_phone", formData.alt_phone);
       data.append("nif", formData.nif);
-      data.append("activity_type", formData.activity_type);
       data.append("province", formData.province);
       data.append("municipality", formData.municipality);
       data.append("address", formData.address);
@@ -213,8 +249,11 @@ export default function FornecedorFormWrapper() {
       if (formData.commercial_certificate) {
         data.append("commercial_certificate", formData.commercial_certificate);
       }
-      if (formData.non_debtor_certificate) {
-        data.append("non_debtor_certificate", formData.non_debtor_certificate);
+      if (formData.agt_certificate) {
+        data.append("agt_certificate", formData.agt_certificate);
+      }
+      if (formData.inss_certificate) {
+        data.append("inss_certificate", formData.inss_certificate);
       }
       if (formData.nif_proof instanceof File) {
         data.append("nif_proof", formData.nif_proof);
@@ -264,8 +303,24 @@ export default function FornecedorFormWrapper() {
     }
   }, [formData, editingFornecedor]);
 
-  const provinces = ["Luanda", "Benguela", "Huambo", "Huíla", "Cabinda", "Namibe", "Lunda Norte", "Lunda Sul", "Malanje", "Moxico", "Bié", "Cunene", "Cuando Cubango", "Kwanza Norte", "Kwanza Sul", "Uíge", "Zaire", "Bengo"];
-  const municipalities = ["Viana", "Luanda", "Cazenga", "Belas", "Talatona", "Lobito", "Benguela", "Kilamba Kiaxi", "Cacuaco", "Icolo e Bengo"];
+  const provinces = provincesData.length > 0 
+    ? provincesData.map(p => p.nome).sort()
+    : ["Luanda", "Benguela", "Huambo", "Huíla", "Cabinda", "Namibe", "Lunda Norte", "Lunda Sul", "Malanje", "Moxico", "Bié", "Cunene", "Cuando Cubango", "Kwanza Norte", "Kwanza Sul", "Uíge", "Zaire", "Bengo"];
+
+  const municipalities = (() => {
+    if (provincesData.length > 0) {
+      const selectedProv = provincesData.find(p => p.nome === formData.province);
+      if (selectedProv && Array.isArray(selectedProv.municipios)) {
+        try {
+          return selectedProv.municipios.map(m => m.nome).sort();
+        } catch (e) {
+          return [];
+        }
+      }
+      return [];
+    }
+    return ["Viana", "Luanda", "Cazenga", "Belas", "Talatona", "Lobito", "Benguela", "Kilamba Kiaxi", "Cacuaco", "Icolo e Bengo"];
+  })();
 
   if (currentStep === 4) {
     return (
@@ -383,29 +438,60 @@ export default function FornecedorFormWrapper() {
                 <div className="grid grid-cols-2 gap-8">
                   <div className="space-y-6">
                     <InputField
-                      label="Nome Legal *"
-                      name="legal_name"
+                      label="Nome da Empresa *"
+                      name="company_name"
                       placeholder="Ex: Empresa de Exemplo, Lda"
-                      value={formData.legal_name}
+                      value={formData.company_name}
                       onChange={handleInputChange}
-                      error={errors.legal_name}
+                      error={errors.company_name}
                     />
+                    
                     <InputField
-                      label="Nome Comercial *"
-                      name="commercial_name"
-                      placeholder="Ex: Exemplo Tech"
-                      value={formData.commercial_name}
+                      label="NIF *"
+                      name="nif"
+                      placeholder="Número de Identificação Fiscal"
+                      value={formData.nif}
                       onChange={handleInputChange}
-                      error={errors.commercial_name}
+                      error={errors.nif}
                     />
-                    <InputField
-                      label="Tipo de Atividade *"
-                      name="activity_type"
-                      placeholder="Ex: Prestação de Serviços, Comércio..."
-                      value={formData.activity_type}
-                      onChange={handleInputChange}
-                      error={errors.activity_type}
-                    />
+
+                    {/* Categoria (from API categories table) */}
+                    <div>
+                      <label className="block text-sm font-bold text-gray-700 mb-2 uppercase tracking-wider">
+                        Categoria *
+                      </label>
+                      <p className="text-xs text-gray-500 mb-3">Selecione uma ou mais categorias</p>
+                      <div className="flex flex-wrap gap-3">
+                        {isLoadingCategories ? (
+                          <p className="text-sm text-gray-400">Carregando categorias...</p>
+                        ) : (
+                          <>
+                            {categories.map((cat) => (
+                              <button
+                                key={cat.id}
+                                type="button"
+                                onClick={() => handleCategoryToggle(cat.id)}
+                                className={`px-4 py-2.5 rounded-xl border-2 font-semibold text-sm transition-all ${formData.categories.includes(cat.id)
+                                  ? "bg-[#44B16F]/10 border-[#44B16F] text-[#44B16F] shadow-sm"
+                                  : "border-gray-200 bg-gray-50 text-gray-500 hover:border-gray-300 hover:text-gray-700"
+                                  }`}
+                              >
+                                {formData.categories.includes(cat.id) && (
+                                  <CheckCircle size={14} className="inline-block mr-1.5 -mt-0.5" />
+                                )}
+                                {cat.name}
+                              </button>
+                            ))}
+                          </>
+                        )}
+                      </div>
+                      {errors.categories && (
+                        <div className="flex items-center gap-1 mt-2 text-red-500 font-bold">
+                          <AlertCircle size={14} />
+                          <span className="text-xs">{errors.categories}</span>
+                        </div>
+                      )}
+                    </div>
                   </div>
                   <div className="space-y-6">
                     <div>
@@ -465,52 +551,6 @@ export default function FornecedorFormWrapper() {
                             </div>
                         </div>
                     </div>
-                    <InputField
-                      label="NIF *"
-                      name="nif"
-                      placeholder="Número de Identificação Fiscal"
-                      value={formData.nif}
-                      onChange={handleInputChange}
-                      error={errors.nif}
-                    />
-
-                    {/* Categoria (from API categories table) */}
-                    <div>
-                      <label className="block text-sm font-bold text-gray-700 mb-2 uppercase tracking-wider">
-                        Categoria *
-                      </label>
-                      <p className="text-xs text-gray-500 mb-3">Selecione uma ou mais categorias</p>
-                      <div className="flex flex-wrap gap-3">
-                        {isLoadingCategories ? (
-                          <p className="text-sm text-gray-400">Carregando categorias...</p>
-                        ) : (
-                          <>
-                            {categories.map((cat) => (
-                              <button
-                                key={cat.id}
-                                type="button"
-                                onClick={() => handleCategoryToggle(cat.id)}
-                                className={`px-4 py-2.5 rounded-xl border-2 font-semibold text-sm transition-all ${formData.categories.includes(cat.id)
-                                  ? "bg-[#44B16F]/10 border-[#44B16F] text-[#44B16F] shadow-sm"
-                                  : "border-gray-200 bg-gray-50 text-gray-500 hover:border-gray-300 hover:text-gray-700"
-                                  }`}
-                              >
-                                {formData.categories.includes(cat.id) && (
-                                  <CheckCircle size={14} className="inline-block mr-1.5 -mt-0.5" />
-                                )}
-                                {cat.name}
-                              </button>
-                            ))}
-                          </>
-                        )}
-                      </div>
-                      {errors.categories && (
-                        <div className="flex items-center gap-1 mt-2 text-red-500 font-bold">
-                          <AlertCircle size={14} />
-                          <span className="text-xs">{errors.categories}</span>
-                        </div>
-                      )}
-                    </div>
                   </div>
                 </div>
               </div>
@@ -532,8 +572,10 @@ export default function FornecedorFormWrapper() {
                         name="province"
                         value={formData.province}
                         onChange={handleInputChange}
-                        className="w-full px-5 py-4 bg-gray-50 border-2 border-transparent focus:border-[#44B16F] focus:bg-white rounded-2xl outline-none transition-all font-medium"
+                        disabled={isLoadingGeography}
+                        className={`w-full px-5 py-4 bg-gray-50 border-2 border-transparent focus:border-[#44B16F] focus:bg-white rounded-2xl outline-none transition-all font-medium ${isLoadingGeography ? "opacity-50 cursor-not-allowed" : ""}`}
                       >
+                        <option value="">Selecione uma província...</option>
                         {provinces.map((p) => (
                           <option key={p} value={p}>
                             {p}
@@ -545,19 +587,20 @@ export default function FornecedorFormWrapper() {
                       <label className="block text-sm font-bold text-gray-700 mb-2 uppercase tracking-wider">
                         Município *
                       </label>
-                      <input
-                        list="municipality-list"
+                      <select
                         name="municipality"
                         value={formData.municipality}
                         onChange={handleInputChange}
-                        placeholder="Digite para pesquisar..."
-                        className="w-full px-5 py-4 bg-gray-50 border-2 border-transparent focus:border-[#44B16F] focus:bg-white rounded-2xl outline-none transition-all font-medium"
-                      />
-                      <datalist id="municipality-list">
+                        disabled={!formData.province || isLoadingGeography}
+                        className={`w-full px-5 py-4 bg-gray-50 border-2 border-transparent focus:border-[#44B16F] focus:bg-white rounded-2xl outline-none transition-all font-medium ${!formData.province || isLoadingGeography ? "opacity-50 cursor-not-allowed" : ""}`}
+                      >
+                        <option value="">Selecione um município...</option>
                         {municipalities.map((m) => (
-                          <option key={m} value={m} />
+                          <option key={m} value={m}>
+                            {m}
+                          </option>
                         ))}
-                      </datalist>
+                      </select>
                     </div>
                   </div>
                   <div className="space-y-6">
@@ -616,11 +659,21 @@ export default function FornecedorFormWrapper() {
                         accept=".pdf"
                       />
                       <FileUploadField
-                        label="Certificado de Não Devedor (AGT/INSS)"
-                        name="non_debtor_certificate"
-                        file={formData.non_debtor_certificate}
+                        label="Certificado de Não devedor AGT"
+                        name="agt_certificate"
+                        file={formData.agt_certificate}
                         onChange={handleFileChange}
-                        error={errors.non_debtor_certificate}
+                        error={errors.agt_certificate}
+                        onPreview={handlePreviewFile}
+                        helperText="Formato PDF (.pdf)"
+                        accept=".pdf"
+                      />
+                      <FileUploadField
+                        label="Certificado de Não devedor INSS"
+                        name="inss_certificate"
+                        file={formData.inss_certificate}
+                        onChange={handleFileChange}
+                        error={errors.inss_certificate}
                         onPreview={handlePreviewFile}
                         helperText="Formato PDF (.pdf)"
                         accept=".pdf"

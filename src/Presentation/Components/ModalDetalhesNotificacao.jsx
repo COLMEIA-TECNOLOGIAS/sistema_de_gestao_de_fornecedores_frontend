@@ -27,7 +27,9 @@ export default function ModalDetalhesNotificacao({ isOpen, onClose, notification
                     timeDisplay = date.toLocaleString('pt-AO');
                 }
             }
-        } catch (e) { /* ignore */ }
+        } catch (e) { 
+            console.warn('Erro ao processar data da notificação', e);
+        }
 
         return {
             title,

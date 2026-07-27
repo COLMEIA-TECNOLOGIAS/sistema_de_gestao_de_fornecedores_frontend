@@ -306,7 +306,7 @@ export default function DashboardPage() {
                                     >
                                         <td className="table-cell">
                                             <span className="font-semibold text-sm" style={{ color: 'var(--color-primary)' }}>
-                                                {q.reference_number}
+                                                {q.activity_description || q.reference_number}
                                             </span>
                                         </td>
                                         <td className="table-cell font-medium" style={{ color: 'var(--color-text-primary)' }}>

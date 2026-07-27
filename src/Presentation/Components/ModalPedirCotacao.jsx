@@ -50,9 +50,17 @@ export default function ModalPedirCotacao({ isOpen, onClose, fornecedor, activit
     useEffect(() => {
         // Get current user from localStorage
         const storedUser = localStorage.getItem('user');
+        let userName = 'Equipa de Compras';
         if (storedUser) {
-            setCurrentUser(JSON.parse(storedUser));
+            const parsedUser = JSON.parse(storedUser);
+            setCurrentUser(parsedUser);
+            userName = parsedUser.name || parsedUser.nome || 'Equipa de Compras';
         }
+        
+        setPedidoDescricao(prev => {
+            if (!prev) return `\n\nObrigado,\n${userName}`;
+            return prev;
+        });
     }, []);
 
     // If activityName, activityDescription, activityReference or buyerEmail is given, pre-fill
@@ -141,7 +149,11 @@ export default function ModalPedirCotacao({ isOpen, onClose, fornecedor, activit
 
     // Filter fornecedores by category and search
     const filteredFornecedores = useMemo(() => {
-        let result = fornecedoresList;
+        // Filter out pending suppliers, only keep approved/active ones
+        let result = fornecedoresList.filter(f => 
+            f.registration_status === 'approved' || 
+            (f.is_active && (f.registration_status === 'invited' || f.registration_status === 'completed' || !f.registration_status))
+        );
 
         // Filter by category
         if (categoriaFiltro) {
@@ -177,8 +189,10 @@ export default function ModalPedirCotacao({ isOpen, onClose, fornecedor, activit
     };
 
     const handleCancel = () => {
+        const userName = currentUser?.name || currentUser?.nome || 'Equipa de Compras';
+
         setPedidoAssunto('');
-        setPedidoDescricao('');
+        setPedidoDescricao(`\n\nObrigado,\n${userName}`);
         setActivityDesc('');
         setDeadline('');
         setProductName('');
@@ -322,7 +336,7 @@ export default function ModalPedirCotacao({ isOpen, onClose, fornecedor, activit
                 formData.append('ocultar_referencia_automatica', '1');
                 formData.append('hide_auto_reference', '1');
                 formData.append('description', descriptionWithSignature);
-                formData.append('activity_description', activityDesc);
+                formData.append('activity_description', pedidoReferencia);
                 formData.append('deadline', formattedDeadline);
 
                 finalProductsList.forEach((product, index) => {
@@ -354,7 +368,7 @@ export default function ModalPedirCotacao({ isOpen, onClose, fornecedor, activit
                     ocultar_referencia_automatica: true,
                     hide_auto_reference: true,
                     description: descriptionWithSignature,
-                    activity_description: activityDesc,
+                    activity_description: pedidoReferencia,
                     deadline: formattedDeadline,
                     items: finalProductsList.map(product => ({
                         name: product.name,

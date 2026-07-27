@@ -176,10 +176,10 @@ export default function ModalRespostasPedido({
                             <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
                                 <div>
                                     <span className="font-semibold block" style={{ color: 'var(--color-text-primary)' }}>Referência</span>
-                                    <span style={{ color: 'var(--color-text-secondary)' }}>{requestDetails.reference_number || 'N/A'}</span>
+                                    <span style={{ color: 'var(--color-text-secondary)' }}>{requestDetails.activity_description || requestDetails.reference_number || 'N/A'}</span>
                                 </div>
                                 <div>
-                                    <span className="font-semibold block" style={{ color: 'var(--color-text-primary)' }}>Descrição da Atividade</span>
+                                    <span className="font-semibold block" style={{ color: 'var(--color-text-primary)' }}>Título da Atividade</span>
                                     <span style={{ color: 'var(--color-text-secondary)' }}>{requestDetails.activity_description || '-'}</span>
                                 </div>
                                 <div>

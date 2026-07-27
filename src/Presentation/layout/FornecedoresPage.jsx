@@ -92,13 +92,12 @@ export default function FornecedoresPage() {
     useEffect(() => {
         let result = fornecedores;
 
-        result = result.filter(f => f.is_active || (f.registration_status !== 'invited' && f.registration_status !== 'completed'));
+        result = result.filter(f => f.is_active || f.registration_status === 'invited' || f.registration_status !== 'completed');
 
         if (searchQuery) {
             const lowerQuery = searchQuery.toLowerCase();
             result = result.filter(f =>
-                (f.commercial_name?.toLowerCase() || "").includes(lowerQuery) ||
-                (f.legal_name?.toLowerCase() || "").includes(lowerQuery) ||
+                (f.company_name?.toLowerCase() || f.commercial_name?.toLowerCase() || "").includes(lowerQuery) ||
                 (f.email?.toLowerCase() || "").includes(lowerQuery) ||
                 (f.nif?.toLowerCase() || "").includes(lowerQuery)
             );
@@ -458,8 +457,7 @@ export default function FornecedoresPage() {
                                     <input type="checkbox" className="rounded border-gray-300" />
                                 </th>
                                 <th className="px-6 py-4 text-left text-sm font-semibold" style={{ color: 'var(--color-text-secondary)' }}>ID</th>
-                                <th className="px-6 py-4 text-left text-sm font-semibold" style={{ color: 'var(--color-text-secondary)' }}>Nome Comercial</th>
-                                <th className="px-6 py-4 text-left text-sm font-semibold" style={{ color: 'var(--color-text-secondary)' }}>Nome Legal</th>
+                                <th className="px-6 py-4 text-left text-sm font-semibold" style={{ color: 'var(--color-text-secondary)' }}>Nome da Empresa</th>
                                 <th className="px-6 py-4 text-left text-sm font-semibold" style={{ color: 'var(--color-text-secondary)' }}>NIF</th>
                                 <th className="px-6 py-4 text-left text-sm font-semibold" style={{ color: 'var(--color-text-secondary)' }}>Telefone</th>
                                 <th className="px-6 py-4 text-left text-sm font-semibold" style={{ color: 'var(--color-text-secondary)' }}>Email</th>
@@ -497,17 +495,16 @@ export default function FornecedoresPage() {
                                         <td className="px-6 py-8 cursor-pointer" onClick={() => { setSelectedFornecedor(f); setIsDetalhesModalOpen(true); }}>
                                             <div className="flex items-center gap-3">
                                                 <img
-                                                    src={`https://api.dicebear.com/7.x/initials/svg?seed=${f.commercial_name || 'N/A'}`}
-                                                    alt={f.commercial_name}
+                                                    src={`https://api.dicebear.com/7.x/initials/svg?seed=${f.company_name || f.commercial_name || 'N/A'}`}
+                                                    alt={f.company_name || f.commercial_name}
                                                     className="w-10 h-10 rounded-lg"
                                                 />
                                                 <span className="font-medium" style={{ color: 'var(--color-text-secondary)' }}>#{f.id}</span>
                                             </div>
                                         </td>
                                         <td className="px-6 py-8 cursor-pointer" onClick={() => { setSelectedFornecedor(f); setIsDetalhesModalOpen(true); }}>
-                                            <span className="font-semibold" style={{ color: 'var(--color-text-primary)' }}>{f.commercial_name || 'N/A'}</span>
+                                            <span className="font-semibold" style={{ color: 'var(--color-text-primary)' }}>{f.company_name || f.commercial_name || 'N/A'}</span>
                                         </td>
-                                        <td className="px-6 py-8 cursor-pointer" style={{ color: 'var(--color-text-secondary)' }} onClick={() => { setSelectedFornecedor(f); setIsDetalhesModalOpen(true); }}>{f.legal_name || 'N/A'}</td>
                                         <td className="px-6 py-8 cursor-pointer" style={{ color: 'var(--color-text-secondary)' }} onClick={() => { setSelectedFornecedor(f); setIsDetalhesModalOpen(true); }}>{f.nif || 'N/A'}</td>
                                         <td className="px-6 py-8 cursor-pointer" style={{ color: 'var(--color-text-secondary)' }} onClick={() => { setSelectedFornecedor(f); setIsDetalhesModalOpen(true); }}>{f.phone || 'N/A'}</td>
                                         <td className="px-6 py-8 cursor-pointer" style={{ color: 'var(--color-text-secondary)' }} onClick={() => { setSelectedFornecedor(f); setIsDetalhesModalOpen(true); }}>{f.email || 'N/A'}</td>
@@ -549,10 +546,16 @@ export default function FornecedoresPage() {
                                             }) : 'N/A'}
                                         </td>
                                         <td className="px-6 py-8">
-                                            <span className={`px-4 py-2 rounded-xl text-sm font-medium ${f.is_active ? 'bg-emerald-50 text-emerald-900' : 'bg-red-50 text-red-900'
-                                                }`}>
-                                                {f.is_active ? 'Ativo' : 'Inativo'}
-                                            </span>
+                                            {f.registration_status === 'invited' && !f.is_active ? (
+                                                <span className="px-4 py-2 rounded-xl text-sm font-medium bg-amber-50 text-amber-900">
+                                                    Pendente
+                                                </span>
+                                            ) : (
+                                                <span className={`px-4 py-2 rounded-xl text-sm font-medium ${f.is_active ? 'bg-emerald-50 text-emerald-900' : 'bg-red-50 text-red-900'
+                                                    }`}>
+                                                    {f.is_active ? 'Ativo' : 'Inativo'}
+                                                </span>
+                                            )}
                                         </td>
                                         <td className="px-6 py-8">
                                             {(f.is_active && (f.registration_status === 'invited' || f.registration_status === 'completed')) || f.registration_status === 'approved' ? (
@@ -563,7 +566,7 @@ export default function FornecedoresPage() {
                                             ) : f.registration_status === 'invited' ? (
                                                 <span className="px-3 py-1.5 rounded-xl text-xs font-bold bg-amber-50 text-amber-700 border border-amber-200 flex items-center gap-1 w-fit">
                                                     <Send size={12} />
-                                                    Convidado
+                                                    Pendente
                                                 </span>
                                             ) : f.registration_status === 'completed' ? (
                                                 <span className="px-3 py-1.5 rounded-xl text-xs font-bold bg-emerald-50 text-emerald-700 border border-emerald-200 flex items-center gap-1 w-fit">

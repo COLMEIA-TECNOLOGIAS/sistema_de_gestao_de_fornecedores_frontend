@@ -17,14 +17,9 @@ export default function FornecedorTableSkeleton({ rows = 10 }) {
                         </div>
                     </td>
 
-                    {/* Nome Comercial */}
+                    {/* Nome da Empresa */}
                     <td className="px-2 py-2">
                         <div className="h-3 w-28 bg-gray-200 rounded animate-pulse"></div>
-                    </td>
-
-                    {/* Nome Legal */}
-                    <td className="px-2 py-2">
-                        <div className="h-3 w-32 bg-gray-200 rounded animate-pulse"></div>
                     </td>
 
                     {/* NIF */}
@@ -42,7 +37,7 @@ export default function FornecedorTableSkeleton({ rows = 10 }) {
                         <div className="h-3 w-36 bg-gray-200 rounded animate-pulse"></div>
                     </td>
 
-                    {/* Tipo de Atividade */}
+                    {/* Categoria */}
                     <td className="px-2 py-2">
                         <div className="h-5 w-16 bg-gray-200 rounded-full animate-pulse"></div>
                     </td>

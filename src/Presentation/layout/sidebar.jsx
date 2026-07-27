@@ -15,9 +15,10 @@ function Sidebar({ activeItem, onItemClick }) {
     { id: "dashboard",   label: "Dashboard",   icon: LayoutDashboard, permission: PERMISSIONS.DASHBOARD },
     { id: "fornecedores",label: "Fornecedores", icon: Package,         permission: PERMISSIONS.FORNECEDORES },
     { id: "aquisicoes",  label: "Aquisições",   icon: ShoppingCart,    permission: PERMISSIONS.AQUISICOES },
-    { id: "relatorios",  label: "Relatórios",   icon: BarChart3,       permission: PERMISSIONS.RELATORIOS },
-    { id: "usuarios",    label: "Usuários",     icon: UserCircle,      permission: PERMISSIONS.USUARIOS, adminOnly: true },
-    { id: "logs-eventos",label: "Logs de Eventos", icon: Activity,     permission: PERMISSIONS.USUARIOS, adminOnly: true },
+    { id: "relatorios",  label: "Relatórios e Análises", icon: BarChart3,     permission: PERMISSIONS.RELATORIOS },
+    { id: "usuarios",    label: "Gestão de utilizadores",     icon: UserCircle,      permission: PERMISSIONS.USUARIOS, adminOnly: true },
+    { id: "logs-eventos",label: "Gestão de Logs", icon: Activity,        permission: PERMISSIONS.DASHBOARD, adminOnly: true },
+    { id: "config",      label: "Configurações", icon: Settings,        permission: PERMISSIONS.CONFIGURACOES, adminOnly: true },
   ];
 
   const menuItems = mainMenuItems.filter(item => {

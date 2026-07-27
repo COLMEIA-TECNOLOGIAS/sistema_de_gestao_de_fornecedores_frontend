@@ -122,8 +122,8 @@ export default function ModalDetalhesFornecedor({
                         {/* Avatar/Logo Placeholder */}
                         <div className="w-20 h-20 bg-white rounded-2xl shadow-sm border border-gray-100 flex items-center justify-center p-2">
                             <img
-                                src={`https://api.dicebear.com/7.x/initials/svg?seed=${fornecedor.commercial_name}`}
-                                alt={fornecedor.commercial_name}
+                                src={`https://api.dicebear.com/7.x/initials/svg?seed=${fornecedor.company_name || fornecedor.commercial_name}`}
+                                alt={fornecedor.company_name || fornecedor.commercial_name}
                                 className="w-full h-full rounded-xl object-cover"
                             />
                         </div>
@@ -131,14 +131,13 @@ export default function ModalDetalhesFornecedor({
                         <div>
                             <div className="flex items-center gap-3 mb-1">
                                 <h2 className="text-2xl font-bold text-gray-900">
-                                    {fornecedor.commercial_name}
+                                    {fornecedor.company_name || fornecedor.commercial_name}
                                 </h2>
                                 <StatusBadge isActive={fornecedor.is_active} />
-                                <span className={`px-3 py-1 rounded-full text-xs font-bold border ${fornecedor.registration_status === 'invited' || fornecedor.registration_status === 'completed' || fornecedor.registration_status === 'approved' ? 'bg-orange-50 text-orange-700 border-orange-200' : 'bg-purple-50 text-purple-700 border-purple-200'}`}>
-                                    {fornecedor.registration_status === 'invited' || fornecedor.registration_status === 'completed' || fornecedor.registration_status === 'approved' ? 'Cadastro Directo' : 'Via Link Externo'}
+                                <span className={`px-3 py-1 rounded-full text-xs font-bold border ${fornecedor.registration_status !== 'invited' ? 'bg-orange-50 text-orange-700 border-orange-200' : 'bg-purple-50 text-purple-700 border-purple-200'}`}>
+                                    {fornecedor.registration_status !== 'invited' ? 'Cadastro Directo' : 'Cadastro Externo'}
                                 </span>
                             </div>
-                            <p className="text-gray-500 font-medium">{fornecedor.legal_name}</p>
                             <div className="flex items-center gap-4 mt-2 text-sm text-gray-500">
                                 <span className="flex items-center gap-1.5">
                                     <Building2 size={14} />
@@ -157,7 +156,7 @@ export default function ModalDetalhesFornecedor({
                     <div className="flex items-center gap-3">
                         <div className="text-right mr-4">
                             <p className="text-xs text-gray-400 uppercase tracking-wider font-bold">ID do Fornecedor</p>
-                            <p className="text-xl font-mono font-bold text-gray-900">#{String(fornecedor.id).padStart(4, '0')}</p>
+                            <p className="text-xl font-mono font-bold text-gray-900">#{fornecedor.id}</p>
                         </div>
                         <button
                             onClick={onClose}
@@ -275,12 +274,22 @@ export default function ModalDetalhesFornecedor({
                                         />
                                     )}
 
-                                    {(fornecedor.non_debtor_certificate || fornecedor.non_debtor_certificate_url) && (
+                                    {(fornecedor.agt_certificate || fornecedor.agt_certificate_url) && (
                                         <DocumentItem
-                                            type="non_debtor_certificate"
-                                            label="Certificado de Não Devedor"
+                                            type="agt_certificate"
+                                            label="Certificado de Não devedor AGT"
                                             subLabel="Documento PDF/Imagem"
                                             iconColorClass="bg-emerald-50 text-emerald-600"
+                                            icon={FileText}
+                                        />
+                                    )}
+
+                                    {(fornecedor.inss_certificate || fornecedor.inss_certificate_url) && (
+                                        <DocumentItem
+                                            type="inss_certificate"
+                                            label="Certificado de Não devedor INSS"
+                                            subLabel="Documento PDF/Imagem"
+                                            iconColorClass="bg-teal-50 text-teal-600"
                                             icon={FileText}
                                         />
                                     )}
@@ -330,7 +339,8 @@ export default function ModalDetalhesFornecedor({
 
                                     {!(fornecedor.commercial_certificate || fornecedor.commercial_certificate_url) &&
                                         !(fornecedor.pacto_social || fornecedor.pacto_social_url) &&
-                                        !(fornecedor.non_debtor_certificate || fornecedor.non_debtor_certificate_url) &&
+                                        !(fornecedor.agt_certificate || fornecedor.agt_certificate_url) &&
+                                        !(fornecedor.inss_certificate || fornecedor.inss_certificate_url) &&
                                         !(fornecedor.nif_proof || fornecedor.nif_proof_url) &&
                                         !(fornecedor.products_list || fornecedor.products_list_url) &&
                                         !(fornecedor.commercial_license || fornecedor.commercial_license_url) && (

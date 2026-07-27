@@ -91,9 +91,12 @@ export default function AquisicoesPage() {
             pending_review: { label: 'Pendente', class: 'bg-yellow-50 text-yellow-700 border-yellow-100' },
             approved: { label: 'Aprovada', class: 'bg-emerald-50 text-emerald-700 border-emerald-100' },
             rejected: { label: 'Rejeitada', class: 'bg-red-50 text-red-700 border-red-100' },
-            revision_requested: { label: 'Revisão', class: 'bg-blue-50 text-blue-700 border-blue-100' },
+            revision_requested: { label: 'Revisão', class: 'bg-purple-50 text-purple-700 border-purple-100' },
+            open: { label: 'Em Curso', class: 'bg-blue-50 text-blue-700 border-blue-100' },
+            published: { label: 'Publicado', class: 'bg-blue-50 text-blue-700 border-blue-100' },
+            sent: { label: 'Enviado', class: 'bg-blue-50 text-blue-700 border-blue-100' },
         };
-        const config = statusConfig[status] || { label: status, class: 'bg-gray-50 text-gray-700 border-gray-100' };
+        const config = statusConfig[status] || { label: status || 'Desconhecido', class: 'bg-gray-50 text-gray-700 border-gray-100' };
         return (
             <span className={`px-3 py-1.5 rounded-lg text-xs font-bold border ${config.class}`}>
                 {config.label}
@@ -114,7 +117,7 @@ export default function AquisicoesPage() {
         // ... (existing filter code)
         const matchSearch = resp.id.toString().includes(searchTerm) ||
             (resp.supplier?.commercial_name || "").toLowerCase().includes(searchTerm.toLowerCase()) ||
-            (resp.reference_number || "").toLowerCase().includes(searchTerm.toLowerCase());
+            (resp.activity_description || resp.reference_number || "").toLowerCase().includes(searchTerm.toLowerCase());
             
         const matchSupplier = filterSupplier === "" || (resp.supplier?.commercial_name || "").toLowerCase().includes(filterSupplier.toLowerCase());
         const matchDeliveryDate = filterDeliveryDate === "" || (resp.expected_delivery_date && resp.expected_delivery_date.startsWith(filterDeliveryDate));
@@ -126,7 +129,7 @@ export default function AquisicoesPage() {
     const filteredAtividades = atividades.filter(act => {
         const matchSearch = act.id.toString().includes(searchTerm) ||
             (act.title || "").toLowerCase().includes(searchTerm.toLowerCase()) ||
-            (act.reference_number || "").toLowerCase().includes(searchTerm.toLowerCase());
+            (act.activity_description || act.reference_number || "").toLowerCase().includes(searchTerm.toLowerCase());
         
         const matchStatus = filterStatus === "" || act.status === filterStatus;
         return matchSearch && matchStatus;
@@ -337,10 +340,19 @@ export default function AquisicoesPage() {
                     </span>
                 </button>
                 <button
+                    onClick={() => setActiveTab('aquisicoes')}
+                    className={`px-6 py-3 font-semibold text-sm transition-all flex items-center gap-2 ${activeTab === 'aquisicoes' ? 'text-[#44B16F] border-b-2 border-[#44B16F]' : 'text-gray-500 hover:text-gray-800'}`}
+                >
+                    Atividades em Curso
+                    <span className={`px-2 py-0.5 rounded-full text-xs font-bold ${activeTab === 'aquisicoes' ? 'bg-[#44B16F]/10 text-[#44B16F]' : 'bg-gray-100 text-gray-500'}`}>
+                        {atividades.filter(a => ['sent', 'draft', 'pending', 'pending_review', 'open', 'published', 'active', 'in_progress'].includes(a.status)).length}
+                    </span>
+                </button>
+                <button
                     onClick={() => setActiveTab('concluidas')}
                     className={`px-6 py-3 font-semibold text-sm transition-all flex items-center gap-2 ${activeTab === 'concluidas' ? 'text-[#44B16F] border-b-2 border-[#44B16F]' : 'text-gray-500 hover:text-gray-800'}`}
                 >
-                    Ativ. Concluídas
+                    Atividades Concluídas
                     <span className={`px-2 py-0.5 rounded-full text-xs font-bold ${activeTab === 'concluidas' ? 'bg-[#44B16F]/10 text-[#44B16F]' : 'bg-gray-100 text-gray-500'}`}>
                         {atividades.filter(a => a.status === 'completed' || a.status === 'approved').length}
                     </span>
@@ -349,18 +361,9 @@ export default function AquisicoesPage() {
                     onClick={() => setActiveTab('canceladas')}
                     className={`px-6 py-3 font-semibold text-sm transition-all flex items-center gap-2 ${activeTab === 'canceladas' ? 'text-red-500 border-b-2 border-red-400' : 'text-gray-500 hover:text-gray-800'}`}
                 >
-                    Ativ. Canceladas
+                    Atividades Canceladas
                     <span className={`px-2 py-0.5 rounded-full text-xs font-bold ${activeTab === 'canceladas' ? 'bg-red-50 text-red-500' : 'bg-gray-100 text-gray-500'}`}>
                         {atividades.filter(a => a.status === 'cancelled').length}
-                    </span>
-                </button>
-                <button
-                    onClick={() => setActiveTab('aquisicoes')}
-                    className={`px-6 py-3 font-semibold text-sm transition-all flex items-center gap-2 ${activeTab === 'aquisicoes' ? 'text-[#44B16F] border-b-2 border-[#44B16F]' : 'text-gray-500 hover:text-gray-800'}`}
-                >
-                    Aquisições Confirmadas
-                    <span className={`px-2 py-0.5 rounded-full text-xs font-bold ${activeTab === 'aquisicoes' ? 'bg-[#44B16F]/10 text-[#44B16F]' : 'bg-gray-100 text-gray-500'}`}>
-                        {responses.length}
                     </span>
                 </button>
             </div>
@@ -462,10 +465,12 @@ export default function AquisicoesPage() {
                                 <tr>
                                     <td colSpan="6" className="px-6 py-12 text-center text-red-500 font-bold">{error}</td>
                                 </tr>
-                            ) : activeTab !== 'aquisicoes' ? (
+                            ) : (
                                 (() => {
                                     const tabAtividades = activeTab === 'atividades'
                                         ? filteredAtividades
+                                        : activeTab === 'aquisicoes'
+                                        ? filteredAtividades.filter(a => ['sent', 'draft', 'pending', 'pending_review', 'open', 'published', 'active', 'in_progress'].includes(a.status))
                                         : activeTab === 'concluidas'
                                         ? filteredAtividades.filter(a => a.status === 'completed' || a.status === 'approved')
                                         : filteredAtividades.filter(a => a.status === 'cancelled');
@@ -481,7 +486,7 @@ export default function AquisicoesPage() {
                                                 <td className="px-6 py-6 text-sm font-bold" style={{ color: 'var(--color-text-primary)' }}>#{act.id}</td>
                                                 <td className="px-6 py-6 font-bold text-sm" style={{ color: 'var(--color-text-primary)' }}>
                                                     {act.title}
-                                                    {act.reference_number && <div className="text-xs font-normal" style={{ color: 'var(--color-text-secondary)' }}>Ref: {act.reference_number}</div>}
+                                                    {(act.activity_description || act.reference_number) && <div className="text-xs font-normal" style={{ color: 'var(--color-text-secondary)' }}>Ref: {act.activity_description || act.reference_number}</div>}
                                                 </td>
                                                 <td className="px-6 py-6">
                                                     {(() => {
@@ -558,58 +563,6 @@ export default function AquisicoesPage() {
                                         ))
                                     );
                                 })()
-                            ) : (
-                                filteredResponses.length === 0 ? (
-                                    <tr>
-                                        <td colSpan="6" className="px-6 py-12 text-center text-gray-400 font-bold uppercase tracking-widest text-[10px]">
-                                            Nenhuma aquisição encontrada
-                                        </td>
-                                    </tr>
-                                ) : (
-                                    filteredResponses.map((resp) => (
-                                        <tr key={resp.id} className="transition-colors group" onMouseEnter={e => e.currentTarget.style.background = 'var(--color-bg)'} onMouseLeave={e => e.currentTarget.style.background = 'transparent'} style={{ borderBottom: '1px solid var(--color-border-light)' }}>
-                                            <td className="px-6 py-6 text-sm font-bold" style={{ color: 'var(--color-text-primary)' }}>#{resp.id}</td>
-                                            <td className="px-6 py-6 font-bold text-sm" style={{ color: 'var(--color-text-primary)' }}>
-                                                Cotação #{resp.quotation_request_id || resp.quotation_response_id}
-                                            </td>
-                                            <td className="px-6 py-6">
-                                                <span className="text-sm font-semibold" style={{ color: 'var(--color-text-secondary)' }}>
-                                                    {resp.supplier?.commercial_name || resp.supplier?.legal_name || "N/A"}
-                                                </span>
-                                            </td>
-                                            <td className="px-6 py-6 text-sm font-medium" style={{ color: 'var(--color-text-secondary)' }}>
-                                                {formatDate(resp.expected_delivery_date)}
-                                            </td>
-                                            <td className="px-6 py-6">
-                                                {getStatusBadge(resp.status)}
-                                            </td>
-                                            <td className="px-6 py-6 font-medium">
-                                                <div className="flex items-center justify-center gap-2">
-                                                    <button
-                                                        onClick={() => handleOpenDetails(resp)}
-                                                        className="p-2 text-emerald-600 rounded-lg transition-all"
-                                                        title="Ver Detalhes"
-                                                        onMouseEnter={e => e.currentTarget.style.background = 'var(--color-bg)'}
-                                                        onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
-                                                    >
-                                                        <Eye size={18} />
-                                                    </button>
-                                                    {resp.status !== 'completed' && (
-                                                        <button
-                                                            onClick={() => handleConfirmDelivery(resp)}
-                                                            className="p-2 text-blue-600 rounded-lg transition-all"
-                                                            title="Confirmar Entrega"
-                                                            onMouseEnter={e => e.currentTarget.style.background = 'var(--color-bg)'}
-                                                            onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
-                                                        >
-                                                            <Truck size={18} />
-                                                        </button>
-                                                    )}
-                                                </div>
-                                            </td>
-                                        </tr>
-                                    ))
-                                )
                             )}
                         </tbody>
                     </table>

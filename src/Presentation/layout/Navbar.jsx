@@ -12,7 +12,7 @@ const PAGE_TITLES = {
   dashboard:    "Dashboard",
   fornecedores: "Fornecedores",
   cotacoes:     "Cotações",
-  usuarios:     "Usuários",
+  usuarios:     "Gestão de utilizadores",
   relatorios:   "Relatórios",
   aquisicoes:   "Aquisições",
   categorias:   "Categorias",
@@ -172,8 +172,7 @@ function Navbar({ userName: propUserName, userRole: propUserRole, userAvatar: pr
     };
   };
 
-  const pageTitle = PAGE_TITLES[activeItem] || "Dashboard";
-  const pageSubtitle = PAGE_SUBTITLES[activeItem] || "";
+
 
   return (
     <>
@@ -205,8 +204,8 @@ function Navbar({ userName: propUserName, userRole: propUserRole, userAvatar: pr
             </span>
           </button>
 
-          {/* Admin Approvals (Ocultado temporariamente) */}
-          {false && isAdmin && (
+          {/* Admin Approvals (Ocultado temporariamente) 
+          {isAdmin && (
             <button
               onClick={() => {
                 setIsAprovacoesModalOpen(true);
@@ -229,6 +228,7 @@ function Navbar({ userName: propUserName, userRole: propUserRole, userAvatar: pr
               )}
             </button>
           )}
+          */}
 
           {/* Notifications */}
           <div className="relative" ref={notificationsRef}>
