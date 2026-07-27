@@ -241,6 +241,7 @@ export default function FornecedorFormWrapper() {
       data.append("province", formData.province);
       data.append("municipality", formData.municipality);
       data.append("address", formData.address);
+      data.append("activity_type", ""); // Send as empty string so backend sets it to null
 
       // Append document files only if they exist
       if (formData.pacto_social) {
@@ -270,12 +271,16 @@ export default function FornecedorFormWrapper() {
         });
       }
 
-      // Append categories as array
-      formData.categories.forEach((id) => {
-        data.append("categories[]", id);
+      // Append categories as array (Laravel compatible format)
+      formData.categories.forEach((id, index) => {
+        data.append(`categories[${index}]`, id);
       });
 
-      console.log("Submitting formData...");
+      // Debug: log the FormData keys being sent
+      console.log("Submitting FormData with keys:");
+      for (let [key, value] of data.entries()) {
+        console.log(` ${key}:`, value instanceof File ? `[File: ${value.name}]` : value);
+      }
 
       if (editingFornecedor) {
         data.append("_method", "PUT");
@@ -287,15 +292,30 @@ export default function FornecedorFormWrapper() {
       setCurrentStep(4);
     } catch (err) {
       console.error("Error submitting form:", err);
-      const apiErrors = err.response?.data?.errors;
-      if (apiErrors) {
-        setErrors(apiErrors);
+      console.error("Response status:", err.response?.status);
+      console.error("Response data:", JSON.stringify(err.response?.data, null, 2));
+
+      const status = err.response?.status;
+      const responseData = err.response?.data;
+
+      if (responseData?.errors) {
+        // Validation errors (Laravel 422)
+        setErrors(responseData.errors);
         setToast({
           type: "error",
-          message: err.response?.data?.message || "Erro de validação nos campos."
+          message: responseData.message || "Erro de validação nos campos."
         });
+      } else if (responseData?.message) {
+        // API returned a message but no field errors
+        setToast({
+          type: "error",
+          message: `Erro ${status || ''}: ${responseData.message}`
+        });
+      } else if (!err.response) {
+        // Network error (no response at all)
+        setToast({ type: "error", message: "Sem resposta do servidor. Verifique a sua ligação à internet." });
       } else {
-        setToast({ type: "error", message: "Erro de conexão ou servidor. Tente novamente." });
+        setToast({ type: "error", message: `Erro ${status || 'desconhecido'} do servidor. Contacte o suporte.` });
       }
     } finally {
       setIsLoading(false);

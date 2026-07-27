@@ -74,9 +74,11 @@ export const suppliersAPI = {
         return response.data;
     },
     create: async (supplierData) => {
+        // When sending FormData, do NOT set Content-Type manually.
+        // Axios will auto-detect FormData and set the correct multipart/form-data boundary.
         const response = await api.post('/suppliers', supplierData, {
             headers: {
-                'Content-Type': 'multipart/form-data',
+                'Content-Type': undefined, // Let axios set it with the proper boundary
             },
         });
         return response.data;
@@ -87,9 +89,10 @@ export const suppliersAPI = {
     },
     updateMultipart: async (id, supplierData) => {
         // For file uploads in PUT, we must use POST with _method=PUT (Laravel/PHP convention)
+        // Do NOT set Content-Type manually — axios auto-detects FormData and sets boundary.
         const response = await api.post(`/suppliers/${id}`, supplierData, {
             headers: {
-                'Content-Type': 'multipart/form-data',
+                'Content-Type': undefined,
             },
         });
         return response.data;

@@ -4,7 +4,6 @@ import { suppliersAPI } from "../../services/api";
 
 export default function ModalLinkExterno({ isOpen, onClose, onSuccess }) {
     const [email, setEmail] = useState("");
-    const [activityType, setActivityType] = useState("service");
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [error, setError] = useState(null);
     const [success, setSuccess] = useState(false);
@@ -30,7 +29,7 @@ export default function ModalLinkExterno({ isOpen, onClose, onSuccess }) {
         try {
             await suppliersAPI.invite({
                 email: email.trim(),
-                activity_type: activityType
+                activity_type: null
             });
 
             setSuccess(true);
@@ -51,7 +50,6 @@ export default function ModalLinkExterno({ isOpen, onClose, onSuccess }) {
 
     const handleClose = () => {
         setEmail("");
-        setActivityType("service");
         setError(null);
         setSuccess(false);
         setIsSubmitting(false);
