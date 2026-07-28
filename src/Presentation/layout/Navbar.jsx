@@ -77,8 +77,9 @@ function Navbar({ userName: propUserName, userRole: propUserRole, userAvatar: pr
     if (!isAdmin) return;
     const fetchPendingCount = async () => {
       try {
-        const data = await pendingDeletionsAPI.getAll();
-        setPendingApprovalsCount(Array.isArray(data) ? data.length : 0);
+        const response = await pendingDeletionsAPI.getAll();
+        const data = response?.data || response || [];
+        setPendingApprovalsCount(response?.total !== undefined ? response.total : (Array.isArray(data) ? data.length : 0));
       } catch (e) {
         // ignore
       }
@@ -162,13 +163,83 @@ function Navbar({ userName: propUserName, userRole: propUserRole, userAvatar: pr
         const date = new Date(notification.created_at);
         if (!isNaN(date.getTime())) timeDisplay = date.toLocaleString('pt-AO');
       }
-    } catch (e) {
-      // ignore
+    } catch (e) {}
+
+    const rawType = notification.type || sv.type || '';
+    const type = (rawType || '').toLowerCase();
+
+    const techName = sv.technician_name || sv.technicianName || sv.user?.name || sv.user_name || sv.requested_by || sv.requested_by_name || sv.nome || sv.name || 'Técnico';
+
+    // Detect deletion request notifications
+    const isDeletionRequest =
+      type === 'deletion_request' ||
+      rawType.includes('DeletionRequest') ||
+      type.includes('deletion') ||
+      type.includes('elimina') ||
+      sv.deletion_request_id ||
+      (sv.technician_name && sv.item_name);
+
+    if (isDeletionRequest) {
+      const itemName = sv.item_name || sv.itemName || sv.deletable?.company_name || sv.deletable?.commercial_name || sv.deletable?.title || sv.deletable?.name || 'Item';
+      const isSupplier =
+        (sv.deletable_type && (sv.deletable_type.includes('Supplier') || sv.deletable_type === 'supplier')) ||
+        (sv.item_type && (sv.item_type.includes('Supplier') || sv.item_type === 'supplier')) ||
+        type.includes('supplier');
+      const itemType = isSupplier ? 'Fornecedor' : 'Pedido de Cotação';
+      const reason = sv.reason || '';
+
+      return {
+        title: `Pedido de Eliminação — ${itemType}`,
+        message: `${techName} solicitou a eliminação do ${itemType.toLowerCase()} "${itemName}"${reason ? ` — Motivo: ${reason}` : ''}`,
+        timeDisplay,
+        isDeletionRequest: true,
+      };
     }
+
+    // Detect quotation request notifications (not deletion-related)
+    const isQuotationRequest =
+      type === 'quotation_request' ||
+      rawType.includes('QuotationRequest') ||
+      type.includes('quotation') ||
+      type.includes('cotação') ||
+      type.includes('cotacao') ||
+      (techName !== 'Técnico' && (sv.quotation_id || sv.quotation_request_id));
+
+    if (isQuotationRequest) {
+      const assunto = sv.assunto || sv.subject || sv.title || sv.activity_name || sv.item_name || sv.activity_description || 'Pedido de Cotação';
+      return {
+        title: `Pedido de Cotação`,
+        message: `${techName} criou um novo pedido de cotação: "${assunto}"`,
+        timeDisplay,
+        isDeletionRequest: false,
+      };
+    }
+
+    // Detect activity/atividade notifications
+    const isActivity =
+      type === 'activity' ||
+      type === 'atividade' ||
+      rawType.includes('Activity') ||
+      rawType.includes('Atividade') ||
+      type.includes('activity') ||
+      type.includes('atividade') ||
+      (techName !== 'Técnico' && (sv.activity_name || sv.activity_id));
+
+    if (isActivity) {
+      const activityName = sv.activity_name || sv.title || sv.item_name || sv.name || 'Actividade';
+      return {
+        title: `Nova Actividade`,
+        message: `${techName} registou uma nova actividade: "${activityName}"`,
+        timeDisplay,
+        isDeletionRequest: false,
+      };
+    }
+
     return {
       title: notification.title || sv.title || "Notificação",
       message: notification.message || sv.message || sv.description || "Nova notificação",
-      timeDisplay
+      timeDisplay,
+      isDeletionRequest: false,
     };
   };
 
@@ -204,7 +275,7 @@ function Navbar({ userName: propUserName, userRole: propUserRole, userAvatar: pr
             </span>
           </button>
 
-          {/* Admin Approvals (Ocultado temporariamente) 
+          {/* Admin Approvals */}
           {isAdmin && (
             <button
               onClick={() => {
@@ -228,7 +299,6 @@ function Navbar({ userName: propUserName, userRole: propUserRole, userAvatar: pr
               )}
             </button>
           )}
-          */}
 
           {/* Notifications */}
           <div className="relative" ref={notificationsRef}>
@@ -295,29 +365,39 @@ function Navbar({ userName: propUserName, userRole: propUserRole, userAvatar: pr
                       {notifications.map((notification) => {
                         const content = getNotificationContent(notification);
                         const isRead = !!notification.read_at;
+                        const unreadBg = content.isDeletionRequest ? 'rgba(249,115,22,0.06)' : 'rgba(68,177,111,0.04)';
+                        const dotColor = content.isDeletionRequest ? '#F97316' : 'var(--color-primary)';
                         return (
                           <div
                             key={notification.id}
                             className="group relative flex items-start gap-3 px-4 py-3 cursor-pointer transition-colors border-b"
                             style={{
                               borderColor: 'var(--color-border-light)',
-                              background: !isRead ? 'rgba(68,177,111,0.04)' : 'transparent',
+                              background: !isRead ? unreadBg : 'transparent',
+                              borderLeft: content.isDeletionRequest ? '3px solid #F97316' : '3px solid transparent',
                             }}
                             onMouseEnter={e => e.currentTarget.style.background = 'var(--color-bg)'}
-                            onMouseLeave={e => e.currentTarget.style.background = !isRead ? 'rgba(68,177,111,0.04)' : 'transparent'}
+                            onMouseLeave={e => e.currentTarget.style.background = !isRead ? unreadBg : 'transparent'}
                             onClick={() => handleNotificationClick(notification)}
                           >
                             <div
                               className="mt-1.5 w-2 h-2 rounded-full flex-shrink-0"
-                              style={{ background: !isRead ? 'var(--color-primary)' : 'transparent' }}
+                              style={{ background: !isRead ? dotColor : 'transparent' }}
                             />
                             <div className="flex-1 min-w-0">
-                              <p
-                                className="text-sm line-clamp-1"
-                                style={{ fontWeight: !isRead ? 600 : 500, color: 'var(--color-text-primary)' }}
-                              >
-                                {content.title}
-                              </p>
+                              <div className="flex items-center gap-2">
+                                <p
+                                  className="text-sm line-clamp-1"
+                                  style={{ fontWeight: !isRead ? 600 : 500, color: content.isDeletionRequest ? '#EA580C' : 'var(--color-text-primary)' }}
+                                >
+                                  {content.title}
+                                </p>
+                                {content.isDeletionRequest && (
+                                  <span className="flex-shrink-0 text-[9px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded bg-orange-50 text-orange-600 border border-orange-200">
+                                    Exclusão
+                                  </span>
+                                )}
+                              </div>
                               <p className="text-xs mt-0.5 line-clamp-2" style={{ color: 'var(--color-text-secondary)' }}>
                                 {content.message}
                               </p>

@@ -1,59 +1,204 @@
 import { useModalLock } from '../../hooks/useModalLock';
 import React from 'react';
-import { X, Bell, Calendar, Trash2 } from 'lucide-react';
+import { X, Bell, Calendar, Trash2, User, FileText, AlertTriangle, Activity } from 'lucide-react';
 
 export default function ModalDetalhesNotificacao({ isOpen, onClose, notification, onDelete }) {
     useModalLock(isOpen);
     if (!isOpen || !notification) return null;
 
-    // Helper para extrair dados da notificação
     const getContent = () => {
-        // The API response has top-level fields for title and message, 
-        // but sometimes they might be inside 'data' depending on notification type or Laravel structure.
-        // We check both levels.
         const sv = notification.data || {};
 
-        // Title priority: top-level > data.title > Default
-        const title = notification.title || sv.title || "Notificação";
+        const rawType = notification.type || sv.type || '';
+        const type = (rawType || '').toLowerCase();
 
-        // Message priority: top-level > data.message > data.description > Default
-        const message = notification.message || sv.message || sv.description || "Sem conteúdo";
+        const techName = sv.technician_name || sv.technicianName || sv.user?.name || sv.user_name || sv.requested_by || sv.requested_by_name || sv.nome || sv.name || 'Técnico';
+
+        const isDeletionRequest =
+            type === 'deletion_request' ||
+            rawType.includes('DeletionRequest') ||
+            type.includes('deletion') ||
+            type.includes('elimina') ||
+            sv.deletion_request_id ||
+            (sv.technician_name && sv.item_name);
+
+        const isQuotationRequest = !isDeletionRequest && (
+            type === 'quotation_request' ||
+            rawType.includes('QuotationRequest') ||
+            type.includes('quotation') ||
+            type.includes('cotação') ||
+            type.includes('cotacao') ||
+            (techName !== 'Técnico' && (sv.quotation_id || sv.quotation_request_id))
+        );
+
+        const isActivity = !isDeletionRequest && !isQuotationRequest && (
+            type === 'activity' ||
+            type === 'atividade' ||
+            rawType.includes('Activity') ||
+            rawType.includes('Atividade') ||
+            type.includes('activity') ||
+            type.includes('atividade') ||
+            (techName !== 'Técnico' && (sv.activity_name || sv.activity_id || sv.title))
+        );
 
         let timeDisplay = 'Data desconhecida';
         try {
             if (notification.created_at) {
                 const date = new Date(notification.created_at);
-                if (!isNaN(date.getTime())) {
-                    timeDisplay = date.toLocaleString('pt-AO');
-                }
+                if (!isNaN(date.getTime())) timeDisplay = date.toLocaleString('pt-AO');
             }
-        } catch (e) { 
-            console.warn('Erro ao processar data da notificação', e);
-        }
+        } catch (e) {}
 
-        return {
-            title,
-            message,
-            timeDisplay,
-            type: notification.type,
-            // Extra data for potential future use (e.g. navigation links)
-            meta: sv
-        };
+        return { sv, techName, isDeletionRequest, isQuotationRequest, isActivity, timeDisplay, rawType };
     };
 
-    const content = getContent();
+    const { sv, techName, isDeletionRequest, isQuotationRequest, isActivity, timeDisplay, rawType } = getContent();
+
+    const renderContent = () => {
+        if (isDeletionRequest) {
+            const itemName = sv.item_name || sv.itemName || sv.deletable?.company_name || sv.deletable?.commercial_name || sv.deletable?.title || sv.deletable?.name || 'Item';
+            const isSupplier =
+                (sv.deletable_type && (sv.deletable_type.includes('Supplier') || sv.deletable_type === 'supplier')) ||
+                (sv.item_type && (sv.item_type.includes('Supplier') || sv.item_type === 'supplier'));
+            const itemType = isSupplier ? 'Fornecedor' : 'Pedido de Cotação';
+            const reason = sv.reason || '';
+
+            return (
+                <>
+                    <div className="flex items-center gap-3 mb-6">
+                        <div className="p-2.5 rounded-xl text-orange-600" style={{ background: 'rgba(249,115,22,0.1)' }}>
+                            <AlertTriangle size={22} />
+                        </div>
+                        <div>
+                            <h4 className="text-xl font-bold text-gray-900">Pedido de Eliminação — {itemType}</h4>
+                            <span className="inline-flex items-center text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded mt-1 text-orange-600 bg-orange-50 border border-orange-200">
+                                Exclusão
+                            </span>
+                        </div>
+                    </div>
+
+                    <div className="space-y-4">
+                        <div className="flex items-start gap-3 p-4 rounded-xl bg-gray-50 border border-gray-100">
+                            <User size={18} className="text-gray-400 mt-0.5 flex-shrink-0" />
+                            <div>
+                                <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Solicitado por</p>
+                                <p className="text-sm font-bold text-gray-900 mt-0.5">{techName}</p>
+                            </div>
+                        </div>
+
+                        <div className="flex items-start gap-3 p-4 rounded-xl bg-gray-50 border border-gray-100">
+                            <FileText size={18} className="text-gray-400 mt-0.5 flex-shrink-0" />
+                            <div>
+                                <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Item a eliminar</p>
+                                <p className="text-sm font-bold text-gray-900 mt-0.5">{itemName}</p>
+                                <span className={`inline-block text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded mt-1 ${isSupplier ? 'text-blue-600 bg-blue-50' : 'text-purple-600 bg-purple-50'}`}>
+                                    {itemType}
+                                </span>
+                            </div>
+                        </div>
+
+                        {reason && (
+                            <div className="p-4 rounded-xl bg-red-50 border border-red-100">
+                                <p className="text-xs font-semibold text-red-500 uppercase tracking-wider mb-1">Motivo</p>
+                                <p className="text-sm text-gray-700 whitespace-pre-wrap">{reason}</p>
+                            </div>
+                        )}
+                    </div>
+                </>
+            );
+        }
+
+        if (isQuotationRequest) {
+            const assunto = sv.assunto || sv.subject || sv.title || sv.activity_name || sv.item_name || sv.activity_description || 'Pedido de Cotação';
+
+            return (
+                <>
+                    <div className="flex items-center gap-3 mb-6">
+                        <div className="p-2.5 rounded-xl text-blue-600" style={{ background: 'rgba(59,130,246,0.1)' }}>
+                            <FileText size={22} />
+                        </div>
+                        <div>
+                            <h4 className="text-xl font-bold text-gray-900">Pedido de Cotação</h4>
+                            <span className="inline-flex items-center text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded mt-1 text-blue-600 bg-blue-50 border border-blue-200">
+                                Cotação
+                            </span>
+                        </div>
+                    </div>
+
+                    <div className="space-y-4">
+                        <div className="flex items-start gap-3 p-4 rounded-xl bg-gray-50 border border-gray-100">
+                            <User size={18} className="text-gray-400 mt-0.5 flex-shrink-0" />
+                            <div>
+                                <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Solicitado por</p>
+                                <p className="text-sm font-bold text-gray-900 mt-0.5">{techName}</p>
+                            </div>
+                        </div>
+
+                        <div className="flex items-start gap-3 p-4 rounded-xl bg-gray-50 border border-gray-100">
+                            <FileText size={18} className="text-gray-400 mt-0.5 flex-shrink-0" />
+                            <div>
+                                <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Assunto</p>
+                                <p className="text-sm font-bold text-gray-900 mt-0.5">{assunto}</p>
+                            </div>
+                        </div>
+                    </div>
+                </>
+            );
+        }
+
+        if (isActivity) {
+            const activityName = sv.activity_name || sv.title || sv.item_name || sv.name || 'Actividade';
+
+            return (
+                <>
+                    <div className="flex items-center gap-3 mb-6">
+                        <div className="p-2.5 rounded-xl text-emerald-600" style={{ background: 'rgba(16,185,129,0.1)' }}>
+                            <Activity size={22} />
+                        </div>
+                        <div>
+                            <h4 className="text-xl font-bold text-gray-900">Nova Actividade</h4>
+                            <span className="inline-flex items-center text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded mt-1 text-emerald-600 bg-emerald-50 border border-emerald-200">
+                                Actividade
+                            </span>
+                        </div>
+                    </div>
+
+                    <div className="space-y-4">
+                        <div className="flex items-start gap-3 p-4 rounded-xl bg-gray-50 border border-gray-100">
+                            <User size={18} className="text-gray-400 mt-0.5 flex-shrink-0" />
+                            <div>
+                                <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Registado por</p>
+                                <p className="text-sm font-bold text-gray-900 mt-0.5">{techName}</p>
+                            </div>
+                        </div>
+
+                        <div className="flex items-start gap-3 p-4 rounded-xl bg-gray-50 border border-gray-100">
+                            <Activity size={18} className="text-gray-400 mt-0.5 flex-shrink-0" />
+                            <div>
+                                <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Descrição</p>
+                                <p className="text-sm font-bold text-gray-900 mt-0.5">{activityName}</p>
+                            </div>
+                        </div>
+                    </div>
+                </>
+            );
+        }
+
+        return (
+            <>
+                <h4 className="text-xl font-bold text-gray-900 mb-4">{notification.title || sv.title || "Notificação"}</h4>
+                <div className="prose prose-sm max-w-none text-gray-600 bg-gray-50 p-4 rounded-xl border border-gray-100">
+                    <p className="whitespace-pre-wrap">{notification.message || sv.message || sv.description || "Sem conteúdo"}</p>
+                </div>
+            </>
+        );
+    };
 
     return (
         <div className="fixed inset-0 z-[60] flex items-center justify-center">
-            {/* Backdrop */}
-            <div
-                className="absolute inset-0 bg-black/50 backdrop-blur-sm"
-                onClick={onClose}
-            />
+            <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={onClose} />
 
-            {/* Modal */}
             <div className="relative bg-white rounded-2xl shadow-2xl w-full max-w-lg mx-4 animate-fadeIn flex flex-col overflow-hidden">
-                {/* Header */}
                 <div className="px-6 py-4 border-b border-gray-100 bg-gray-50/50 flex items-center justify-between">
                     <div className="flex items-center gap-3">
                         <div className="bg-blue-50 p-2 rounded-lg text-blue-600">
@@ -69,21 +214,15 @@ export default function ModalDetalhesNotificacao({ isOpen, onClose, notification
                     </button>
                 </div>
 
-                {/* Content */}
                 <div className="p-6 overflow-y-auto max-h-[60vh]">
-                    <h4 className="text-xl font-bold text-gray-900 mb-4">{content.title}</h4>
-
-                    <div className="prose prose-sm max-w-none text-gray-600 bg-gray-50 p-4 rounded-xl border border-gray-100">
-                        <p className="whitespace-pre-wrap">{content.message}</p>
-                    </div>
+                    {renderContent()}
 
                     <div className="mt-6 flex items-center gap-2 text-sm text-gray-500">
                         <Calendar size={14} />
-                        <span>Recebida em: {content.timeDisplay}</span>
+                        <span>Recebida em: {timeDisplay}</span>
                     </div>
                 </div>
 
-                {/* Footer */}
                 <div className="px-6 py-4 border-t border-gray-100 bg-gray-50/50 flex justify-between items-center">
                     <button
                         onClick={() => {

@@ -14,7 +14,7 @@ export default function DashboardLayout() {
   // Update activeItem based on URL
   useEffect(() => {
     const path = location.pathname.split("/")[1];
-    const validPaths = ["dashboard", "fornecedores", "usuarios", "criar-utilizador", "permissoes", "relatorios", "aquisicoes", "meu-perfil", "produtos", "logs-eventos"];
+    const validPaths = ["dashboard", "fornecedores", "usuarios", "criar-utilizador", "permissoes", "relatorios", "aquisicoes", "meu-perfil", "produtos", "logs-eventos", "config"];
     if (path && validPaths.includes(path)) {
       setActiveItem(path);
     }
@@ -24,10 +24,24 @@ export default function DashboardLayout() {
     navigate(`/${id}`);
   };
 
-  const { user, userRoleName, hasPermission: checkPermission } = useAuth();
+  const { user, userRoleName, hasPermission: checkPermission, isAdmin } = useAuth();
 
   const userName = user?.name || user?.nome || "Utilizador";
   const userAvatar = `https://api.dicebear.com/7.x/initials/svg?seed=${encodeURIComponent(userName)}&backgroundColor=44B16F&textColor=ffffff`;
+
+  // Verifica permissão usando a API quando disponível (mesmo critério que a sidebar)
+  const canAccessPage = (permission) => {
+    if (isAdmin) return true;
+    if (!permission) return false;
+    if (user?.apiPermissions?.permissionsMap) {
+      const map = user.apiPermissions.permissionsMap;
+      if (Object.keys(map).length > 0) {
+        const perm = map[permission];
+        return !!(perm && perm.access !== false);
+      }
+    }
+    return checkPermission(permission);
+  };
 
   // Permission check redirect
   useEffect(() => {
@@ -40,12 +54,14 @@ export default function DashboardLayout() {
       relatorios:   PERMISSIONS.RELATORIOS,
       aquisicoes:   PERMISSIONS.AQUISICOES,
       produtos:     PERMISSIONS.PRODUTOS,
+      config:       PERMISSIONS.CONFIGURACOES,
+      "logs-eventos": PERMISSIONS.AUDITORIA,
     };
     const requiredPermission = permissionMap[activeItem];
-    if (requiredPermission && !checkPermission(requiredPermission)) {
+    if (requiredPermission && !canAccessPage(requiredPermission)) {
       setActiveItem("dashboard");
     }
-  }, [activeItem, checkPermission]);
+  }, [activeItem, user]);
 
   return (
     <div className="flex h-screen overflow-hidden" style={{ background: 'var(--color-bg)' }}>

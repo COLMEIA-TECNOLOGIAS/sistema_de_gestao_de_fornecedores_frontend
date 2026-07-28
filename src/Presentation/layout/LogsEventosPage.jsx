@@ -257,7 +257,7 @@ export default function LogsEventosPage() {
                                 <th onClick={() => handleSort('user_name')} className="cursor-pointer px-6 py-5 text-left text-[10px] font-black uppercase tracking-widest hover:text-gray-700 transition-colors" style={{ color: 'var(--color-text-muted)' }}>Utilizador {sortConfig.key === 'user_name' && (sortConfig.direction === 'asc' ? '↑' : '↓')}</th>
                                 <th onClick={() => handleSort('created_at')} className="cursor-pointer px-6 py-5 text-left text-[10px] font-black uppercase tracking-widest hover:text-gray-700 transition-colors" style={{ color: 'var(--color-text-muted)' }}>Data/Hora {sortConfig.key === 'created_at' && (sortConfig.direction === 'asc' ? '↑' : '↓')}</th>
                                 <th onClick={() => handleSort('event')} className="cursor-pointer px-6 py-5 text-left text-[10px] font-black uppercase tracking-widest hover:text-gray-700 transition-colors" style={{ color: 'var(--color-text-muted)' }}>Evento {sortConfig.key === 'event' && (sortConfig.direction === 'asc' ? '↑' : '↓')}</th>
-                                <th className="px-6 py-5 text-left text-[10px] font-black uppercase tracking-widest" style={{ color: 'var(--color-text-muted)' }}>Descrição</th>
+                                <th className="px-6  py-5 text-left text-[10px] font-black uppercase tracking-widest" style={{ color: 'var(--color-text-muted)' }}>Descrição</th>
                                 <th className="px-6 py-5 text-right text-[10px] font-black uppercase tracking-widest" style={{ color: 'var(--color-text-muted)' }}>Ações</th>
                             </tr>
                         </thead>
@@ -273,7 +273,7 @@ export default function LogsEventosPage() {
                                 </tr>
                             ) : paginatedLogs.length === 0 ? (
                                 <tr>
-                                    <td colSpan="4" className="px-6 py-12 text-center text-gray-400 font-bold uppercase tracking-widest text-[10px]">
+                                    <td colSpan="4" className=" px-6 py-12 text-center text-gray-400 font-bold uppercase tracking-widest text-[10px]">
                                         <div className="flex flex-col items-center gap-2">
                                             <AlertCircle size={32} className="text-gray-300 mb-2" />
                                             Nenhum log encontrado
@@ -301,11 +301,11 @@ export default function LogsEventosPage() {
                                                 </div>
                                             </td>
                                             <td className="px-6 py-4">
-                                                <span className={`px-3 py-1.5 rounded-lg text-xs font-bold border ${badge.classes}`}>
+                                                <span className={`px-3  py-1.5  rounded-lg text-xs font-bold border ${badge.classes}`}>
                                                     {badge.label}
                                                 </span>
                                             </td>
-                                            <td className="px-6 py-4 text-sm" style={{ color: 'var(--color-text-secondary)' }}>
+                                            <td className="px-4 py-4 text-xs" style={{ color: 'var(--color-text-secondary)' }}>
                                                 {log.description}
                                             </td>
                                             <td className="px-6 py-4 text-right">

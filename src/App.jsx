@@ -68,6 +68,7 @@ function AppRoutes() {
       <Route path="/aquisicoes" element={<ProtectedRoute><DashboardLayout /></ProtectedRoute>} />
       <Route path="/produtos" element={<ProtectedRoute><DashboardLayout /></ProtectedRoute>} />
       <Route path="/logs-eventos" element={<ProtectedRoute><AdminRoute><DashboardLayout /></AdminRoute></ProtectedRoute>} />
+      <Route path="/config" element={<ProtectedRoute><AdminRoute><DashboardLayout /></AdminRoute></ProtectedRoute>} />
       <Route path="/meu-perfil" element={<ProtectedRoute><DashboardLayout /></ProtectedRoute>} />
       <Route path="/AddFornecedorPage" element={<ProtectedRoute><AddFornecedorPage /></ProtectedRoute>} />
       <Route path="/FornecedorFormStep1" element={<ProtectedRoute><FornecedorFormStep1 /></ProtectedRoute>} />

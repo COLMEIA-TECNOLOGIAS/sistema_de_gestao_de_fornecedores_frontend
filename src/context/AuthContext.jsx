@@ -1,5 +1,5 @@
 import { createContext, useContext, useState, useEffect, useCallback, useMemo } from 'react';
-import { authAPI } from '../services/api';
+import { authAPI, permissionsAPI, menusAPI } from '../services/api';
 import {
     hasPermission as checkPermission,
     hasWritePermission as checkWritePermission,
@@ -9,7 +9,8 @@ import {
     canApproveQuotations as checkCanApproveQuotations,
     canGenerateAcquisitions as checkCanGenerateAcquisitions,
     getRoleName,
-    getAvailableMenuItems
+    getAvailableMenuItems,
+    normalizePermissions
 } from '../utils/permissions';
 
 const AuthContext = createContext(null);
@@ -18,6 +19,53 @@ export function AuthProvider({ children }) {
     const [user, setUser] = useState(null);
     const [token, setToken] = useState(null);
     const [isLoading, setIsLoading] = useState(true);
+    const [permissionsLoaded, setPermissionsLoaded] = useState(false);
+
+    // Carrega as permissões do utilizador autenticado a partir da API
+    const fetchUserPermissions = useCallback(async (currentUser) => {
+        try {
+            let apiData = await permissionsAPI.getMyPermissions();
+
+            // Injectar o slug caso a API devolva apenas o menu_id (necessário para a UI saber qual menu é qual)
+            try {
+                let rawPerms = apiData?.data || apiData || [];
+                if (rawPerms && Array.isArray(rawPerms.permissions)) rawPerms = rawPerms.permissions;
+                
+                if (Array.isArray(rawPerms) && rawPerms.length > 0 && rawPerms.some(p => p.menu_id && !p.slug)) {
+                    const menusData = await menusAPI.getAll().catch(() => []);
+                    const menusList = Array.isArray(menusData) ? menusData : (menusData.data || []);
+                    
+                    rawPerms.forEach(p => {
+                        const menu = menusList.find(m => m.id === p.menu_id);
+                        if (menu) p.slug = menu.slug || menu.name;
+                    });
+                    
+                    if (apiData?.data) {
+                        if (Array.isArray(apiData.data.permissions)) apiData.data.permissions = rawPerms;
+                        else apiData.data = rawPerms;
+                    } else if (apiData?.permissions) {
+                        apiData.permissions = rawPerms;
+                    } else {
+                        apiData = rawPerms;
+                    }
+                }
+            } catch (e) {
+                console.warn('Falha ao tentar injectar slugs nos menus', e);
+            }
+
+            const normalized = normalizePermissions(apiData);
+            
+            // Actualizar o user com as permissões da API
+            const updatedUser = { ...currentUser, apiPermissions: normalized };
+            setUser(updatedUser);
+            localStorage.setItem('user', JSON.stringify(updatedUser));
+            localStorage.setItem('apiPermissions', JSON.stringify(normalized));
+            setPermissionsLoaded(true);
+        } catch (error) {
+            console.warn('Não foi possível carregar permissões da API, a usar fallback por role:', error);
+            setPermissionsLoaded(true);
+        }
+    }, []);
 
     // Load auth state from localStorage on mount
     useEffect(() => {
@@ -25,11 +73,26 @@ export function AuthProvider({ children }) {
         const storedUser = localStorage.getItem('user');
 
         if (storedToken && storedUser) {
+            const parsedUser = JSON.parse(storedUser);
+            
+            // Tentar restaurar permissões do cache
+            const cachedPermissions = localStorage.getItem('apiPermissions');
+            if (cachedPermissions) {
+                try {
+                    parsedUser.apiPermissions = JSON.parse(cachedPermissions);
+                } catch (e) { /* ignore */ }
+            }
+
             setToken(storedToken);
-            setUser(JSON.parse(storedUser));
+            setUser(parsedUser);
+            
+            // Recarregar permissões da API em background (sempre frescos)
+            fetchUserPermissions(parsedUser);
+        } else {
+            setPermissionsLoaded(true);
         }
         setIsLoading(false);
-    }, []);
+    }, [fetchUserPermissions]);
 
     const login = async (email, password) => {
         const response = await authAPI.login(email, password);
@@ -44,6 +107,9 @@ export function AuthProvider({ children }) {
         setToken(newToken);
         setUser(newUser);
 
+        // Carregar permissões do utilizador após login
+        await fetchUserPermissions(newUser);
+
         return response;
     };
 
@@ -56,36 +122,38 @@ export function AuthProvider({ children }) {
             // Clear storage and state regardless of API call result
             localStorage.removeItem('token');
             localStorage.removeItem('user');
+            localStorage.removeItem('apiPermissions');
             setToken(null);
             setUser(null);
+            setPermissionsLoaded(false);
         }
     };
 
-    // Função para verificar permissão de leitura do usuário atual
+    // Função para verificar permissão de leitura do utilizador actual
     const hasPermission = useCallback((permission) => {
         if (!user) return false;
         return checkPermission(user, permission);
     }, [user]);
 
-    // Função para verificar permissão de escrita/edição do usuário atual
+    // Função para verificar permissão de escrita/edição do utilizador actual
     const hasWritePermission = useCallback((permission) => {
         if (!user) return false;
         return checkWritePermission(user, permission);
     }, [user]);
 
-    // Verifica se o usuário é admin
+    // Verifica se o utilizador é admin
     const isAdmin = useMemo(() => {
         if (!user?.role) return false;
         return checkIsAdmin(user.role);
     }, [user?.role]);
 
-    // Verifica se pode gerenciar usuários
+    // Verifica se pode gerir utilizadores
     const canManageUsers = useMemo(() => {
         if (!user?.role) return false;
         return checkCanManageUsers(user.role);
     }, [user?.role]);
 
-    // Verifica se pode deletar registros
+    // Verifica se pode eliminar registos
     const canDeleteRecords = useMemo(() => {
         if (!user?.role) return false;
         return checkCanDeleteRecords(user.role);
@@ -105,15 +173,22 @@ export function AuthProvider({ children }) {
 
     // Obtém o nome do role
     const userRoleName = useMemo(() => {
-        if (!user?.role) return 'Usuário';
+        if (!user?.role) return 'Utilizador';
         return getRoleName(user.role);
     }, [user?.role]);
 
-    // Obtém os items de menu disponíveis
+    // Obtém os items de menu disponíveis (prioriza API)
     const availableMenuItems = useMemo(() => {
         if (!user?.role) return [];
-        return getAvailableMenuItems(user.role);
-    }, [user?.role]);
+        return getAvailableMenuItems(user.role, user?.apiPermissions);
+    }, [user?.role, user?.apiPermissions]);
+
+    // Força recarga das permissões (útil após admin alterar permissões)
+    const refreshPermissions = useCallback(async () => {
+        if (user) {
+            await fetchUserPermissions(user);
+        }
+    }, [user, fetchUserPermissions]);
 
     const updateUser = useCallback((newData) => {
         const updatedUser = { ...user, ...newData };
@@ -126,9 +201,11 @@ export function AuthProvider({ children }) {
         token,
         isAuthenticated: !!token,
         isLoading,
+        permissionsLoaded,
         login,
         logout,
         updateUser,
+        refreshPermissions,
         // Funções de permissão
         hasPermission,
         hasWritePermission,

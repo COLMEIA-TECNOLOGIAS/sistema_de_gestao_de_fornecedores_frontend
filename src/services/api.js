@@ -67,6 +67,22 @@ export const usersAPI = {
     },
 };
 
+// Permissions API
+export const permissionsAPI = {
+    getMyPermissions: async () => {
+        const response = await api.get('/user/permissions');
+        return response.data;
+    },
+    getUserPermissions: async (userId) => {
+        const response = await api.get(`/users/${userId}/permissions`);
+        return response.data;
+    },
+    updateUserPermissions: async (userId, permissions) => {
+        const response = await api.put(`/users/${userId}/permissions`, permissions);
+        return response.data;
+    },
+};
+
 // Suppliers API
 export const suppliersAPI = {
     getAll: async () => {
@@ -97,9 +113,9 @@ export const suppliersAPI = {
         });
         return response.data;
     },
-    delete: async (id) => {
-        const response = await api.delete(`/suppliers/${id}`);
-        return response.data;
+    delete: async (id, reason = '') => {
+        const response = await api.delete(`/suppliers/${id}`, { data: { reason } });
+        return { data: response.data, status: response.status };
     },
     getClassification: async (id) => {
         const response = await api.get(`/suppliers/${id}/classification`);
@@ -141,9 +157,9 @@ export const quotationRequestsAPI = {
         const response = await api.put(`/quotation-requests/${id}`, quotationData);
         return response.data;
     },
-    delete: async (id) => {
-        const response = await api.delete(`/quotation-requests/${id}`);
-        return response.data;
+    delete: async (id, reason = '') => {
+        const response = await api.delete(`/quotation-requests/${id}`, { data: { reason } });
+        return { data: response.data, status: response.status };
     },
     // Enviar convites aos fornecedores (só funciona para status 'draft')
     send: async (id) => {
@@ -318,52 +334,45 @@ export const auditLogsAPI = {
     },
 };
 
-// Pending Deletions API (Simulated for Frontend)
+// Pending Deletions API
 export const pendingDeletionsAPI = {
-    getAll: async () => {
-        const data = localStorage.getItem('pendingDeletions');
-        return data ? JSON.parse(data) : [];
+    getAll: async (page = 1) => {
+        const response = await api.get(`/deletion-requests?page=${page}`);
+        return response.data;
     },
-    requestDelete: async (type, id, itemName, technicianName) => {
-        const data = localStorage.getItem('pendingDeletions');
-        const pending = data ? JSON.parse(data) : [];
-        const newRequest = {
-            id: Date.now(),
+    getById: async (id) => {
+        const response = await api.get(`/deletion-requests/${id}`);
+        return response.data;
+    },
+    requestDelete: async (type, id, itemName, technicianName, reason = '') => {
+        const response = await api.post('/deletion-requests', {
             type, // 'supplier' | 'quotation_request'
-            itemId: id,
-            itemName,
-            technicianName,
-            status: 'pending',
-            createdAt: new Date().toISOString()
-        };
-        pending.push(newRequest);
-        localStorage.setItem('pendingDeletions', JSON.stringify(pending));
-        return newRequest;
+            item_id: id,
+            item_name: itemName,
+            technician_name: technicianName,
+            reason
+        });
+        return response.data;
     },
     approve: async (id) => {
-        const data = localStorage.getItem('pendingDeletions');
-        let pending = data ? JSON.parse(data) : [];
-        const req = pending.find(p => p.id === id);
-        
-        if (req) {
-            // Se aprovar, temos que apagar da API original também.
-            if (req.type === 'supplier') {
-                await suppliersAPI.delete(req.itemId);
-            } else if (req.type === 'quotation_request') {
-                await quotationRequestsAPI.delete(req.itemId);
-            }
-        }
-        
-        pending = pending.filter(p => p.id !== id);
-        localStorage.setItem('pendingDeletions', JSON.stringify(pending));
-        return true;
+        const response = await api.post(`/deletion-requests/${id}/approve`);
+        return response.data;
     },
     reject: async (id) => {
-        const data = localStorage.getItem('pendingDeletions');
-        let pending = data ? JSON.parse(data) : [];
-        pending = pending.filter(p => p.id !== id);
-        localStorage.setItem('pendingDeletions', JSON.stringify(pending));
-        return true;
+        const response = await api.post(`/deletion-requests/${id}/reject`);
+        return response.data;
+    }
+};
+
+// Menus API
+export const menusAPI = {
+    getAll: async () => {
+        const response = await api.get('/menus');
+        return response.data;
+    },
+    create: async (menuData) => {
+        const response = await api.post('/menus', menuData);
+        return response.data;
     }
 };
 

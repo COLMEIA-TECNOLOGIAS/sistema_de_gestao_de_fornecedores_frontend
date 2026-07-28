@@ -8,6 +8,7 @@ import ProdutosPage from "./ProdutosPage";
 import LogsEventosPage from "./LogsEventosPage";
 import CriarUtilizadorPage from "./CriarUtilizadorPage";
 import PermissoesPage from "./PermissoesPage";
+import ConfiguracoesPage from "./ConfiguracoesPage";
 
 export default function MainContent({ activeItem }) {
   const renderPage = () => {
@@ -22,6 +23,7 @@ export default function MainContent({ activeItem }) {
       case "meu-perfil":   return <MeuPerfilPage />;
       case "produtos":     return <ProdutosPage />;
       case "logs-eventos": return <LogsEventosPage />;
+      case "config":       return <ConfiguracoesPage />;
       default:             return <DashboardPage />;
     }
   };

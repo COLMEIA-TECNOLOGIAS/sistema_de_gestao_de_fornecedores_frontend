@@ -1,46 +1,43 @@
 /**
- * Sistema de Controle de Acesso baseado em Roles (RBAC)
+ * Sistema de Controle de Acesso baseado em Permissões da API
  * 
- * Roles disponíveis:
- * - admin: Acesso total ao sistema
- * - procurement_technician: Gestão de cotações e fornecedores
+ * As permissões são agora carregadas do backend via GET /api/user/permissions.
+ * O Admin recebe todas as permissões automaticamente (tratado pelo backend).
+ * 
+ * O frontend guarda a árvore de menus/permissões no AuthContext e valida
+ * os acessos com base nessa lista dinâmica.
  */
 
-// Definição dos roles
+// Definição dos roles (mantido para referência e fallbacks)
 export const ROLES = {
     ADMIN: 'admin',
     PROCUREMENT_TECHNICIAN: 'procurement_technician',
 };
 
-// Definição de permissões por módulo
+// Slugs de permissões por módulo (usados como identificadores, agora sincronizados com a API)
 export const PERMISSIONS = {
     DASHBOARD: 'dashboard',
-    FORNECEDORES: 'fornecedores',
-    COTACOES: 'cotacoes',
-    USUARIOS: 'usuarios',
+    FORNECEDORES: 'suppliers',
+    COTACOES: 'quotation-requests',
+    USUARIOS: 'users',
     RELATORIOS: 'relatorios',
-    AQUISICOES: 'aquisicoes',
+    AQUISICOES: 'acquisitions',
     CONFIGURACOES: 'configuracoes',
-    CATEGORIAS: 'categorias',
-    PRODUTOS: 'produtos',
+    CATEGORIAS: 'categories',
+    PRODUTOS: 'products',
+    AVALIACOES: 'supplier-evaluations',
+    DOCUMENTOS: 'documents',
+    NOTIFICACOES: 'notifications',
+    AUDITORIA: 'audit-logs',
+    EXCLUSAO: 'deletion-requests',
 };
 
-// Mapeamento de permissões por role
+// Mapeamento de permissões por role (fallback se a API não responder)
 export const ROLE_PERMISSIONS = {
     [ROLES.ADMIN]: {
         name: 'Administrador',
         description: 'Acesso total ao sistema',
-        permissions: [
-            PERMISSIONS.DASHBOARD,
-            PERMISSIONS.FORNECEDORES,
-            PERMISSIONS.COTACOES,
-            PERMISSIONS.USUARIOS,
-            PERMISSIONS.RELATORIOS,
-            PERMISSIONS.AQUISICOES,
-            PERMISSIONS.CONFIGURACOES,
-            PERMISSIONS.CATEGORIAS,
-            PERMISSIONS.PRODUTOS,
-        ],
+        permissions: Object.values(PERMISSIONS),
         canManageUsers: true,
         canDeleteRecords: true,
         canApproveQuotations: true,
@@ -65,21 +62,135 @@ export const ROLE_PERMISSIONS = {
 };
 
 /**
- * Verifica se um usuário tem permissão para acessar um módulo específico
- * @param {Object|string} userOrRole - O objeto do usuário ou o role (para retrocompatibilidade)
- * @param {string} permission - A permissão a ser verificada
+ * Normaliza a resposta da API de permissões para um formato interno consistente.
+ * Suporta vários formatos que a API pode devolver:
+ *   1. Array de objectos com { slug, permissions: [...] } (árvore de menus)
+ *   2. Array de strings ["dashboard", "fornecedores.read", ...]
+ *   3. Objecto { dashboard: { access: true, level: 'write' }, ... }
+ *   4. Array de objectos com { name/menu_name, can_view, can_create, can_edit, can_delete }
+ * 
+ * @param {any} apiData - Dados devolvidos pela API
+ * @returns {{ menuSlugs: string[], permissionsMap: Object }}
+ */
+export function normalizePermissions(apiData) {
+    if (!apiData) return { menuSlugs: [], permissionsMap: {} };
+
+    let raw = apiData.data || apiData;
+    
+    // Se o backend devolveu o modelo do utilizador com as permissões lá dentro
+    if (raw && !Array.isArray(raw) && Array.isArray(raw.permissions)) {
+        raw = raw.permissions;
+    }
+
+    const menuSlugs = [];
+    const permissionsMap = {};
+
+    // Formato 1: Array de objectos com slug
+    if (Array.isArray(raw)) {
+        raw.forEach(item => {
+            if (typeof item === 'string') {
+                // Formato 2: Array de strings — "dashboard" ou "dashboard.read"
+                const parts = item.split('.');
+                const slug = parts[0].toLowerCase();
+                const level = parts[1] || 'read';
+                if (!menuSlugs.includes(slug)) menuSlugs.push(slug);
+                if (!permissionsMap[slug]) permissionsMap[slug] = { access: true, level: 'read' };
+                if (level === 'write' || level === 'edit' || level === 'create' || level === 'delete') {
+                    permissionsMap[slug].level = 'write';
+                }
+            } else if (typeof item === 'object' && item !== null) {
+                // Objecto com slug/name/menu_name
+                const slug = (item.slug || item.name || item.menu_name || item.menu || '').toLowerCase()
+                    .replace(/\s+/g, '_')
+                    .replace(/[áàã]/g, 'a')
+                    .replace(/[éèê]/g, 'e')
+                    .replace(/[íìî]/g, 'i')
+                    .replace(/[óòõô]/g, 'o')
+                    .replace(/[úùû]/g, 'u')
+                    .replace(/ç/g, 'c');
+
+                if (!slug) return;
+                if (!menuSlugs.includes(slug)) menuSlugs.push(slug);
+
+                // Determinar nível de permissão
+                const perms = item.permissions || [];
+                const canWrite = item.can_create || item.can_edit || item.can_delete ||
+                    (Array.isArray(perms) && perms.some(p => 
+                        typeof p === 'string' && ['write', 'create', 'edit', 'delete', 'update'].includes(p.toLowerCase())
+                    ));
+                const canRead = item.can_view !== undefined ? item.can_view : true;
+
+                permissionsMap[slug] = {
+                    access: canRead || canWrite,
+                    level: canWrite ? 'write' : 'read',
+                    // Guardar os dados granulares originais
+                    can_view: item.can_view ?? canRead,
+                    can_create: item.can_create ?? canWrite,
+                    can_edit: item.can_edit ?? canWrite,
+                    can_delete: item.can_delete ?? canWrite,
+                };
+
+                // Processar sub-menus recursivamente se existirem
+                if (Array.isArray(item.children || item.sub_menus || item.submenus)) {
+                    const children = item.children || item.sub_menus || item.submenus;
+                    const childResult = normalizePermissions(children);
+                    childResult.menuSlugs.forEach(s => {
+                        if (!menuSlugs.includes(s)) menuSlugs.push(s);
+                    });
+                    Object.assign(permissionsMap, childResult.permissionsMap);
+                }
+            }
+        });
+    } else if (typeof raw === 'object') {
+        // Formato 3: Objecto directo { dashboard: { access: true, level: 'write' } }
+        Object.entries(raw).forEach(([key, value]) => {
+            const slug = key.toLowerCase();
+            menuSlugs.push(slug);
+            if (typeof value === 'object') {
+                permissionsMap[slug] = {
+                    access: value.access !== false,
+                    level: value.level || (value.can_create || value.can_edit || value.can_delete ? 'write' : 'read'),
+                    ...value,
+                };
+            } else {
+                permissionsMap[slug] = { access: !!value, level: value ? 'write' : 'read' };
+            }
+        });
+    }
+
+    return { menuSlugs, permissionsMap };
+}
+
+/**
+ * Verifica se um utilizador tem permissão para aceder a um módulo específico.
+ * Prioriza as permissões carregadas da API (user.apiPermissions).
+ * 
+ * @param {Object|string} userOrRole - O objecto do utilizador ou o role
+ * @param {string} permission - A permissão a ser verificada (ex: 'dashboard')
  * @returns {boolean}
  */
 export function hasPermission(userOrRole, permission) {
     const isUserObject = typeof userOrRole === 'object' && userOrRole !== null;
     const userRole = isUserObject ? userOrRole.role : userOrRole;
     
-    // 1. Verificar permissões granulares (se existirem)
+    // Admin tem acesso total sempre
+    if (userRole === ROLES.ADMIN) return true;
+
+    // 1. Se o user tem permissões carregadas da API, verificar contra elas
+    if (isUserObject && userOrRole.apiPermissions) {
+        const { permissionsMap } = userOrRole.apiPermissions;
+        if (permissionsMap && Object.keys(permissionsMap).length > 0) {
+            const perm = permissionsMap[permission];
+            return perm ? perm.access !== false : false;
+        }
+    }
+
+    // 2. Fallback: verificar permissões granulares locais (formato antigo)
     if (isUserObject && userOrRole.permissions && userOrRole.permissions[permission]) {
         return userOrRole.permissions[permission].access === true;
     }
 
-    // 2. Fallback para as permissões base do Role
+    // 3. Fallback final: permissões base do Role
     const roleConfig = ROLE_PERMISSIONS[userRole];
     if (!roleConfig) {
         console.warn(`Role desconhecido: ${userRole}`);
@@ -89,36 +200,44 @@ export function hasPermission(userOrRole, permission) {
 }
 
 /**
- * Verifica se o usuário tem permissão de ESCRITA/EDIÇÃO num módulo
- * @param {Object} user - O objeto do usuário
+ * Verifica se o utilizador tem permissão de ESCRITA/EDIÇÃO num módulo
+ * @param {Object} user - O objecto do utilizador
  * @param {string} permission - A permissão a ser verificada
  * @returns {boolean}
  */
 export function hasWritePermission(user, permission) {
     if (!user) return false;
     
+    // Admin tem acesso total sempre
+    if (user.role === ROLES.ADMIN) return true;
+
+    // 1. Verificar contra permissões da API
+    if (user.apiPermissions) {
+        const { permissionsMap } = user.apiPermissions;
+        if (permissionsMap && Object.keys(permissionsMap).length > 0) {
+            const perm = permissionsMap[permission];
+            return perm ? (perm.access !== false && perm.level === 'write') : false;
+        }
+    }
+
+    // 2. Fallback: formato antigo
     if (user.permissions && user.permissions[permission]) {
         return user.permissions[permission].access === true && user.permissions[permission].level === 'write';
     }
     
-    // Fallback para Role: Admin tem sempre write. Technician tem write onde tem acesso (simplificação do fallback)
-    if (user.role === ROLES.ADMIN) return true;
+    // 3. Fallback por role
     return hasPermission(user, permission);
 }
 
 /**
- * Verifica se o usuário é admin
- * @param {string} userRole - O role do usuário
- * @returns {boolean}
+ * Verifica se o utilizador é admin
  */
 export function isAdmin(userRole) {
     return userRole === ROLES.ADMIN;
 }
 
 /**
- * Verifica se o usuário pode gerenciar usuários
- * @param {string} userRole - O role do usuário
- * @returns {boolean}
+ * Verifica se o utilizador pode gerir utilizadores
  */
 export function canManageUsers(userRole) {
     const roleConfig = ROLE_PERMISSIONS[userRole];
@@ -126,9 +245,7 @@ export function canManageUsers(userRole) {
 }
 
 /**
- * Verifica se o usuário pode deletar registros
- * @param {string} userRole - O role do usuário
- * @returns {boolean}
+ * Verifica se o utilizador pode eliminar registos
  */
 export function canDeleteRecords(userRole) {
     const roleConfig = ROLE_PERMISSIONS[userRole];
@@ -136,9 +253,7 @@ export function canDeleteRecords(userRole) {
 }
 
 /**
- * Verifica se o usuário pode aprovar cotações
- * @param {string} userRole - O role do usuário
- * @returns {boolean}
+ * Verifica se o utilizador pode aprovar cotações
  */
 export function canApproveQuotations(userRole) {
     const roleConfig = ROLE_PERMISSIONS[userRole];
@@ -146,9 +261,7 @@ export function canApproveQuotations(userRole) {
 }
 
 /**
- * Verifica se o usuário pode gerar aquisições
- * @param {string} userRole - O role do usuário
- * @returns {boolean}
+ * Verifica se o utilizador pode gerar aquisições
  */
 export function canGenerateAcquisitions(userRole) {
     const roleConfig = ROLE_PERMISSIONS[userRole];
@@ -157,8 +270,6 @@ export function canGenerateAcquisitions(userRole) {
 
 /**
  * Obtém a configuração do role
- * @param {string} userRole - O role do usuário
- * @returns {Object|null}
  */
 export function getRoleConfig(userRole) {
     return ROLE_PERMISSIONS[userRole] || null;
@@ -166,20 +277,27 @@ export function getRoleConfig(userRole) {
 
 /**
  * Obtém o nome amigável do role
- * @param {string} userRole - O role do usuário
- * @returns {string}
  */
 export function getRoleName(userRole) {
     const roleConfig = ROLE_PERMISSIONS[userRole];
-    return roleConfig?.name || 'Usuário';
+    return roleConfig?.name || 'Utilizador';
 }
 
 /**
- * Obtém os itens de menu disponíveis para um role
- * @param {string} userRole - O role do usuário
+ * Obtém os itens de menu disponíveis.
+ * Prioriza as permissões da API se existirem.
+ * 
+ * @param {string} userRole - O role do utilizador
+ * @param {Object} apiPermissions - Permissões normalizadas da API (opcional)
  * @returns {Array<string>}
  */
-export function getAvailableMenuItems(userRole) {
+export function getAvailableMenuItems(userRole, apiPermissions) {
+    // Se temos permissões da API, usá-las
+    if (apiPermissions && apiPermissions.menuSlugs && apiPermissions.menuSlugs.length > 0) {
+        return apiPermissions.menuSlugs;
+    }
+
+    // Fallback para o role
     const roleConfig = ROLE_PERMISSIONS[userRole];
     if (!roleConfig) {
         return [];

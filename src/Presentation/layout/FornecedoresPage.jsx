@@ -6,6 +6,7 @@ import ModalCadastroFornecedor from "../Components/ModalCadastroFornecedor";
 import ModalPedirCotacao from "../Components/ModalPedirCotacao";
 import ModalDetalhesFornecedor from "../Components/ModalDetalhesFornecedor";
 import ModalConfirmarExclusaoFornecedor from "../Components/ModalConfirmarExclusaoFornecedor";
+import ModalSolicitarEliminacao from "../Components/ModalSolicitarEliminacao";
 import Toast from "../Components/Toast";
 import FornecedorTableSkeleton from "../Components/FornecedorTableSkeleton";
 import { suppliersAPI, categoriesAPI, pendingDeletionsAPI } from "../../services/api";
@@ -20,6 +21,10 @@ export default function FornecedoresPage() {
     const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
     const [selectedFornecedor, setSelectedFornecedor] = useState(null);
     const [openMenuId, setOpenMenuId] = useState(null);
+
+    // Deletion request states
+    const [isSolicitarEliminacaoModalOpen, setIsSolicitarEliminacaoModalOpen] = useState(false);
+    const [itemToDelete, setItemToDelete] = useState(null);
 
     // Toast state
     const [toast, setToast] = useState(null);
@@ -64,24 +69,34 @@ export default function FornecedoresPage() {
 
     // Fetch suppliers and categories data on component mount
     const fetchSuppliersAndCategories = async () => {
-        try {
-            setIsLoading(true);
-            setError(null);
+        setIsLoading(true);
+        setError(null);
 
-            // Fetch suppliers
-            const suppliersResponse = await suppliersAPI.getAll();
-            setFornecedores(suppliersResponse.data || []);
+        // Fetch suppliers e categories de forma independente
+        // para que um erro numa não bloqueie a outra
+        const [suppliersResult, categoriesResult] = await Promise.allSettled([
+            suppliersAPI.getAll(),
+            categoriesAPI.getAll(),
+        ]);
 
-            // Fetch categories
-            const categoriesResponse = await categoriesAPI.getAll();
-            setCategories(categoriesResponse || []);
-
-        } catch (err) {
-            console.error('Error fetching data:', err);
-            setError(err.message || 'Falha ao carregar dados');
-        } finally {
-            setIsLoading(false);
+        if (suppliersResult.status === 'fulfilled') {
+            setFornecedores(suppliersResult.value.data || suppliersResult.value || []);
+        } else {
+            const err = suppliersResult.reason;
+            console.error('Error fetching suppliers:', err);
+            if (err.response?.status !== 403) {
+                setError(err.message || 'Falha ao carregar fornecedores');
+            }
         }
+
+        if (categoriesResult.status === 'fulfilled') {
+            setCategories(categoriesResult.value || []);
+        } else {
+            // 403 em categorias não é um erro crítico — apenas não mostramos filtro
+            console.warn('Não foi possível carregar categorias:', categoriesResult.reason?.response?.status);
+        }
+
+        setIsLoading(false);
     };
 
     useEffect(() => {
@@ -160,14 +175,37 @@ export default function FornecedoresPage() {
         }
     };
 
-    const handleDeleteFornecedor = (fornecedor) => {
+    const handleDeleteFornecedor = async (fornecedor) => {
         setOpenMenuId(null);
         if (!isAdmin) {
-            showToast('error', 'Não tem permissão para eliminar fornecedores.');
+            setItemToDelete({ type: 'supplier', id: fornecedor.id, name: fornecedor.company_name || fornecedor.commercial_name || 'Fornecedor', label: 'Fornecedor' });
+            setIsSolicitarEliminacaoModalOpen(true);
             return;
         }
         setSelectedFornecedor(fornecedor);
         setIsDeleteModalOpen(true);
+    };
+
+    const confirmSolicitarEliminacao = async (reason) => {
+        if (!itemToDelete) return;
+        try {
+            const res = await pendingDeletionsAPI.requestDelete(
+                itemToDelete.type,
+                itemToDelete.id,
+                itemToDelete.name,
+                user?.name || 'Técnico',
+                reason
+            );
+            if (res) {
+                showToast('success', 'Solicitação de eliminação enviada ao administrador!');
+            }
+            setIsSolicitarEliminacaoModalOpen(false);
+            setItemToDelete(null);
+        } catch (err) {
+            console.error('Erro ao solicitar eliminação:', err);
+            const errorMsg = err.response?.data?.message || err.message || 'Erro ao solicitar eliminação';
+            showToast('error', errorMsg);
+        }
     };
 
     const confirmDeleteFornecedor = async () => {
@@ -453,22 +491,19 @@ export default function FornecedoresPage() {
                     <table className="w-full">
                         <thead style={{ background: 'var(--color-bg)', borderBottom: '1px solid var(--color-border)' }}>
                             <tr>
-                                <th className="px-6 py-4 text-left">
+                                <th className="px-3 py-3 text-left">
                                     <input type="checkbox" className="rounded border-gray-300" />
                                 </th>
-                                <th className="px-6 py-4 text-left text-sm font-semibold" style={{ color: 'var(--color-text-secondary)' }}>ID</th>
-                                <th className="px-6 py-4 text-left text-sm font-semibold" style={{ color: 'var(--color-text-secondary)' }}>Nome da Empresa</th>
-                                <th className="px-6 py-4 text-left text-sm font-semibold" style={{ color: 'var(--color-text-secondary)' }}>NIF</th>
-                                <th className="px-6 py-4 text-left text-sm font-semibold" style={{ color: 'var(--color-text-secondary)' }}>Telefone</th>
-                                <th className="px-6 py-4 text-left text-sm font-semibold" style={{ color: 'var(--color-text-secondary)' }}>Email</th>
-                                <th className="px-6 py-4 text-left text-sm font-semibold" style={{ color: 'var(--color-text-secondary)' }}>Avaliação</th>
-                                <th className="px-6 py-4 text-left text-sm font-semibold" style={{ color: 'var(--color-text-secondary)' }}>Categoria</th>
-                                <th className="px-6 py-4 text-left text-sm font-semibold" style={{ color: 'var(--color-text-secondary)' }}>Província</th>
-                                <th className="px-6 py-4 text-left text-sm font-semibold" style={{ color: 'var(--color-text-secondary)' }}>Município</th>
-                                <th className="px-6 py-4 text-left text-sm font-semibold" style={{ color: 'var(--color-text-secondary)' }}>Data de Registo</th>
-                                <th className="px-6 py-4 text-left text-sm font-semibold" style={{ color: 'var(--color-text-secondary)' }}>Status</th>
-                                <th className="px-6 py-4 text-left text-sm font-semibold" style={{ color: 'var(--color-text-secondary)' }}>Registo</th>
-                                <th className="px-6 py-4 text-center text-sm font-semibold" style={{ color: 'var(--color-text-secondary)' }}>Ações</th>
+                                <th className="px-3 py-3 text-left text-sm font-semibold whitespace-nowrap" style={{ color: 'var(--color-text-secondary)' }}>ID</th>
+                                <th className="px-3 py-3 text-left text-sm font-semibold whitespace-nowrap" style={{ color: 'var(--color-text-secondary)' }}>Fornecedor</th>
+                                <th className="px-3 py-3 text-left text-sm font-semibold whitespace-nowrap" style={{ color: 'var(--color-text-secondary)' }}>NIF</th>
+                                <th className="px-3 py-3 text-left text-sm font-semibold whitespace-nowrap" style={{ color: 'var(--color-text-secondary)' }}>Contactos</th>
+                                <th className="px-3 py-3 text-left text-sm font-semibold whitespace-nowrap" style={{ color: 'var(--color-text-secondary)' }}>Avaliação</th>
+                                <th className="px-3 py-3 text-left text-sm font-semibold whitespace-nowrap" style={{ color: 'var(--color-text-secondary)' }}>Categoria</th>
+                                <th className="px-3 py-3 text-left text-sm font-semibold whitespace-nowrap" style={{ color: 'var(--color-text-secondary)' }}>Localização</th>
+                                <th className="px-3 py-3 text-left text-sm font-semibold whitespace-nowrap" style={{ color: 'var(--color-text-secondary)' }}>Data Registo</th>
+                                <th className="px-3 py-3 text-left text-sm font-semibold whitespace-nowrap" style={{ color: 'var(--color-text-secondary)' }}>Status</th>
+                                <th className="px-3 py-3 text-center text-sm font-semibold whitespace-nowrap" style={{ color: 'var(--color-text-secondary)' }}>Ações</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -489,110 +524,112 @@ export default function FornecedoresPage() {
                             ) : (
                                 currentFornecedores.map((f) => (
                                     <tr key={f.id} className="transition-colors" style={{ borderBottom: '1px solid var(--color-border-light)' }} onMouseEnter={e => e.currentTarget.style.background = 'var(--color-bg)'} onMouseLeave={e => e.currentTarget.style.background = 'transparent'}>
-                                        <td className="px-6 py-8">
+                                        <td className="px-3 py-3">
                                             <input type="checkbox" className="rounded border-gray-300" />
                                         </td>
-                                        <td className="px-6 py-8 cursor-pointer" onClick={() => { setSelectedFornecedor(f); setIsDetalhesModalOpen(true); }}>
-                                            <div className="flex items-center gap-3">
+                                        <td className="px-3 py-3 cursor-pointer" onClick={() => { setSelectedFornecedor(f); setIsDetalhesModalOpen(true); }}>
+                                            <span className="font-medium" style={{ color: 'var(--color-text-secondary)' }}>#{f.id}</span>
+                                        </td>
+                                        <td className="px-3 py-3 cursor-pointer" onClick={() => { setSelectedFornecedor(f); setIsDetalhesModalOpen(true); }}>
+                                            <div className="flex items-center gap-2">
                                                 <img
                                                     src={`https://api.dicebear.com/7.x/initials/svg?seed=${f.company_name || f.commercial_name || 'N/A'}`}
                                                     alt={f.company_name || f.commercial_name}
-                                                    className="w-10 h-10 rounded-lg"
+                                                    className="w-10 h-10 rounded-lg flex-shrink-0"
                                                 />
-                                                <span className="font-medium" style={{ color: 'var(--color-text-secondary)' }}>#{f.id}</span>
+                                                <div className="flex flex-col min-w-[120px]">
+                                                    <span className="font-semibold text-sm line-clamp-1 truncate" style={{ color: 'var(--color-text-primary)' }}>{f.company_name || f.commercial_name || 'N/A'}</span>
+                                                </div>
                                             </div>
                                         </td>
-                                        <td className="px-6 py-8 cursor-pointer" onClick={() => { setSelectedFornecedor(f); setIsDetalhesModalOpen(true); }}>
-                                            <span className="font-semibold" style={{ color: 'var(--color-text-primary)' }}>{f.company_name || f.commercial_name || 'N/A'}</span>
+                                        <td className="px-3 py-3 cursor-pointer text-sm" style={{ color: 'var(--color-text-secondary)' }} onClick={() => { setSelectedFornecedor(f); setIsDetalhesModalOpen(true); }}>
+                                            <span className="whitespace-nowrap">{f.nif || 'N/A'}</span>
                                         </td>
-                                        <td className="px-6 py-8 cursor-pointer" style={{ color: 'var(--color-text-secondary)' }} onClick={() => { setSelectedFornecedor(f); setIsDetalhesModalOpen(true); }}>{f.nif || 'N/A'}</td>
-                                        <td className="px-6 py-8 cursor-pointer" style={{ color: 'var(--color-text-secondary)' }} onClick={() => { setSelectedFornecedor(f); setIsDetalhesModalOpen(true); }}>{f.phone || 'N/A'}</td>
-                                        <td className="px-6 py-8 cursor-pointer" style={{ color: 'var(--color-text-secondary)' }} onClick={() => { setSelectedFornecedor(f); setIsDetalhesModalOpen(true); }}>{f.email || 'N/A'}</td>
-                                        <td className="px-6 py-8">
-                                            <div className="w-24">
+                                        <td className="px-3 py-3 cursor-pointer text-sm" style={{ color: 'var(--color-text-secondary)' }} onClick={() => { setSelectedFornecedor(f); setIsDetalhesModalOpen(true); }}>
+                                            <div className="flex flex-col">
+                                                <span className="whitespace-nowrap">{f.phone || 'N/A'}</span>
+                                                <span className="text-xs truncate max-w-[140px]" title={f.email}>{f.email || 'N/A'}</span>
+                                            </div>
+                                        </td>
+                                        <td className="px-3 py-3">
+                                            <div className="w-16">
                                                 <div className="flex justify-between mb-1">
-                                                    <span className="text-sm font-bold text-[#44B16F]">
+                                                    <span className="text-xs font-bold text-[#44B16F]">
                                                         {classifications[f.id]?.overall_score || 0}%
                                                     </span>
                                                 </div>
-                                                <div className="w-full bg-gray-200 rounded-full h-1.5">
+                                                <div className="w-full bg-gray-200 rounded-full h-1">
                                                     <div
-                                                        className="bg-[#44B16F] h-1.5 rounded-full"
+                                                        className="bg-[#44B16F] h-1 rounded-full"
                                                         style={{ width: `${classifications[f.id]?.overall_score || 0}%` }}
                                                     ></div>
                                                 </div>
                                             </div>
                                         </td>
-                                        <td className="px-6 py-8">
-                                            <div className="flex flex-wrap gap-1">
+                                        <td className="px-3 py-3">
+                                            <div className="flex flex-wrap gap-1 max-w-[150px]">
                                                 {f.categories && f.categories.length > 0 ? (
-                                                    f.categories.map((cat, idx) => (
-                                                        <span key={idx} className="px-2 py-1 rounded-lg text-xs font-bold bg-emerald-50 text-emerald-700 border border-emerald-100">
-                                                            {cat.name}
-                                                        </span>
-                                                    ))
+                                                    <span className="px-2 py-1 rounded-md text-xs font-bold truncate max-w-full" style={{ color: '#059669', background: 'rgba(16,185,129,0.1)' }}>
+                                                        {f.categories[0].name} {f.categories.length > 1 && `+${f.categories.length - 1}`}
+                                                    </span>
                                                 ) : (
                                                     <span className="text-xs" style={{ color: 'var(--color-text-muted)' }}>Geral</span>
                                                 )}
                                             </div>
                                         </td>
-                                        <td className="px-6 py-8" style={{ color: 'var(--color-text-secondary)' }}>{f.province || 'N/A'}</td>
-                                        <td className="px-6 py-8" style={{ color: 'var(--color-text-secondary)' }}>{f.municipality || 'N/A'}</td>
-                                        <td className="px-6 py-8" style={{ color: 'var(--color-text-secondary)' }}>
-                                            {f.created_at ? new Date(f.created_at).toLocaleDateString('pt-AO', {
-                                                day: '2-digit',
-                                                month: '2-digit',
-                                                year: 'numeric'
-                                            }) : 'N/A'}
+                                        <td className="px-3 py-3 text-sm" style={{ color: 'var(--color-text-secondary)' }}>
+                                            <span className="line-clamp-1 truncate block max-w-[120px]">{f.municipality || 'N/A'}, {f.province || 'N/A'}</span>
                                         </td>
-                                        <td className="px-6 py-8">
-                                            {f.registration_status === 'invited' && !f.is_active ? (
-                                                <span className="px-4 py-2 rounded-xl text-sm font-medium bg-amber-50 text-amber-900">
-                                                    Pendente
-                                                </span>
-                                            ) : (
-                                                <span className={`px-4 py-2 rounded-xl text-sm font-medium ${f.is_active ? 'bg-emerald-50 text-emerald-900' : 'bg-red-50 text-red-900'
-                                                    }`}>
-                                                    {f.is_active ? 'Ativo' : 'Inativo'}
-                                                </span>
-                                            )}
+                                        <td className="px-3 py-3 text-sm" style={{ color: 'var(--color-text-secondary)' }}>
+                                            <span className="whitespace-nowrap">
+                                                {f.created_at ? new Date(f.created_at).toLocaleDateString('pt-AO', { day: '2-digit', month: '2-digit', year: '2-digit' }) : 'N/A'}
+                                            </span>
                                         </td>
-                                        <td className="px-6 py-8">
-                                            {(f.is_active && (f.registration_status === 'invited' || f.registration_status === 'completed')) || f.registration_status === 'approved' ? (
-                                                <span className="px-3 py-1.5 rounded-xl text-xs font-bold bg-blue-50 text-blue-700 border border-blue-200 flex items-center gap-1 w-fit">
-                                                    <CheckCircle size={12} />
-                                                    Aprovado
-                                                </span>
-                                            ) : f.registration_status === 'invited' ? (
-                                                <span className="px-3 py-1.5 rounded-xl text-xs font-bold bg-amber-50 text-amber-700 border border-amber-200 flex items-center gap-1 w-fit">
-                                                    <Send size={12} />
-                                                    Pendente
-                                                </span>
-                                            ) : f.registration_status === 'completed' ? (
-                                                <span className="px-3 py-1.5 rounded-xl text-xs font-bold bg-emerald-50 text-emerald-700 border border-emerald-200 flex items-center gap-1 w-fit">
-                                                    <CheckCircle size={12} />
-                                                    Completo
-                                                </span>
-                                            ) : (
-                                                <span className="px-3 py-1.5 rounded-xl text-xs font-bold bg-gray-50 text-gray-600 border border-gray-200 w-fit">
-                                                    {f.registration_status || 'Directo'}
-                                                </span>
-                                            )}
+                                        <td className="px-3 py-3">
+                                            <div className="flex flex-col gap-2">
+                                                {f.registration_status === 'invited' && !f.is_active ? (
+                                                    <span className="px-2 py-1 rounded-md text-xs font-medium w-fit" style={{ color: '#d97706', background: 'rgba(245,158,11,0.1)' }}>
+                                                        Pendente
+                                                    </span>
+                                                ) : (
+                                                    <span className={`px-2 py-1 rounded-md text-xs font-medium w-fit`} style={{ color: f.is_active ? '#059669' : '#dc2626', background: f.is_active ? 'rgba(16,185,129,0.1)' : 'rgba(239,68,68,0.1)' }}>
+                                                        {f.is_active ? 'Ativo' : 'Inativo'}
+                                                    </span>
+                                                )}
+                                                
+                                                {(f.is_active && (f.registration_status === 'invited' || f.registration_status === 'completed')) || f.registration_status === 'approved' ? (
+                                                    <span className="px-2 py-1 rounded-md text-[11px] font-bold flex items-center gap-1 w-fit" style={{ color: '#2563eb', background: 'rgba(59,130,246,0.1)' }}>
+                                                        <CheckCircle size={12} /> Aprovado
+                                                    </span>
+                                                ) : f.registration_status === 'invited' ? (
+                                                    <span className="px-2 py-1 rounded-md text-[11px] font-bold flex items-center gap-1 w-fit" style={{ color: '#d97706', background: 'rgba(245,158,11,0.1)' }}>
+                                                        <Send size={12} /> Pendente
+                                                    </span>
+                                                ) : f.registration_status === 'completed' ? (
+                                                    <span className="px-2 py-1 rounded-md text-[11px] font-bold flex items-center gap-1 w-fit" style={{ color: '#059669', background: 'rgba(16,185,129,0.1)' }}>
+                                                        <CheckCircle size={12} /> Completo
+                                                    </span>
+                                                ) : (
+                                                    <span className="px-2 py-1 rounded-md text-[11px] font-bold w-fit" style={{ color: 'var(--color-text-secondary)', background: 'var(--color-bg)' }}>
+                                                        {f.registration_status || 'Directo'}
+                                                    </span>
+                                                )}
+                                            </div>
                                         </td>
-                                        <td className="px-6 py-8">
+                                        <td className="px-3 py-3">
                                             <div className="flex items-center justify-center gap-2">
                                                 {!f.is_active && f.registration_status !== 'invited' && (
                                                     <button
                                                         onClick={() => handleApproveSupplier(f)}
                                                         disabled={approvingId === f.id}
-                                                        className="px-3 py-1.5 bg-emerald-50 text-emerald-700 rounded-lg hover:bg-emerald-100 transition-colors text-sm font-medium flex items-center gap-2 border border-emerald-200"
+                                                        className="p-1.5 bg-emerald-50 text-emerald-700 rounded-md hover:bg-emerald-100 transition-colors flex items-center justify-center border border-emerald-200"
+                                                        title="Aprovar"
                                                     >
                                                         {approvingId === f.id ? (
                                                             <Loader2 size={14} className="animate-spin" />
                                                         ) : (
                                                             <CheckCircle size={14} />
                                                         )}
-                                                        Aprovar
                                                     </button>
                                                 )}
 
@@ -651,20 +688,16 @@ export default function FornecedoresPage() {
                                                                 <span style={{ color: 'var(--color-text-secondary)' }}>Pedir Cotação</span>
                                                             </button>
                                                         ) : null}
-                                                        {isAdmin && (
-                                                            <>
-                                                                <div className="my-1 border-t border-gray-100"></div>
-                                                                <button
-                                                                    onClick={() => handleDeleteFornecedor(f)}
-                                                                    className="w-full px-4 py-3 text-left text-sm flex items-center gap-3 transition-colors rounded-lg mx-1"
-                                                                    onMouseEnter={e => e.currentTarget.style.background = 'var(--color-bg)'}
-                                                                    onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
-                                                                >
-                                                                    <Trash2 size={16} style={{ color: 'var(--color-text-muted)' }} />
-                                                                    <span style={{ color: 'var(--color-text-secondary)' }}>Remover</span>
-                                                                </button>
-                                                            </>
-                                                        )}
+                                                        <div className="my-1 border-t border-gray-100"></div>
+                                                        <button
+                                                            onClick={() => handleDeleteFornecedor(f)}
+                                                            className="w-full px-4 py-3 text-left text-sm flex items-center gap-3 transition-colors rounded-lg mx-1"
+                                                            onMouseEnter={e => e.currentTarget.style.background = 'var(--color-bg)'}
+                                                            onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
+                                                        >
+                                                            <Trash2 size={16} style={{ color: 'var(--color-text-muted)' }} />
+                                                            <span style={{ color: 'var(--color-text-secondary)' }}>Eliminar</span>
+                                                        </button>
                                                     </div>
                                                 )}
                                                 </div>
@@ -788,6 +821,17 @@ export default function FornecedoresPage() {
                 fornecedor={selectedFornecedor}
                 isLoading={isDeleting}
                 isAdmin={isAdmin}
+            />
+
+            <ModalSolicitarEliminacao
+                isOpen={isSolicitarEliminacaoModalOpen}
+                onClose={() => {
+                    setIsSolicitarEliminacaoModalOpen(false);
+                    setItemToDelete(null);
+                }}
+                onSubmit={confirmSolicitarEliminacao}
+                itemName={itemToDelete?.name}
+                itemTypeLabel="fornecedor"
             />
 
             {/* Category Modal */}

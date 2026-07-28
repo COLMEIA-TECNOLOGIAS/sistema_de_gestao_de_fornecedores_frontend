@@ -6,16 +6,36 @@ import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 
 function Sidebar({ activeItem, onItemClick }) {
-  const { hasPermission, isAdmin, logout } = useAuth();
+  const { hasPermission, isAdmin, logout, user } = useAuth();
   const [isLogoutModalOpen, setIsLogoutModalOpen] = useState(false);
   const [isLoggingOut, setIsLoggingOut] = useState(false);
   // Default expanded for "usuarios" if we are in one of its paths
   const isUsuariosActive = ["usuarios", "criar-utilizador", "permissoes"].includes(activeItem);
-  const [expandedMenus, setExpandedMenus] = useState({ "usuarios": isUsuariosActive });
+  const [expandedMenus, setExpandedMenus] = useState({ "usuarios_group": isUsuariosActive });
   const navigate = useNavigate();
 
   const toggleMenu = (id) => {
     setExpandedMenus(prev => ({ ...prev, [id]: !prev[id] }));
+  };
+
+  // Verifica se o utilizador tem permissão para um menu.
+  // Para admins: sempre true.
+  // Para não-admins: usa estritamente as permissões da API quando disponíveis.
+  const canSeeMenu = (permission) => {
+    if (isAdmin) return true;
+    if (!permission) return false;
+
+    // Se há permissões carregadas da API, usá-las estritamente
+    if (user?.apiPermissions?.permissionsMap) {
+      const map = user.apiPermissions.permissionsMap;
+      if (Object.keys(map).length > 0) {
+        const perm = map[permission];
+        return !!(perm && perm.access !== false);
+      }
+    }
+
+    // Fallback: usar hasPermission (baseado no role)
+    return hasPermission(permission);
   };
 
   const mainMenuItems = [
@@ -24,7 +44,7 @@ function Sidebar({ activeItem, onItemClick }) {
     { id: "aquisicoes",  label: "Aquisições",   icon: ShoppingCart,    permission: PERMISSIONS.AQUISICOES },
     { id: "relatorios",  label: "Relatórios e Análises", icon: BarChart3,     permission: PERMISSIONS.RELATORIOS },
     { 
-      id: "usuarios_group", // Use a different ID so activeItem doesn't conflict directly unless we click it
+      id: "usuarios_group",
       label: "Gestão de utilizadores", 
       icon: UserCircle, 
       permission: PERMISSIONS.USUARIOS, 
@@ -35,13 +55,13 @@ function Sidebar({ activeItem, onItemClick }) {
         { id: "permissoes", label: "Gestão de Permissões", icon: Shield }
       ]
     },
-    { id: "logs-eventos",label: "Gestão de Logs", icon: Activity,        permission: PERMISSIONS.DASHBOARD, adminOnly: true },
+    { id: "logs-eventos",label: "Gestão de Logs", icon: Activity,        permission: PERMISSIONS.AUDITORIA, adminOnly: true },
     { id: "config",      label: "Configurações", icon: Settings,        permission: PERMISSIONS.CONFIGURACOES, adminOnly: true },
   ];
 
   const menuItems = mainMenuItems.filter(item => {
     if (item.adminOnly && !isAdmin) return false;
-    return hasPermission(item.permission);
+    return canSeeMenu(item.permission);
   });
 
   const handleLogoutConfirm = async () => {

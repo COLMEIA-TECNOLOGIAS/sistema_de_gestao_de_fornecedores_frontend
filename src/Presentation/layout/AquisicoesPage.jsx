@@ -10,6 +10,7 @@ import ModalRevisarCotacao from "../Components/ModalRevisarCotacao";
 import ModalSolicitarRevisao from "../Components/ModalSolicitarRevisao";
 import ModalPedirCotacao from "../Components/ModalPedirCotacao";
 import ModalRespostasPedido from "../Components/ModalRespostasPedido";
+import ModalSolicitarEliminacao from "../Components/ModalSolicitarEliminacao";
 
 export default function AquisicoesPage() {
     const location = useLocation();
@@ -36,6 +37,10 @@ export default function AquisicoesPage() {
     const [selectedActivity, setSelectedActivity] = useState(null);
     const [isSolicitarRevisaoModalOpen, setIsSolicitarRevisaoModalOpen] = useState(false);
     const [isSubmittingReview, setIsSubmittingReview] = useState(false);
+    
+    // Deletion Modal States
+    const [isSolicitarEliminacaoModalOpen, setIsSolicitarEliminacaoModalOpen] = useState(false);
+    const [itemToDelete, setItemToDelete] = useState(null);
 
 
 
@@ -288,7 +293,8 @@ export default function AquisicoesPage() {
     const handleDeleteAtividade = async (e, act) => {
         e.stopPropagation();
         if (!isAdmin) {
-            showToast('error', 'Não tem permissão para eliminar pedidos de cotação.');
+            setItemToDelete({ type: 'quotation_request', id: act.id, name: act.title, label: 'Pedido de Cotação' });
+            setIsSolicitarEliminacaoModalOpen(true);
             return;
         }
         if (!window.confirm(`Deseja eliminar a atividade "${act.title}"?`)) return;
@@ -299,6 +305,28 @@ export default function AquisicoesPage() {
         } catch (err) {
             console.error('Erro ao eliminar atividade:', err);
             showToast('error', 'Erro ao eliminar atividade');
+        }
+    };
+
+    const confirmSolicitarEliminacao = async (reason) => {
+        if (!itemToDelete) return;
+        try {
+            const res = await pendingDeletionsAPI.requestDelete(
+                itemToDelete.type,
+                itemToDelete.id,
+                itemToDelete.name,
+                user?.name || 'Técnico',
+                reason
+            );
+            if (res) {
+                showToast('success', 'Solicitação de eliminação enviada ao administrador!');
+            }
+            setIsSolicitarEliminacaoModalOpen(false);
+            setItemToDelete(null);
+        } catch (err) {
+            console.error('Erro ao solicitar eliminação:', err);
+            const errorMsg = err.response?.data?.message || err.message || 'Erro ao solicitar eliminação';
+            showToast('error', errorMsg);
         }
     };
 
@@ -570,15 +598,13 @@ export default function AquisicoesPage() {
                                                         >
                                                             <Eye size={18} />
                                                         </button>
-                                                        {isAdmin && (
-                                                            <button
-                                                                onClick={(e) => handleDeleteAtividade(e, act)}
-                                                                className="p-2 text-red-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-all"
-                                                                title={'Eliminar'}
-                                                            >
-                                                                <Trash2 size={18} />
-                                                            </button>
-                                                        )}
+                                                        <button
+                                                            onClick={(e) => handleDeleteAtividade(e, act)}
+                                                            className="p-2 text-red-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-all"
+                                                            title={'Eliminar'}
+                                                        >
+                                                            <Trash2 size={18} />
+                                                        </button>
                                                     </div>
                                                 </td>
                                             </tr>
@@ -726,6 +752,17 @@ export default function AquisicoesPage() {
                 onClose={() => setIsSolicitarRevisaoModalOpen(false)}
                 onSubmit={confirmSolicitarRevisao}
                 isLoading={isSubmittingReview}
+            />
+
+            <ModalSolicitarEliminacao
+                isOpen={isSolicitarEliminacaoModalOpen}
+                onClose={() => {
+                    setIsSolicitarEliminacaoModalOpen(false);
+                    setItemToDelete(null);
+                }}
+                onSubmit={confirmSolicitarEliminacao}
+                itemName={itemToDelete?.name}
+                itemTypeLabel={itemToDelete?.label}
             />
 
 
