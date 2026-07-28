@@ -1,7 +1,7 @@
 import { useModalLock } from '../../hooks/useModalLock';
 import { useState, useEffect, useRef } from "react";
 import { X, MoreVertical, FileText, Trash2, CheckCircle, MessageSquare, RefreshCw, Bell } from "lucide-react";
-import { quotationResponsesAPI, quotationRequestsAPI } from "../../services/api";
+import { quotationResponsesAPI, quotationRequestsAPI, suppliersAPI } from "../../services/api";
 import FornecedorTableSkeleton from "./FornecedorTableSkeleton";
 
 export default function ModalRespostasPedido({
@@ -36,21 +36,33 @@ export default function ModalRespostasPedido({
             setIsLoading(true);
             setError(null);
 
-            // Fetch the quotation request to get the list of invited suppliers
-            const requestResponse = await quotationRequestsAPI.getById(quotationRequestId);
+            // Fetch the quotation request, responses, and suppliers simultaneously
+            const [requestResponse, responsesResponse, suppliersResponse] = await Promise.all([
+                quotationRequestsAPI.getById(quotationRequestId).catch(err => { throw err; }),
+                quotationResponsesAPI.getAll({ quotation_request_id: quotationRequestId }).catch(() => ({ data: [] })),
+                suppliersAPI.getAll().catch(() => ({ data: [] }))
+            ]);
+
             if (fetchIdRef.current !== fetchId) return;
+
             const requestData = requestResponse.data || requestResponse;
             setRequestDetails(requestData);
-
-            // Fetch responses filtered by quotation_request_id
-            const responsesResponse = await quotationResponsesAPI.getAll({
-                quotation_request_id: quotationRequestId
-            });
-            if (fetchIdRef.current !== fetchId) return;
+            
             const responsesData = responsesResponse.data || [];
+            const allSuppliers = Array.isArray(suppliersResponse) ? suppliersResponse : (suppliersResponse?.data || []);
 
             // Merge: For each supplier invited, find their response
-            const invitedSuppliers = requestData.suppliers || [];
+            const rawSuppliers = requestData.suppliers || [];
+            const invitedSuppliers = rawSuppliers.map(s => {
+                if (typeof s === 'object' && s !== null) {
+                    return s.supplier || allSuppliers.find(f => f.id === s.supplier_id || f.id === s.id) || s;
+                }
+                return allSuppliers.find(f => f.id === s) || { id: s };
+            });
+
+            // Re-assign correctly hydrated suppliers to requestDetails so they show up properly in the modal header
+            requestData.suppliers = invitedSuppliers;
+            setRequestDetails({ ...requestData });
 
             const mergedRespostas = invitedSuppliers.map(supplier => {
                 // Find if this supplier has a response for this request
@@ -271,8 +283,8 @@ export default function ModalRespostasPedido({
                                                     <div className="flex items-center gap-3">
                                                         <div className="relative">
                                                             <img
-                                                                src={`https://api.dicebear.com/7.x/initials/svg?seed=${resposta.supplier?.commercial_name || 'N/A'}`}
-                                                                alt={resposta.supplier?.commercial_name}
+                                                                src={`https://api.dicebear.com/7.x/initials/svg?seed=${resposta.supplier?.company_name || resposta.supplier?.commercial_name || 'N/A'}`}
+                                                                alt={resposta.supplier?.company_name || resposta.supplier?.commercial_name}
                                                                 className="w-10 h-10 rounded-xl shadow-sm border border-gray-100"
                                                             />
                                                             {resposta.is_placeholder && (
@@ -283,7 +295,8 @@ export default function ModalRespostasPedido({
                                                         </div>
                                                         <div className="flex flex-col">
                                                             <span className="font-semibold text-gray-900">
-                                                                {resposta.supplier?.commercial_name ||
+                                                                {resposta.supplier?.company_name || 
+                                                                    resposta.supplier?.commercial_name ||
                                                                     resposta.supplier?.legal_name ||
                                                                     'Fornecedor N/A'}
                                                             </span>

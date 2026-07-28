@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { useLocation } from "react-router-dom";
 import { createPortal } from "react-dom";
 import { Search, SlidersHorizontal, Eye, FileText, CheckCircle, Clock, AlertCircle, TrendingUp, Truck, Plus, X, Package, Trash2 } from "lucide-react";
-import { quotationResponsesAPI, quotationRequestsAPI, acquisitionsAPI, pendingDeletionsAPI } from "../../services/api";
+import { quotationResponsesAPI, quotationRequestsAPI, acquisitionsAPI, pendingDeletionsAPI, suppliersAPI } from "../../services/api";
 import { useAuth } from "../../context/AuthContext";
 import Toast from "../Components/Toast";
 import DashboardTableSkeleton from "../Components/DashboardTableSkeleton";
@@ -17,6 +17,7 @@ export default function AquisicoesPage() {
     const [isLoading, setIsLoading] = useState(true);
     const [responses, setResponses] = useState([]);
     const [atividades, setAtividades] = useState([]);
+    const [fornecedores, setFornecedores] = useState([]);
     const [activeTab, setActiveTab] = useState('atividades'); // 'atividades' | 'aquisicoes'
     const [error, setError] = useState(null);
     const [toast, setToast] = useState(null);
@@ -62,13 +63,15 @@ export default function AquisicoesPage() {
             setIsLoading(true);
             setError(null);
 
-            const [acqData, reqData] = await Promise.all([
+            const [acqData, reqData, fornData] = await Promise.all([
                 acquisitionsAPI.getAll().catch(() => []),
-                quotationRequestsAPI.getAll().catch(() => [])
+                quotationRequestsAPI.getAll().catch(() => []),
+                suppliersAPI.getAll().catch(() => [])
             ]);
 
             setResponses(acqData.data || (Array.isArray(acqData) ? acqData : []));
             setAtividades(reqData.data || (Array.isArray(reqData) ? reqData : []));
+            setFornecedores(fornData.data || (Array.isArray(fornData) ? fornData : []));
         } catch (err) {
             console.error("Erro ao carregar dados:", err);
             setError("Erro ao carregar dados.");
@@ -453,6 +456,7 @@ export default function AquisicoesPage() {
                                 <th className="px-6 py-5 text-left text-[10px] font-black uppercase tracking-widest" style={{ color: 'var(--color-text-muted)' }}>ID</th>
                                 <th className="px-6 py-5 text-left text-[10px] font-black uppercase tracking-widest" style={{ color: 'var(--color-text-muted)' }}>{activeTab === 'atividades' ? 'Atividade / Referência' : 'Procedência'}</th>
                                 <th className="px-6 py-5 text-left text-[10px] font-black uppercase tracking-widest" style={{ color: 'var(--color-text-muted)' }}>{activeTab === 'atividades' ? 'Fornecedores' : 'Fornecedor'}</th>
+                                <th className="px-6 py-5 text-left text-[10px] font-black uppercase tracking-widest" style={{ color: 'var(--color-text-muted)' }}>Data de  Submissão</th>
                                 <th className="px-6 py-5 text-left text-[10px] font-black uppercase tracking-widest" style={{ color: 'var(--color-text-muted)' }}>Data Limite / Entrega</th>
                                 <th className="px-6 py-5 text-left text-[10px] font-black uppercase tracking-widest" style={{ color: 'var(--color-text-muted)' }}>Estado</th>
                                 <th className="px-6 py-5 text-center text-[10px] font-black uppercase tracking-widest" style={{ color: 'var(--color-text-muted)' }}>Acções</th>
@@ -490,20 +494,35 @@ export default function AquisicoesPage() {
                                                 </td>
                                                 <td className="px-6 py-6">
                                                     {(() => {
-                                                        const suppliers = act.suppliers || act.quotation_suppliers || [];
+                                                        let suppliers = [];
+                                                        if (Array.isArray(act.suppliers)) {
+                                                            suppliers = act.suppliers;
+                                                        } else if (Array.isArray(act.quotation_suppliers)) {
+                                                            suppliers = act.quotation_suppliers.map(qs => qs.supplier || fornecedores.find(f => f.id === qs.supplier_id) || qs).filter(Boolean);
+                                                        } else if (Array.isArray(act.quotation_responses)) {
+                                                            suppliers = act.quotation_responses.map(qr => qr.supplier || fornecedores.find(f => f.id === qr.supplier_id) || qr).filter(Boolean);
+                                                        } else if (act.supplier) {
+                                                            suppliers = [act.supplier];
+                                                        } else if (act.supplier_id) {
+                                                            const found = fornecedores.find(f => f.id === act.supplier_id);
+                                                            if (found) suppliers = [found];
+                                                        }
+                                                        
+                                                        // Filter and deduplicate
+                                                        suppliers = Array.from(new Map(suppliers.filter(s => s && (s.id || s.supplier_id)).map(s => [s.id || s.supplier_id, s])).values());
                                                         if (suppliers.length > 0) {
                                                             return (
                                                                 <div className="inline-flex flex-col gap-1.5 p-2 rounded-lg border min-w-[140px]" style={{ borderColor: 'rgba(68,177,111,0.2)', background: 'rgba(68,177,111,0.04)' }}>
-                                                                    {suppliers.slice(0, 3).map((s) => (
+                                                                    {suppliers.slice(0, 3).map((s, idx) => (
                                                                         <span
-                                                                            key={s.id}
+                                                                            key={s.id || idx}
                                                                             className="group relative inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold cursor-pointer transition-all"
                                                                             style={{ background: 'rgba(68,177,111,0.1)', color: '#44B16F' }}
                                                                         >
-                                                                            {s.commercial_name || s.legal_name || s.name || `#${s.id}`}
+                                                                            {s.company_name || s.commercial_name || s.legal_name || s.name || `Fornecedor N/A`}
                                                                             <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 hidden group-hover:block z-50">
                                                                                 <div className="bg-gray-900 text-white text-xs rounded-lg px-3 py-2 shadow-lg whitespace-nowrap">
-                                                                                    <p className="font-semibold">{s.commercial_name || s.legal_name}</p>
+                                                                                    <p className="font-semibold">{s.company_name || s.commercial_name || s.legal_name || 'Fornecedor'}</p>
                                                                                     {s.email && <p className="text-gray-300">{s.email}</p>}
                                                                                     {s.nif && <p className="text-gray-300">NIF: {s.nif}</p>}
                                                                                     {s.categories?.length > 0 && (
@@ -528,6 +547,9 @@ export default function AquisicoesPage() {
                                                             </span>
                                                         );
                                                     })()}
+                                                </td>
+                                                <td className="px-6 py-6 text-sm font-medium" style={{ color: 'var(--color-text-secondary)' }}>
+                                                    {formatDate(act.created_at || act.submitted_at)}
                                                 </td>
                                                 <td className="px-6 py-6 text-sm font-medium" style={{ color: 'var(--color-text-secondary)' }}>
                                                     {formatDate(act.deadline)}

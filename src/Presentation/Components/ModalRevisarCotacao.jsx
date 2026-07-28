@@ -119,7 +119,7 @@ export default function ModalRevisarCotacao({
                         <div>
                             <h3 className="font-semibold mb-2" style={{ color: 'var(--color-text-primary)' }}>Enviado para:</h3>
                             <div className="text-sm space-y-1" style={{ color: 'var(--color-text-secondary)' }}>
-                                <p className="font-medium">{cotacao.quotation_supplier?.supplier?.commercial_name || cotacao.quotation_supplier?.supplier?.legal_name || cotacao.supplier?.commercial_name || cotacao.supplier?.legal_name || 'N/A'}</p>
+                                <p className="font-medium">{cotacao.quotation_supplier?.supplier?.company_name || cotacao.quotation_supplier?.supplier?.commercial_name || cotacao.quotation_supplier?.supplier?.legal_name || cotacao.supplier?.company_name || cotacao.supplier?.commercial_name || cotacao.supplier?.legal_name || 'N/A'}</p>
                                 <p>{cotacao.quotation_supplier?.supplier?.address || cotacao.supplier?.address || 'Endereço não disponível'}</p>
                                 <p>{cotacao.quotation_supplier?.supplier?.phone || cotacao.supplier?.phone || '---'}</p>
                             </div>

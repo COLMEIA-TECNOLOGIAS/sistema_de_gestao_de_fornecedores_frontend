@@ -57,10 +57,7 @@ export default function ModalPedirCotacao({ isOpen, onClose, fornecedor, activit
             userName = parsedUser.name || parsedUser.nome || 'Equipa de Compras';
         }
         
-        setPedidoDescricao(prev => {
-            if (!prev) return `\n\nObrigado,\n${userName}`;
-            return prev;
-        });
+        setPedidoDescricao('');
     }, []);
 
     // If activityName, activityDescription, activityReference or buyerEmail is given, pre-fill
@@ -166,6 +163,7 @@ export default function ModalPedirCotacao({ isOpen, onClose, fornecedor, activit
         if (fornecedorSearchQuery.trim()) {
             const q = fornecedorSearchQuery.toLowerCase();
             result = result.filter(f =>
+                (f.company_name || '').toLowerCase().includes(q) ||
                 (f.commercial_name || '').toLowerCase().includes(q) ||
                 (f.legal_name || '').toLowerCase().includes(q) ||
                 (f.email || '').toLowerCase().includes(q)
@@ -192,7 +190,7 @@ export default function ModalPedirCotacao({ isOpen, onClose, fornecedor, activit
         const userName = currentUser?.name || currentUser?.nome || 'Equipa de Compras';
 
         setPedidoAssunto('');
-        setPedidoDescricao(`\n\nObrigado,\n${userName}`);
+        setPedidoDescricao('');
         setActivityDesc('');
         setDeadline('');
         setProductName('');
@@ -681,7 +679,7 @@ export default function ModalPedirCotacao({ isOpen, onClose, fornecedor, activit
                                                         />
                                                         <div className="flex-1 min-w-0">
                                                             <p className="text-sm font-medium truncate" style={{ color: 'var(--color-text-primary)' }}>
-                                                                {forn.commercial_name || forn.legal_name || `#${forn.id}`}
+                                                                {forn.company_name || forn.commercial_name || forn.legal_name || forn.name || `#${forn.id}`}
                                                             </p>
                                                             <p className="text-xs truncate" style={{ color: 'var(--color-text-muted)' }}>{forn.email || ''}</p>
                                                         </div>
@@ -710,7 +708,7 @@ export default function ModalPedirCotacao({ isOpen, onClose, fornecedor, activit
                                                 const forn = fornecedoresList.find(f => f.id === id);
                                                 return forn ? (
                                                     <span key={id} className="inline-flex items-center gap-1 px-3 py-1 bg-[#44B16F] text-white text-xs rounded-full">
-                                                        {forn.commercial_name || forn.legal_name}
+                                                        {forn.company_name || forn.commercial_name || forn.legal_name || forn.name || `#${forn.id}`}
                                                         <button
                                                             type="button"
                                                             onClick={() => setSelectedFornecedores(selectedFornecedores.filter(f => f !== id))}
