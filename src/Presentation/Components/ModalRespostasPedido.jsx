@@ -227,7 +227,7 @@ export default function ModalRespostasPedido({
                                     <div className="flex flex-wrap gap-2">
                                         {requestDetails.suppliers.map((s, idx) => (
                                             <span key={s.id || idx} className="inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-medium" style={{ background: 'rgba(59,130,246,0.1)', color: '#3b82f6' }}>
-                                                {s.commercial_name || s.legal_name || s.name || `#${s.id}`}
+                                                {s.company_name || s.commercial_name || s.legal_name || s.name || `#${s.id}`}
                                                 {s.email && <span className="opacity-70">({s.email})</span>}
                                             </span>
                                         ))}
