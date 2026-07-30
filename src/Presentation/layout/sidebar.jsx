@@ -56,7 +56,6 @@ function Sidebar({ activeItem, onItemClick }) {
       ]
     },
     { id: "logs-eventos",label: "Gestão de Logs", icon: Activity,        permission: PERMISSIONS.AUDITORIA, adminOnly: true },
-    { id: "config",      label: "Configurações", icon: Settings,        permission: PERMISSIONS.CONFIGURACOES, adminOnly: true },
   ];
 
   const menuItems = mainMenuItems.filter(item => {

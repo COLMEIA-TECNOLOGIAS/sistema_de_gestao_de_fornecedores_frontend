@@ -3,6 +3,28 @@ import { Shield, Search, Loader2, Save, AlertCircle, RefreshCw, Eye, Pencil } fr
 import { usersAPI, permissionsAPI, menusAPI } from '../../services/api';
 import Toast from '../Components/Toast';
 
+const MENU_TRANSLATIONS = {
+    dashboard: 'Painel de Controlo',
+    suppliers: 'Fornecedores',
+    'quotation-requests': 'Pedidos de Cotação',
+    users: 'Utilizadores',
+    relatorios: 'Relatórios',
+    acquisitions: 'Aquisições',
+    configuracoes: 'Configurações',
+    categories: 'Categorias',
+    products: 'Produtos',
+    'supplier-evaluations': 'Avaliações',
+    documents: 'Documentos',
+    notifications: 'Notificações',
+    'audit-logs': 'Registo de Eventos',
+    'deletion-requests': 'Pedidos de Exclusão',
+};
+
+const translateMenu = (menu) => {
+    const slug = (menu.slug || menu.name || '').toLowerCase();
+    return MENU_TRANSLATIONS[slug] || menu.name || menu.slug || slug;
+};
+
 export default function PermissoesPage() {
     const [users, setUsers] = useState([]);
     const [isLoading, setIsLoading] = useState(true);
@@ -112,7 +134,7 @@ export default function PermissoesPage() {
                 return {
                     menu_id: menu.id,
                     slug: menu.slug || menu.name,
-                    label: menu.name || menu.slug,
+                    label: translateMenu(menu),
                     icon: menu.icon,
                     access: hasAccess,
                     level: hasAccess ? level : 'read',
@@ -123,7 +145,7 @@ export default function PermissoesPage() {
                         return {
                             menu_id: child.id,
                             slug: child.slug || child.name,
-                            label: child.name || child.slug,
+                            label: translateMenu(child),
                             icon: child.icon,
                             access: cHasAccess,
                             level: cHasAccess ? cLevel : 'read',
@@ -429,11 +451,6 @@ export default function PermissoesPage() {
                                                     >
                                                         <td className="px-6 py-4 font-semibold flex items-center gap-2"
                                                             style={{ color: 'var(--color-text-primary)' }}>
-                                                            {perm.icon && (
-                                                                <span className="material-icons text-sm" style={{ color: '#44B16F', fontSize: '16px' }}>
-                                                                    {perm.icon}
-                                                                </span>
-                                                            )}
                                                             {perm.label}
                                                         </td>
                                                         <td className="px-6 py-4 text-center">
