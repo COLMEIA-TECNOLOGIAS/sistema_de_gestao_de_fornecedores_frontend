@@ -51,8 +51,6 @@ export default function MeuPerfilPage() {
         }
     };
 
-    const userAvatar = `https://api.dicebear.com/7.x/avataaars/svg?seed=${encodeURIComponent(formData.name || "User")}`;
-
     return (
         <div className="max-w-4xl mx-auto space-y-6">
             <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
@@ -69,11 +67,9 @@ export default function MeuPerfilPage() {
                         <div className="h-32 bg-gradient-to-r from-[#44B16F] to-[#368d58]"></div>
                         <div className="px-6 pb-6">
                             <div className="relative -mt-16 mb-4 flex justify-center">
-                                <img
-                                    src={userAvatar}
-                                    alt={formData.name}
-                                    className="w-32 h-32 rounded-full border-4 border-white bg-white shadow-md object-cover"
-                                />
+                                <div className="w-32 h-32 rounded-full border-4 border-white bg-gray-200 shadow-md flex items-center justify-center">
+                                    <User size={48} className="text-gray-500" />
+                                </div>
                             </div>
                             <div className="text-center">
                                 <h3 className="text-xl font-bold text-gray-900">{formData.name}</h3>

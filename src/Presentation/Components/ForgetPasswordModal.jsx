@@ -43,7 +43,7 @@ export default function ForgetPasswordModal({ onClose }) {
 
               <form onSubmit={handleSubmit} className="space-y-6">
                 <Input
-                  label="Email"
+                  label="E-mail"
                   type="email"
                   name="email"
                   value={email}

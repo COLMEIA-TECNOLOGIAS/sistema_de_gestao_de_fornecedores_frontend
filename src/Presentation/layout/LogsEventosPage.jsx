@@ -208,8 +208,8 @@ export default function LogsEventosPage() {
                                     style={{ background: 'var(--color-bg)', color: 'var(--color-text-primary)' }}
                                 >
                                     <option value="">Todos</option>
-                                    <option value="Login">Login</option>
-                                    <option value="Logout">Logout</option>
+                                    <option value="Login">Início de Sessão</option>
+                                    <option value="Logout">Fim de Sessão</option>
                                     <option value="Cadastro de Supplier">Cadastro de Fornecedor</option>
                                     <option value="Atualização de Supplier">Atualização de Fornecedor</option>
                                     <option value="Exclusão de Supplier">Exclusão de Fornecedor</option>

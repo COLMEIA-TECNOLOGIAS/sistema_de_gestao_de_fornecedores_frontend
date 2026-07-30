@@ -44,7 +44,7 @@ export const ROLE_PERMISSIONS = {
         canGenerateAcquisitions: true,
     },
     [ROLES.PROCUREMENT_TECHNICIAN]: {
-        name: 'Técnico de Procurement',
+        name: 'Técnico de Compras',
         description: 'Gestão de cotações e fornecedores',
         permissions: [
             PERMISSIONS.DASHBOARD,

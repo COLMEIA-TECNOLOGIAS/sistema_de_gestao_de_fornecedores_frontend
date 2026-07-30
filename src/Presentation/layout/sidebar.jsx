@@ -39,7 +39,7 @@ function Sidebar({ activeItem, onItemClick }) {
   };
 
   const mainMenuItems = [
-    { id: "dashboard",   label: "Dashboard",   icon: LayoutDashboard, permission: PERMISSIONS.DASHBOARD },
+    { id: "dashboard",   label: "Painel de Controlo",   icon: LayoutDashboard, permission: PERMISSIONS.DASHBOARD },
     { id: "fornecedores",label: "Fornecedores", icon: Package,         permission: PERMISSIONS.FORNECEDORES },
     { id: "aquisicoes",  label: "Aquisições",   icon: ShoppingCart,    permission: PERMISSIONS.AQUISICOES },
     { id: "relatorios",  label: "Relatórios e Análises", icon: BarChart3,     permission: PERMISSIONS.RELATORIOS },

@@ -25,8 +25,8 @@ export default function AquisicoesPage() {
     const [searchTerm, setSearchTerm] = useState("");
     
     // Filtros
-    const [filterSupplier, setFilterSupplier] = useState("");
     const [filterDeliveryDate, setFilterDeliveryDate] = useState("");
+    const [filterSubmissionDate, setFilterSubmissionDate] = useState("");
     const [filterStatus, setFilterStatus] = useState("");
     const [isFiltersVisible, setIsFiltersVisible] = useState(false);
 
@@ -122,16 +122,15 @@ export default function AquisicoesPage() {
     };
 
     const filteredResponses = responses.filter(resp => {
-        // ... (existing filter code)
         const matchSearch = resp.id.toString().includes(searchTerm) ||
             (resp.supplier?.commercial_name || "").toLowerCase().includes(searchTerm.toLowerCase()) ||
             (resp.activity_description || resp.reference_number || "").toLowerCase().includes(searchTerm.toLowerCase());
             
-        const matchSupplier = filterSupplier === "" || (resp.supplier?.commercial_name || "").toLowerCase().includes(filterSupplier.toLowerCase());
         const matchDeliveryDate = filterDeliveryDate === "" || (resp.expected_delivery_date && resp.expected_delivery_date.startsWith(filterDeliveryDate));
+        const matchSubmissionDate = filterSubmissionDate === "" || (resp.submitted_at && resp.submitted_at.startsWith(filterSubmissionDate)) || (resp.created_at && resp.created_at.startsWith(filterSubmissionDate));
         const matchStatus = filterStatus === "" || resp.status === filterStatus;
         
-        return matchSearch && matchSupplier && matchDeliveryDate && matchStatus;
+        return matchSearch && matchDeliveryDate && matchSubmissionDate && matchStatus;
     });
 
     const filteredAtividades = atividades.filter(act => {
@@ -139,14 +138,15 @@ export default function AquisicoesPage() {
             (act.title || "").toLowerCase().includes(searchTerm.toLowerCase()) ||
             (act.activity_description || act.reference_number || "").toLowerCase().includes(searchTerm.toLowerCase());
         
+        const matchSubmissionDate = filterSubmissionDate === "" || (act.submitted_at && act.submitted_at.startsWith(filterSubmissionDate)) || (act.created_at && act.created_at.startsWith(filterSubmissionDate));
         const matchStatus = filterStatus === "" || act.status === filterStatus;
-        return matchSearch && matchStatus;
+        return matchSearch && matchSubmissionDate && matchStatus;
     });
 
     const handleClearFilters = () => {
         setSearchTerm("");
-        setFilterSupplier("");
         setFilterDeliveryDate("");
+        setFilterSubmissionDate("");
         setFilterStatus("");
     };
 
@@ -432,12 +432,11 @@ export default function AquisicoesPage() {
                     {isFiltersVisible && (
                         <div className="grid grid-cols-1 md:grid-cols-4 gap-4 pt-4 mt-2 border-t" style={{ borderColor: 'var(--color-border-light)' }}>
                             <div>
-                                <label className="block text-xs font-semibold mb-1" style={{ color: 'var(--color-text-secondary)' }}>Fornecedor</label>
+                                <label className="block text-xs font-semibold mb-1" style={{ color: 'var(--color-text-secondary)' }}>Data de Submissão</label>
                                 <input
-                                    type="text"
-                                    value={filterSupplier}
-                                    onChange={(e) => setFilterSupplier(e.target.value)}
-                                    placeholder="Nome do fornecedor"
+                                    type="date"
+                                    value={filterSubmissionDate}
+                                    onChange={(e) => setFilterSubmissionDate(e.target.value)}
                                     className="input-field"
                                 />
                             </div>

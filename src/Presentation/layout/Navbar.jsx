@@ -9,7 +9,7 @@ import LogoutConfirmModal from "../Components/LogoutConfirmModal";
 import ModalAprovacoesExclusao from "../Components/ModalAprovacoesExclusao";
 
 const PAGE_TITLES = {
-  dashboard:    "Dashboard",
+  dashboard:    "Painel de Controlo",
   fornecedores: "Fornecedores",
   cotacoes:     "Cotações",
   usuarios:     "Gestão de utilizadores",
@@ -32,7 +32,7 @@ const PAGE_SUBTITLES = {
   "meu-perfil": "Gerencie as suas informações pessoais.",
 };
 
-function Navbar({ userName: propUserName, userRole: propUserRole, userAvatar: propUserAvatar, onItemClick, activeItem }) {
+function Navbar({ userName: propUserName, userRole: propUserRole, onItemClick, activeItem }) {
   const { isDark, toggleTheme } = useTheme();
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const [isLogoutModalOpen, setIsLogoutModalOpen] = useState(false);

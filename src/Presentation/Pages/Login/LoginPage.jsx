@@ -75,7 +75,7 @@ export default function LoginPage() {
 
           <div className="mb-8">
             <h1 className="text-4xl font-bold mb-3" style={{ color: 'var(--color-text-primary)' }}>
-              Login
+              Entrar
             </h1>
             <p className="text-base" style={{ color: 'var(--color-text-secondary)' }}>
               Entre com as sua conta para continuar<br />
@@ -94,7 +94,7 @@ export default function LoginPage() {
             {/* Email Field */}
             <div>
               <label className="block text-sm mb-2" style={{ color: 'var(--color-text-secondary)' }}>
-                Email
+                E-mail
               </label>
               <input
                 type="email"

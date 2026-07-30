@@ -15,8 +15,6 @@ export default function ModalDetalhesUsuario({ isOpen, onClose, user }) {
         return roles[role] || role;
     };
 
-    const userAvatar = `https://api.dicebear.com/7.x/avataaars/svg?seed=${encodeURIComponent(user.name || user.nome || "User")}`;
-
     return (
         <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50">
             <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg mx-4 overflow-hidden animate-fadeIn relative">
@@ -37,11 +35,9 @@ export default function ModalDetalhesUsuario({ isOpen, onClose, user }) {
                     {/* Avatar - Negative Margin to overlap header */}
                     <div className="relative -mt-16 mb-4 flex justify-center">
                         <div className="relative">
-                            <img
-                                src={userAvatar}
-                                alt={user.name}
-                                className="w-32 h-32 rounded-full border-4 border-white bg-white shadow-md object-cover"
-                            />
+                            <div className="w-32 h-32 rounded-full border-4 border-white bg-gray-200 shadow-md flex items-center justify-center">
+                                <User size={48} className="text-gray-500" />
+                            </div>
                             <div className={`absolute bottom-2 right-2 w-5 h-5 rounded-full border-2 border-white ${user.is_active !== false ? 'bg-green-500' : 'bg-red-500'}`}></div>
                         </div>
                     </div>

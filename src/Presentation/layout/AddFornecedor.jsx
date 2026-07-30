@@ -25,7 +25,7 @@ export default function AddFornecedorPage() {
           className="flex items-center gap-2 text-gray-600 hover:text-gray-900 transition-colors"
         >
           <ArrowLeft size={20} />
-          <span className="text-sm font-medium">Add fornecedor</span>
+          <span className="text-sm font-medium">Adicionar Fornecedor</span>
         </button>
       </div>
 

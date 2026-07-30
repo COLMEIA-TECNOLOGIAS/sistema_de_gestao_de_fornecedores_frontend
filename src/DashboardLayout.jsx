@@ -27,8 +27,6 @@ export default function DashboardLayout() {
   const { user, userRoleName, hasPermission: checkPermission, isAdmin } = useAuth();
 
   const userName = user?.name || user?.nome || "Utilizador";
-  const userAvatar = `https://api.dicebear.com/7.x/initials/svg?seed=${encodeURIComponent(userName)}&backgroundColor=44B16F&textColor=ffffff`;
-
   // Verifica permissão usando a API quando disponível (mesmo critério que a sidebar)
   const canAccessPage = (permission) => {
     if (isAdmin) return true;
@@ -79,7 +77,6 @@ export default function DashboardLayout() {
         <Navbar
           userName={userName}
           userRole={userRoleName}
-          userAvatar={userAvatar}
           onItemClick={handleItemClick}
           activeItem={activeItem}
         />
