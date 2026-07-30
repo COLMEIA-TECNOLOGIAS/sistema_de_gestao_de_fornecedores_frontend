@@ -311,11 +311,9 @@ export default function AquisicoesPage() {
     const confirmSolicitarEliminacao = async (reason) => {
         if (!itemToDelete) return;
         try {
-            const res = await pendingDeletionsAPI.requestDelete(
+                    const res = await pendingDeletionsAPI.requestDelete(
                 itemToDelete.type,
                 itemToDelete.id,
-                itemToDelete.name,
-                user?.name || 'Técnico',
                 reason
             );
             if (res) {

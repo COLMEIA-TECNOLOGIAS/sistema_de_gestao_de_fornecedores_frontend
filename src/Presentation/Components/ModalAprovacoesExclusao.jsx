@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { X, AlertTriangle, Check, XCircle } from 'lucide-react';
+import { X, AlertTriangle, Check, XCircle, FileText, Building2, MessageSquare } from 'lucide-react';
 import { pendingDeletionsAPI } from '../../services/api';
 
 export default function ModalAprovacoesExclusao({ isOpen, onClose }) {
@@ -85,54 +85,78 @@ export default function ModalAprovacoesExclusao({ isOpen, onClose }) {
                         </div>
                     ) : (
                         <div className="space-y-4">
-                            {pendingRequests.map(req => (
-                                <div key={req.id} className="p-4 rounded-xl shadow-sm flex flex-col md:flex-row gap-4 items-start md:items-center justify-between" style={{ background: 'var(--color-surface)', border: '1px solid var(--color-border)' }}>
-                                    <div className="flex-1">
-                                        <div className="flex items-center gap-2 mb-1">
-                                            <span className={`text-[10px] font-bold uppercase tracking-wider px-2 py-1 rounded-md ${
-                                                (req.deletable_type?.includes('Supplier') || req.type === 'supplier') ? 'text-blue-500' : 'text-purple-500'
-                                            }`} style={{ background: (req.deletable_type?.includes('Supplier') || req.type === 'supplier') ? 'rgba(59,130,246,0.1)' : 'rgba(168,85,247,0.1)' }}>
-                                                {(req.deletable_type?.includes('Supplier') || req.type === 'supplier') ? 'Fornecedor' : 'Pedido de Cotação'}
-                                            </span>
-                                            <span className="text-xs" style={{ color: 'var(--color-text-muted)' }}>{new Date(req.created_at || req.createdAt).toLocaleString('pt-AO')}</span>
-                                        </div>
-                                        <p className="text-sm" style={{ color: 'var(--color-text-secondary)' }}>
-                                            O técnico <span className="font-semibold" style={{ color: 'var(--color-text-primary)' }}>{req.user?.name || req.technician_name || req.technicianName || 'Técnico'}</span> solicitou a exclusão de:
-                                        </p>
-                                        <p className="font-bold mt-1" style={{ color: 'var(--color-text-primary)' }}>
-                                            {req.deletable?.company_name || req.deletable?.commercial_name || req.deletable?.title || req.deletable?.name || req.item_name || req.itemName || `ID: ${req.deletable_id || req.item_id || req.itemId}`}
-                                        </p>
-                                        {req.reason && (
-                                            <div className="mt-2 p-2 rounded-lg text-sm" style={{ background: 'var(--color-bg)', border: '1px solid var(--color-border)', color: 'var(--color-text-secondary)' }}>
-                                                <span className="font-semibold text-xs uppercase tracking-wider block mb-1" style={{ color: 'var(--color-text-muted)' }}>Motivo:</span>
-                                                {req.reason}
+                            {pendingRequests.map(req => {
+                                const tecnico = req.requester?.name || 'Técnico';
+                                const isSupplier = req.requestable_type?.includes('Supplier');
+                                const tipo = isSupplier ? 'Fornecedor' : 'Cotação';
+                                const itemNome = isSupplier
+                                    ? req.requestable?.company_name || req.requestable?.commercial_name || ''
+                                    : req.requestable?.title || '';
+                                const statusClass = isSupplier ? 'bg-blue-50 text-blue-700 border-blue-200' : 'bg-purple-50 text-purple-700 border-purple-200';
+                                return (
+                                <div key={req.id} className="p-3.5 rounded-xl shadow-sm" style={{ background: 'var(--color-surface)', border: '1px solid var(--color-border)' }}>
+                                    <div className="flex items-start justify-between mb-2">
+                                        <div className="flex items-center gap-3">
+                                            <div className={`p-2 rounded-lg ${isSupplier ? 'bg-blue-50 text-blue-600' : 'bg-purple-50 text-purple-600'}`}>
+                                                {isSupplier ? <AlertTriangle size={18} /> : <FileText size={18} />}
                                             </div>
-                                        )}
+                                            <div>
+                                                <span className={`text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-md border ${statusClass}`}>
+                                                    {tipo}
+                                                </span>
+                                                <p className="text-xs mt-0.5" style={{ color: 'var(--color-text-muted)' }}>
+                                                    {new Date(req.created_at).toLocaleString('pt-AO')}
+                                                </p>
+                                            </div>
+                                        </div>
+                                        <span className="text-xs font-bold" style={{ color: 'var(--color-text-muted)' }}>#{req.id}</span>
                                     </div>
-                                    <div className="flex gap-2 w-full md:w-auto">
-                                        <button 
+
+                                    <div className="flex items-center gap-2 mb-2">
+                                        <span className="text-xs" style={{ color: 'var(--color-text-secondary)' }}>Solicitado por</span>
+                                        <strong className="text-sm" style={{ color: 'var(--color-text-primary)' }}>{tecnico}</strong>
+                                    </div>
+
+                                    <div className="flex items-center gap-3 p-2.5 rounded-xl mb-2" style={{ background: 'var(--color-bg)', border: '1px solid var(--color-border)' }}>
+                                        {isSupplier ? (
+                                            <Building2 size={18} className="text-blue-500 shrink-0" />
+                                        ) : (
+                                            <FileText size={18} className="text-purple-500 shrink-0" />
+                                        )}
+                                        <div>
+                                            <p className="text-[10px] font-semibold uppercase tracking-wider" style={{ color: 'var(--color-text-muted)' }}>Item a eliminar</p>
+                                            <p className="font-semibold text-sm" style={{ color: 'var(--color-text-primary)' }}>{itemNome || `#${req.requestable_id}`}</p>
+                                        </div>
+                                    </div>
+
+                                    {req.reason && (
+                                        <div className="mb-2 p-2.5 rounded-xl text-xs" style={{ background: 'var(--color-bg)', border: '1px solid var(--color-border)', color: 'var(--color-text-secondary)' }}>
+                                            <span className="font-semibold text-[10px] uppercase tracking-wider flex items-center gap-1 mb-0.5" style={{ color: 'var(--color-text-muted)' }}>
+                                                <MessageSquare size={12} /> Motivo
+                                            </span>
+                                            {req.reason}
+                                        </div>
+                                    )}
+
+                                    <div className="flex gap-2 pt-2 border-t" style={{ borderColor: 'var(--color-border)' }}>
+                                        <button
                                             onClick={() => handleReject(req.id)}
-                                            className="flex-1 md:flex-none flex items-center justify-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold transition-colors"
-                                            style={{ color: '#ef4444', background: 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.2)' }}
-                                            onMouseEnter={(e) => e.currentTarget.style.background = 'rgba(239,68,68,0.2)'}
-                                            onMouseLeave={(e) => e.currentTarget.style.background = 'rgba(239,68,68,0.1)'}
+                                            className="flex-1 flex items-center justify-center gap-2 py-2 rounded-xl text-xs font-bold transition-all border border-red-200 text-red-600 hover:bg-red-50"
                                         >
                                             <XCircle size={16} />
                                             Recusar
                                         </button>
-                                        <button 
+                                        <button
                                             onClick={() => handleApprove(req.id)}
-                                            className="flex-1 md:flex-none flex items-center justify-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold transition-colors"
-                                            style={{ color: '#10b981', background: 'rgba(16,185,129,0.1)', border: '1px solid rgba(16,185,129,0.2)' }}
-                                            onMouseEnter={(e) => e.currentTarget.style.background = 'rgba(16,185,129,0.2)'}
-                                            onMouseLeave={(e) => e.currentTarget.style.background = 'rgba(16,185,129,0.1)'}
+                                            className="flex-1 flex items-center justify-center gap-2 py-2 rounded-xl text-xs font-bold transition-all bg-emerald-500 text-white hover:bg-emerald-600 shadow-sm"
                                         >
                                             <Check size={16} />
                                             Aprovar
                                         </button>
                                     </div>
                                 </div>
-                            ))}
+                                );
+                            })}
                         </div>
                     )}
                 </div>

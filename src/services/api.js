@@ -344,12 +344,14 @@ export const pendingDeletionsAPI = {
         const response = await api.get(`/deletion-requests/${id}`);
         return response.data;
     },
-    requestDelete: async (type, id, itemName, technicianName, reason = '') => {
+    requestDelete: async (type, id, reason = '') => {
+        const modelMap = {
+            supplier: 'App\\Models\\Supplier',
+            quotation_request: 'App\\Models\\QuotationRequest',
+        };
         const response = await api.post('/deletion-requests', {
-            type, // 'supplier' | 'quotation_request'
-            item_id: id,
-            item_name: itemName,
-            technician_name: technicianName,
+            requestable_type: modelMap[type] || type,
+            requestable_id: id,
             reason
         });
         return response.data;

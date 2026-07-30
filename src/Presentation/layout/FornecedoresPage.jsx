@@ -192,8 +192,6 @@ export default function FornecedoresPage() {
             const res = await pendingDeletionsAPI.requestDelete(
                 itemToDelete.type,
                 itemToDelete.id,
-                itemToDelete.name,
-                user?.name || 'Técnico',
                 reason
             );
             if (res) {
