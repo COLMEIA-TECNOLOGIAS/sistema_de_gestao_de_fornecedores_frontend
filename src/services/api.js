@@ -114,7 +114,10 @@ export const suppliersAPI = {
         return response.data;
     },
     delete: async (id, reason = '') => {
-        const response = await api.delete(`/suppliers/${id}`, { data: { reason } });
+        // Sem motivo (admin): DELETE simples, eliminação directa (204).
+        // Com motivo (não-admin): envia { reason } para criar pedido pendente (201).
+        const config = reason ? { data: { reason } } : undefined;
+        const response = await api.delete(`/suppliers/${id}`, config);
         return { data: response.data, status: response.status };
     },
     getClassification: async (id) => {
@@ -158,7 +161,8 @@ export const quotationRequestsAPI = {
         return response.data;
     },
     delete: async (id, reason = '') => {
-        const response = await api.delete(`/quotation-requests/${id}`, { data: { reason } });
+        const config = reason ? { data: { reason } } : undefined;
+        const response = await api.delete(`/quotation-requests/${id}`, config);
         return { data: response.data, status: response.status };
     },
     // Enviar convites aos fornecedores (só funciona para status 'draft')
@@ -354,7 +358,8 @@ export const pendingDeletionsAPI = {
         };
         const endpoint = endpointMap[type];
         if (!endpoint) throw new Error(`Tipo desconhecido: ${type}`);
-        const response = await api.delete(endpoint, { data: { reason } });
+        const config = reason ? { data: { reason } } : undefined;
+        const response = await api.delete(endpoint, config);
         return { data: response.data, status: response.status };
     },
     approve: async (id) => {

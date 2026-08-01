@@ -222,13 +222,12 @@ export default function FornecedoresPage() {
         }
     };
 
-    const confirmDeleteFornecedor = async (fornecedor, reason = '') => {
-        const supplier = fornecedor || selectedFornecedor;
-        if (!supplier) return;
+    const confirmDeleteFornecedor = async () => {
+        if (!selectedFornecedor) return;
 
         setIsDeleting(true);
         try {
-            await suppliersAPI.delete(supplier.id, reason);
+            await suppliersAPI.delete(selectedFornecedor.id);
             showToast('success', 'Fornecedor eliminado com sucesso!');
             await reloadSuppliers();
             setIsDeleteModalOpen(false);
