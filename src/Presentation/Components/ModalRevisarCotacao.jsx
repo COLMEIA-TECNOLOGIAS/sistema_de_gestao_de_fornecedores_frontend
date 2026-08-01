@@ -19,6 +19,34 @@ export default function ModalRevisarCotacao({
 
     if (!isOpen || !cotacao) return null;
 
+    const cotacaoId = cotacao.id != null ? `CT - ${String(cotacao.id).padStart(3, '0')}` : 'N/A';
+    const ppReference = cotacao.quotation_supplier?.quotation_request?.reference
+        || cotacao.quotation_request?.reference
+        || cotacao.quotation_supplier?.quotation_request?.activity_description
+        || cotacao.reference
+        || cotacao.activity_description
+        || null;
+    const systemReferenceRaw = cotacao.quotation_supplier?.quotation_request?.reference_number
+        || cotacao.quotation_request?.reference_number
+        || cotacao.reference_number
+        || null;
+    const systemReference = (systemReferenceRaw && systemReferenceRaw !== ppReference) ? systemReferenceRaw : cotacaoId;
+    const submissionDate = cotacao.submitted_at || cotacao.created_at
+        || cotacao.quotation_supplier?.quotation_request?.submitted_at
+        || cotacao.quotation_supplier?.quotation_request?.created_at
+        || null;
+
+    const getAcquisitionStatusLabel = (status) => {
+        const labels = {
+            pending: 'Pendente',
+            in_progress: 'Em Progresso',
+            completed: 'Concluída',
+            delivered: 'Entregue',
+            cancelled: 'Cancelada',
+        };
+        return labels[status] || status || '—';
+    };
+
     const handleAprovar = () => {
         if (onAprovar) {
             onAprovar(cotacao);
@@ -129,9 +157,24 @@ export default function ModalRevisarCotacao({
                         <div>
                             <h3 className="font-semibold mb-2" style={{ color: 'var(--color-text-primary)' }}>Detalhes:</h3>
                             <div className="text-sm space-y-1" style={{ color: 'var(--color-text-secondary)' }}>
-                                <p><span className="font-medium">ID:</span> CT - {String(cotacao.id).padStart(3, '0')}</p>
-                                <p><span className="font-medium">Data:</span> {cotacao.submitted_at ? new Date(cotacao.submitted_at).toLocaleDateString('pt-AO') : 'N/A'}</p>
-                                <p><span className="font-medium">Prazo de entrega:</span> {cotacao.expected_delivery_date ? new Date(cotacao.expected_delivery_date).toLocaleDateString('pt-AO') : 'N/A'}</p>
+                                {isAcquisition ? (
+                                    <>
+                                        <p><span className="font-medium">Referência Aquisição:</span> {cotacao.reference_number || `ACQ-${String(cotacao.id).padStart(3, '0')}`}</p>
+                                        <p><span className="font-medium">Referência PP:</span> {cotacao.quotation_request?.activity_description || cotacao.quotation_request?.reference || cotacao.quotation_supplier?.quotation_request?.activity_description || cotacao.quotation_supplier?.quotation_request?.reference || '—'}</p>
+                                        <p><span className="font-medium">Estado:</span> {getAcquisitionStatusLabel(cotacao.status)}</p>
+                                        <p><span className="font-medium">Data de Criação:</span> {submissionDate ? new Date(submissionDate).toLocaleDateString('pt-AO') : 'N/A'}</p>
+                                        <p><span className="font-medium">Entrega Prevista:</span> {cotacao.expected_delivery_date ? new Date(cotacao.expected_delivery_date).toLocaleDateString('pt-AO') : 'N/A'}</p>
+                                        <p><span className="font-medium">Entrega Real:</span> {cotacao.actual_delivery_date ? new Date(cotacao.actual_delivery_date).toLocaleDateString('pt-AO') : (cotacao.status === 'completed' || cotacao.status === 'delivered' ? 'Entregue' : 'Ainda não entregue')}</p>
+                                    </>
+                                ) : (
+                                    <>
+                                        <p><span className="font-medium">ID:</span> {cotacaoId}</p>
+                                        <p><span className="font-medium">Referência PP:</span> {ppReference || '—'}</p>
+                                        <p><span className="font-medium">Referência do Sistema:</span> {systemReference}</p>
+                                        <p><span className="font-medium">Data de Submissão:</span> {submissionDate ? new Date(submissionDate).toLocaleDateString('pt-AO') : 'N/A'}</p>
+                                        <p><span className="font-medium">Prazo de entrega:</span> {cotacao.delivery_date || cotacao.expected_delivery_date ? new Date(cotacao.delivery_date || cotacao.expected_delivery_date).toLocaleDateString('pt-AO') : 'N/A'}</p>
+                                    </>
+                                )}
                             </div>
                         </div>
                     </div>
@@ -145,6 +188,13 @@ export default function ModalRevisarCotacao({
                             <>
                                 <h3 className="font-semibold mt-4 mb-2" style={{ color: 'var(--color-text-primary)' }}>Descrição:</h3>
                                 <p style={{ color: 'var(--color-text-secondary)' }}>{cotacao.quotation_supplier?.quotation_request?.description || cotacao.quotation_request?.description || cotacao.description}</p>
+                            </>
+                        )}
+
+                        {isAcquisition && cotacao.justification && (
+                            <>
+                                <h3 className="font-semibold mt-4 mb-2" style={{ color: 'var(--color-text-primary)' }}>Justificação:</h3>
+                                <p style={{ color: 'var(--color-text-secondary)' }}>{cotacao.justification}</p>
                             </>
                         )}
                     </div>

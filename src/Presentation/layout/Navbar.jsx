@@ -34,6 +34,8 @@ const PAGE_SUBTITLES = {
 
 function Navbar({ userName: propUserName, userRole: propUserRole, onItemClick, activeItem }) {
   const { isDark, toggleTheme } = useTheme();
+  const [currentTime, setCurrentTime] = useState(new Date());
+  const [locationInfo, setLocationInfo] = useState({ country: 'Angola', city: 'Luanda', local: '' });
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const [isLogoutModalOpen, setIsLogoutModalOpen] = useState(false);
   const [isLoggingOut, setIsLoggingOut] = useState(false);
@@ -49,6 +51,11 @@ function Navbar({ userName: propUserName, userRole: propUserRole, onItemClick, a
   const notificationsRef = useRef(null);
   const navigate = useNavigate();
   const { user, logout, isAdmin } = useAuth();
+
+  useEffect(() => {
+    const timer = setInterval(() => setCurrentTime(new Date()), 1000);
+    return () => clearInterval(timer);
+  }, []);
 
   const fetchNotifications = async () => {
     try {
@@ -78,8 +85,17 @@ function Navbar({ userName: propUserName, userRole: propUserRole, onItemClick, a
     const fetchPendingCount = async () => {
       try {
         const response = await pendingDeletionsAPI.getAll();
-        const data = response?.data || response || [];
-        setPendingApprovalsCount(response?.total !== undefined ? response.total : (Array.isArray(data) ? data.length : 0));
+        const listData = response?.data || response || [];
+        let requestsArray = Array.isArray(listData) ? listData : (listData.data || []);
+        
+        requestsArray = requestsArray.filter(req => {
+            const status = req.status || req.request_status || req.state;
+            if (!status) return true;
+            const s = String(status).toLowerCase();
+            return ['pending', 'pendente', 'in_progress', 'inprogress', 'aguardando', 'requested', '0'].includes(s);
+        });
+        
+        setPendingApprovalsCount(requestsArray.length);
       } catch (e) {
         // ignore
       }
@@ -257,6 +273,16 @@ function Navbar({ userName: propUserName, userRole: propUserRole, onItemClick, a
       >
         {/* Spacer */}
         <div className="flex-1" />
+
+        {/* Time and Location */}
+        <div className="hidden md:flex flex-col items-end justify-center mr-4" style={{ borderRight: '1px solid var(--color-border-light)', paddingRight: '16px' }}>
+          <span className="text-sm font-semibold" style={{ color: 'var(--color-text-primary)' }}>
+            {currentTime.toLocaleTimeString('pt-AO', { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
+          </span>
+          <span className="text-xs" style={{ color: 'var(--color-text-muted)' }}>
+            Luanda, Angola
+          </span>
+        </div>
 
         {/* Right: Dark mode + Notifications + User */}
         <div className="flex items-center gap-2">

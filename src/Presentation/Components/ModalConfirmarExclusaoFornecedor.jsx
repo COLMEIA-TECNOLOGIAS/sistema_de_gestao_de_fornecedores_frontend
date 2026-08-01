@@ -1,8 +1,10 @@
+import { useState } from 'react';
 import { useModalLock } from '../../hooks/useModalLock';
 import { X, AlertTriangle, Clock } from "lucide-react";
 
 export default function ModalConfirmarExclusaoFornecedor({ isOpen, onClose, onConfirm, fornecedor, isLoading, isAdmin = true }) {
     useModalLock(isOpen);
+    const [reason, setReason] = useState("");
     if (!isOpen || !fornecedor) return null;
 
     return (
@@ -42,6 +44,18 @@ export default function ModalConfirmarExclusaoFornecedor({ isOpen, onClose, onCo
                             ? 'Esta ação não pode ser desfeita e removerá todos os dados associados.'
                             : 'O administrador receberá a solicitação e poderá aprovar ou recusar a eliminação.'}
                     </p>
+                    {isAdmin && (
+                        <div className="mt-4">
+                            <label className="block text-xs font-semibold text-gray-600 mb-1">Motivo da eliminação <span className="text-gray-400">(opcional)</span></label>
+                            <textarea
+                                value={reason}
+                                onChange={(e) => setReason(e.target.value)}
+                                placeholder="Descreva brevemente o motivo da eliminação..."
+                                disabled={isLoading}
+                                className="w-full p-3 border rounded-xl text-sm focus:outline-none focus:border-red-400 focus:ring-2 focus:ring-red-100 transition-all resize-none h-24 bg-gray-50 focus:bg-white"
+                            />
+                        </div>
+                    )}
                 </div>
 
                 {/* Footer */}
@@ -54,7 +68,7 @@ export default function ModalConfirmarExclusaoFornecedor({ isOpen, onClose, onCo
                         Cancelar
                     </button>
                     <button
-                        onClick={() => onConfirm(fornecedor)}
+                        onClick={() => onConfirm(fornecedor, reason)}
                         disabled={isLoading}
                         className={`px-6 py-2.5 text-white rounded-lg transition-colors font-medium flex items-center gap-2 disabled:opacity-50 ${isAdmin ? 'bg-red-600 hover:bg-red-700' : 'bg-orange-500 hover:bg-orange-600'}`}
                     >

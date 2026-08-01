@@ -31,14 +31,16 @@ export default function DashboardLayout() {
   const canAccessPage = (permission) => {
     if (isAdmin) return true;
     if (!permission) return false;
-    if (user?.apiPermissions?.permissionsMap) {
+    
+    // Usar estritamente as permissões carregadas da API
+    if (user?.apiPermissions && user.apiPermissions.permissionsMap !== undefined) {
       const map = user.apiPermissions.permissionsMap;
-      if (Object.keys(map).length > 0) {
-        const perm = map[permission];
-        return !!(perm && perm.access !== false);
-      }
+      const perm = map[permission];
+      return !!(perm && perm.access !== false);
     }
-    return checkPermission(permission);
+    
+    // Se as permissões ainda não carregaram ou estão vazias, negar acesso
+    return false;
   };
 
   // Permission check redirect

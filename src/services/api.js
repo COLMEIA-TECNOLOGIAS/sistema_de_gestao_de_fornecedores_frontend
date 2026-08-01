@@ -345,16 +345,17 @@ export const pendingDeletionsAPI = {
         return response.data;
     },
     requestDelete: async (type, id, reason = '') => {
-        const modelMap = {
-            supplier: 'App\\Models\\Supplier',
-            quotation_request: 'App\\Models\\QuotationRequest',
+        // O backend usa o mesmo endpoint DELETE do recurso para ambos os casos:
+        // - Admin: elimina directamente (204)
+        // - Não-admin: cria pedido pendente (201)
+        const endpointMap = {
+            supplier: `/suppliers/${id}`,
+            quotation_request: `/quotation-requests/${id}`,
         };
-        const response = await api.post('/deletion-requests', {
-            requestable_type: modelMap[type] || type,
-            requestable_id: id,
-            reason
-        });
-        return response.data;
+        const endpoint = endpointMap[type];
+        if (!endpoint) throw new Error(`Tipo desconhecido: ${type}`);
+        const response = await api.delete(endpoint, { data: { reason } });
+        return { data: response.data, status: response.status };
     },
     approve: async (id) => {
         const response = await api.post(`/deletion-requests/${id}/approve`);

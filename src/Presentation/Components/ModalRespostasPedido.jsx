@@ -3,6 +3,7 @@ import { useState, useEffect, useRef } from "react";
 import { X, MoreVertical, FileText, Trash2, CheckCircle, MessageSquare, RefreshCw, Bell } from "lucide-react";
 import { quotationResponsesAPI, quotationRequestsAPI, suppliersAPI } from "../../services/api";
 import FornecedorTableSkeleton from "./FornecedorTableSkeleton";
+import ModalGerarAquisicao from "./ModalGerarAquisicao";
 
 export default function ModalRespostasPedido({
     isOpen,
@@ -20,6 +21,10 @@ export default function ModalRespostasPedido({
     const [error, setError] = useState(null);
     const [openMenuId, setOpenMenuId] = useState(null);
     const [requestDetails, setRequestDetails] = useState(null);
+    const [approvalTarget, setApprovalTarget] = useState(null);
+    const [isApproving, setIsApproving] = useState(false);
+    const [gerarAquisicaoTarget, setGerarAquisicaoTarget] = useState(null);
+    const [isGerarAquisicao, setIsGerarAquisicao] = useState(false);
 
     const fetchIdRef = useRef(0);
 
@@ -126,30 +131,103 @@ export default function ModalRespostasPedido({
 
     const getStatusColor = (status) => {
         const statusColors = {
-            "submitted": "bg-gray-100 text-gray-700",
+            "draft": "bg-gray-100 text-gray-700",
+            "submitted": "bg-blue-100 text-blue-700",
+            "pending": "bg-yellow-100 text-yellow-700",
+            "pending_review": "bg-yellow-100 text-yellow-700",
+            "in_review": "bg-amber-100 text-amber-700",
             "approved": "bg-green-100 text-green-700",
             "rejected": "bg-red-100 text-red-700",
-            "pending": "bg-yellow-100 text-yellow-700",
             "revision_requested": "bg-amber-100 text-amber-700",
             "needs_revision": "bg-gray-100 text-gray-700",
+            "published": "bg-blue-100 text-blue-700",
+            "sent": "bg-blue-100 text-blue-700",
+            "open": "bg-blue-100 text-blue-700",
+            "active": "bg-blue-100 text-blue-700",
+            "in_progress": "bg-blue-100 text-blue-700",
+            "completed": "bg-green-100 text-green-700",
+            "cancelled": "bg-red-100 text-red-700",
+            "delivered": "bg-green-100 text-green-700",
+            "nao_aprovada": "bg-gray-100 text-gray-500",
         };
         return statusColors[status] || "bg-gray-100 text-gray-700";
     };
 
     const getStatusLabel = (status) => {
         const labels = {
+            'draft': 'Rascunho',
             'pending': 'Pendente',
-            'submitted': 'Submetido',
+            'submitted': 'Submetida',
+            'pending_review': 'Pendente',
+            'in_review': 'Em Revisão',
             'approved': 'Aprovada',
             'rejected': 'Rejeitada',
             'revision_requested': 'Revisão Solicitada',
             'needs_revision': 'Revisão Necessária',
+            'published': 'Publicada',
+            'sent': 'Enviada',
+            'open': 'Em Curso',
+            'active': 'Ativa',
+            'in_progress': 'Em Progresso',
+            'completed': 'Concluída',
+            'cancelled': 'Cancelada',
+            'delivered': 'Entregue',
+            'nao_aprovada': 'Não Aprovada',
         };
-        return labels[status] || status;
+        return labels[status] || 'Desconhecido';
     };
 
     useModalLock(isOpen);
     if (!isOpen) return null;
+
+    const hasApproved = respostas.some(r => r.status === 'approved');
+    const getDisplayStatus = (resposta) =>
+        hasApproved && resposta.status !== 'approved' ? 'nao_aprovada' : resposta.status;
+    const isDimmed = (resposta) =>
+        (resposta.is_placeholder) || (hasApproved && resposta.status !== 'approved');
+
+    const isAcquisitionGenerated = (resposta) =>
+        resposta?.has_acquisition || resposta?.acquisition || resposta?.acquisition_id ||
+        resposta?.status === 'completed' || resposta?.status === 'delivered';
+
+    const handleOpenAprovacaoModal = (resposta) => {
+        setOpenMenuId(null);
+        setApprovalTarget(resposta);
+    };
+
+    const handleConfirmarAprovacao = async () => {
+        if (!approvalTarget) return;
+        setIsApproving(true);
+        try {
+            await onAprovar(approvalTarget);
+            setRespostas(prev => prev.map(r => r.id === approvalTarget.id ? { ...r, status: 'approved' } : r));
+        } catch {
+            // Erro já apresentado pelo parent
+        } finally {
+            setIsApproving(false);
+            setApprovalTarget(null);
+        }
+    };
+
+    const handleGerarAquisicao = (resposta) => {
+        if (isAcquisitionGenerated(resposta)) return;
+        setOpenMenuId(null);
+        setGerarAquisicaoTarget(resposta);
+    };
+
+    const confirmGerarAquisicao = async ({ expected_delivery_date, justification }) => {
+        if (!gerarAquisicaoTarget) return;
+        setIsGerarAquisicao(true);
+        try {
+            await onGerarAquisicao(gerarAquisicaoTarget, expected_delivery_date, justification);
+            setRespostas(prev => prev.map(r => r.id === gerarAquisicaoTarget.id ? { ...r, has_acquisition: true } : r));
+            setGerarAquisicaoTarget(null);
+        } catch {
+            // Erro já apresentado pelo parent
+        } finally {
+            setIsGerarAquisicao(false);
+        }
+    };
 
     return (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
@@ -188,7 +266,14 @@ export default function ModalRespostasPedido({
                             <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
                                 <div>
                                     <span className="font-semibold block" style={{ color: 'var(--color-text-primary)' }}>Referência</span>
-                                    <span style={{ color: 'var(--color-text-secondary)' }}>{requestDetails.activity_description || requestDetails.reference_number || 'N/A'}</span>
+                                    <span className="block" style={{ color: 'var(--color-text-secondary)' }}>
+                                        Ref. PP: {requestDetails.reference || requestDetails.activity_description || '—'}
+                                    </span>
+                                    <span className="block" style={{ color: 'var(--color-text-secondary)' }}>
+                                        Ref. Sistema: {(requestDetails.reference_number && requestDetails.reference_number !== (requestDetails.reference || requestDetails.activity_description))
+                                            ? requestDetails.reference_number
+                                            : (requestDetails.id != null ? `CT-${String(requestDetails.id).padStart(3, '0')}` : '—')}
+                                    </span>
                                 </div>
                                 <div>
                                     <span className="font-semibold block" style={{ color: 'var(--color-text-primary)' }}>Título da Atividade</span>
@@ -199,8 +284,10 @@ export default function ModalRespostasPedido({
                                     <span style={{ color: 'var(--color-text-secondary)' }}>{requestDetails.deadline ? new Date(requestDetails.deadline).toLocaleDateString('pt-AO') : 'N/A'}</span>
                                 </div>
                                 <div>
-                                    <span className="font-semibold block" style={{ color: 'var(--color-text-primary)' }}>Email do Comprador</span>
-                                    <span style={{ color: 'var(--color-text-secondary)' }}>{requestDetails.buyer_email || requestDetails.buyer || 'N/A'}</span>
+                                    <span className="font-semibold block" style={{ color: 'var(--color-text-primary)' }}>Data de Submissão</span>
+                                    <span style={{ color: 'var(--color-text-secondary)' }}>
+                                        {requestDetails.submitted_at || requestDetails.created_at ? new Date(requestDetails.submitted_at || requestDetails.created_at).toLocaleDateString('pt-AO') : 'N/A'}
+                                    </span>
                                 </div>
                             </div>
                             {requestDetails.description && (
@@ -248,6 +335,7 @@ export default function ModalRespostasPedido({
                                         <th className="px-6 py-4 text-left text-sm font-semibold text-gray-600">ID</th>
                                         <th className="px-6 py-4 text-left text-sm font-semibold text-gray-600">Fornecedor</th>
                                         <th className="px-6 py-4 text-left text-sm font-semibold text-gray-600">Prazo Entrega</th>
+                                        <th className="px-6 py-4 text-left text-sm font-semibold text-gray-600">Data Entrega</th>
                                         <th className="px-6 py-4 text-left text-sm font-semibold text-gray-600">Data Resposta</th>
                                         <th className="px-6 py-4 text-left text-sm font-semibold text-gray-600">Status</th>
                                         <th className="px-6 py-4 text-center text-sm font-semibold text-gray-600">Acções</th>
@@ -258,7 +346,7 @@ export default function ModalRespostasPedido({
                                         <FornecedorTableSkeleton rows={3} />
                                     ) : respostas.length === 0 ? (
                                         <tr>
-                                            <td colSpan="7" className="px-6 py-12 text-center text-gray-500">
+                                            <td colSpan="8" className="px-6 py-12 text-center text-gray-500">
                                                 <div className="flex flex-col items-center gap-2">
                                                     <svg className="w-12 h-12 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2.586a1 1 0 00-.707.293l-2.414 2.414a1 1 0 01-.707.293h-3.172a1 1 0 01-.707-.293l-2.414-2.414A1 1 0 006.586 13H4" />
@@ -270,13 +358,13 @@ export default function ModalRespostasPedido({
                                         </tr>
                                     ) : (
                                         respostas.map((resposta) => (
-                                            <tr key={resposta.id} className={`border-b border-gray-100 hover:bg-gray-50 transition-colors ${resposta.is_placeholder ? 'opacity-70' : ''}`}>
+                                            <tr key={resposta.id} className={`border-b border-gray-100 hover:bg-gray-50 transition-colors ${isDimmed(resposta) ? 'opacity-70' : ''}`}>
                                                 <td className="px-6 py-6">
-                                                    <input type="checkbox" className="rounded border-gray-300" disabled={resposta.is_placeholder} />
+                                                    <input type="checkbox" className="rounded border-gray-300" disabled={isDimmed(resposta)} />
                                                 </td>
                                                 <td className="px-6 py-6">
                                                     <span className="font-medium text-gray-700">
-                                                        {resposta.is_placeholder ? '---' : `#${resposta.id}`}
+                                                        {resposta.supplier?.id != null ? `#${resposta.supplier.id}` : '---'}
                                                     </span>
                                                 </td>
                                                 <td className="px-6 py-6">
@@ -319,6 +407,21 @@ export default function ModalRespostasPedido({
                                                 <td className="px-6 py-6 text-gray-700">
                                                     {resposta.is_placeholder ? (
                                                         <span className="text-gray-400">---</span>
+                                                    ) : resposta.delivery_date || resposta.expected_delivery_date ? (
+                                                        <span className="text-sm">
+                                                            {new Date(resposta.delivery_date || resposta.expected_delivery_date).toLocaleDateString('pt-AO', {
+                                                                day: '2-digit',
+                                                                month: '2-digit',
+                                                                year: 'numeric'
+                                                            })}
+                                                        </span>
+                                                    ) : (
+                                                        <span className="text-gray-400">N/A</span>
+                                                    )}
+                                                </td>
+                                                <td className="px-6 py-6 text-gray-700">
+                                                    {resposta.is_placeholder ? (
+                                                        <span className="text-gray-400">---</span>
                                                     ) : (
                                                         <span className="text-sm">
                                                             {resposta.submitted_at || resposta.created_at ? new Date(resposta.submitted_at || resposta.created_at).toLocaleDateString('pt-AO', {
@@ -330,13 +433,13 @@ export default function ModalRespostasPedido({
                                                     )}
                                                 </td>
                                                 <td className="px-6 py-6">
-                                                    <span className={`px-4 py-2 rounded-xl text-sm font-semibold inline-flex items-center gap-2 ${getStatusColor(resposta.status)}`}>
-                                                        {getStatusLabel(resposta.status)}
+                                                    <span className={`px-4 py-2 rounded-xl text-sm font-semibold inline-flex items-center gap-2 ${getStatusColor(getDisplayStatus(resposta))}`}>
+                                                        {getStatusLabel(getDisplayStatus(resposta))}
                                                     </span>
                                                 </td>
                                                 <td className="px-6 py-6">
                                                     <div className="relative flex justify-center dropdown-menu">
-                                                        {!resposta.is_placeholder && (
+                                                        {!isDimmed(resposta) && (
                                                             <>
                                                                 <button
                                                                     onClick={() => setOpenMenuId(openMenuId === `resp-${resposta.id}` ? null : `resp-${resposta.id}`)}
@@ -360,57 +463,57 @@ export default function ModalRespostasPedido({
                                                                             <span className="text-gray-700">Revisar Detalhes</span>
                                                                         </button>
 
-                                                                        {/* Aprovar proposta */}
-                                                                        <button
-                                                                            onClick={() => {
-                                                                                if (confirm('Deseja aprovar esta proposta?')) {
-                                                                                    onAprovar(resposta.id);
-                                                                                    setOpenMenuId(null);
-                                                                                }
-                                                                            }}
-                                                                            className="w-full px-4 py-2.5 text-left hover:bg-gray-50 text-sm flex items-center gap-3 transition-colors text-emerald-600 font-medium"
-                                                                        >
-                                                                            <CheckCircle size={16} className="text-emerald-500" />
-                                                                            <span>Aprovar Proposta</span>
-                                                                        </button>
+                                                                        {!isAcquisitionGenerated(resposta) && (
+                                                                            <>
+                                                                                {resposta.status !== 'approved' && (
+                                                                                    <>
+                                                                                        {/* Aprovar proposta */}
+                                                                                        <button
+                                                                                            onClick={() => handleOpenAprovacaoModal(resposta)}
+                                                                                            className="w-full px-4 py-2.5 text-left hover:bg-gray-50 text-sm flex items-center gap-3 transition-colors text-emerald-600 font-medium"
+                                                                                        >
+                                                                                            <CheckCircle size={16} className="text-emerald-500" />
+                                                                                            <span>Aprovar Proposta</span>
+                                                                                        </button>
 
-                                                                        {/* Rejeitar proposta */}
-                                                                        <button
-                                                                            onClick={() => {
-                                                                                if (confirm('Deseja rejeitar esta proposta?')) {
-                                                                                    onRejeitar(resposta.id);
-                                                                                    setOpenMenuId(null);
-                                                                                }
-                                                                            }}
-                                                                            className="w-full px-4 py-2.5 text-left hover:bg-gray-50 text-sm flex items-center gap-3 transition-colors text-red-600"
-                                                                        >
-                                                                            <Trash2 size={16} className="text-red-400" />
-                                                                            <span>Rejeitar Proposta</span>
-                                                                        </button>
+                                                                                        {/* Rejeitar proposta */}
+                                                                                        <button
+                                                                                            onClick={() => {
+                                                                                                if (confirm('Deseja rejeitar esta proposta?')) {
+                                                                                                    onRejeitar(resposta);
+                                                                                                    setOpenMenuId(null);
+                                                                                                }
+                                                                                            }}
+                                                                                            className="w-full px-4 py-2.5 text-left hover:bg-gray-50 text-sm flex items-center gap-3 transition-colors text-red-600"
+                                                                                        >
+                                                                                            <Trash2 size={16} className="text-red-400" />
+                                                                                            <span>Rejeitar Proposta</span>
+                                                                                        </button>
 
-                                                                        {/* Solicitar revisão */}
-                                                                        <button
-                                                                            onClick={() => {
-                                                                                onSolicitarRevisao(resposta.id);
-                                                                                setOpenMenuId(null);
-                                                                            }}
-                                                                            className="w-full px-4 py-2.5 text-left hover:bg-gray-50 text-sm flex items-center gap-3 transition-colors"
-                                                                        >
-                                                                            <MessageSquare size={16} className="text-gray-400" />
-                                                                            <span className="text-gray-700">Solicitar Revisão</span>
-                                                                        </button>
+                                                                                        {/* Solicitar revisão */}
+                                                                                        <button
+                                                                                            onClick={() => {
+                                                                                                onSolicitarRevisao(resposta);
+                                                                                                setOpenMenuId(null);
+                                                                                            }}
+                                                                                            className="w-full px-4 py-2.5 text-left hover:bg-gray-50 text-sm flex items-center gap-3 transition-colors"
+                                                                                        >
+                                                                                            <MessageSquare size={16} className="text-gray-400" />
+                                                                                            <span className="text-gray-700">Solicitar Revisão</span>
+                                                                                        </button>
+                                                                                    </>
+                                                                                )}
 
-                                                                        {/* Gerar aquisição */}
-                                                                        <button
-                                                                            onClick={() => {
-                                                                                onGerarAquisicao(resposta.id);
-                                                                                setOpenMenuId(null);
-                                                                            }}
-                                                                            className="w-full px-4 py-2.5 text-left hover:bg-gray-50 text-sm flex items-center gap-3 transition-colors"
-                                                                        >
-                                                                            <RefreshCw size={16} className="text-gray-400" />
-                                                                            <span className="text-gray-700">Gerar Aquisição</span>
-                                                                        </button>
+                                                                                {/* Gerar aquisição */}
+                                                                                <button
+                                                                                    onClick={() => handleGerarAquisicao(resposta)}
+                                                                                    className="w-full px-4 py-2.5 text-left hover:bg-gray-50 text-sm flex items-center gap-3 transition-colors"
+                                                                                >
+                                                                                    <RefreshCw size={16} className="text-gray-400" />
+                                                                                    <span className="text-gray-700">Gerar Aquisição</span>
+                                                                                </button>
+                                                                            </>
+                                                                        )}
                                                                     </div>
                                                                 )}
                                                             </>
@@ -436,6 +539,69 @@ export default function ModalRespostasPedido({
                     </button>
                 </div>
             </div>
+
+            {/* Modal de confirmação de aprovação */}
+            {approvalTarget && (
+                <div className="fixed inset-0 z-[70] bg-black/50 flex items-center justify-center p-4" onClick={() => !isApproving && setApprovalTarget(null)}>
+                    <div
+                        className="bg-white rounded-2xl shadow-2xl w-full max-w-md p-6"
+                        onClick={(e) => e.stopPropagation()}
+                    >
+                        <h3 className="text-lg font-bold text-gray-900 mb-2">Confirmar Aprovação</h3>
+                        <p className="text-sm text-gray-600 mb-1">
+                            Pretende aprovar a proposta de{' '}
+                            <strong>
+                                {approvalTarget.supplier?.company_name ||
+                                    approvalTarget.supplier?.commercial_name ||
+                                    approvalTarget.supplier?.legal_name ||
+                                    'Fornecedor'}
+                            </strong>
+                            ?
+                        </p>
+                        <p className="text-xs text-gray-500 mb-4">
+                            {approvalTarget.total_amount
+                                ? `Valor total: ${parseFloat(approvalTarget.total_amount).toLocaleString('pt-AO', { minimumFractionDigits: 2 })} AOA`
+                                : `ID da resposta: ${approvalTarget.id}`}
+                        </p>
+                        <div className="rounded-lg p-4 mb-6" style={{ background: 'rgba(245,158,11,0.08)', border: '1px solid rgba(245,158,11,0.2)' }}>
+                            <p className="text-sm font-semibold text-amber-700">Atenção</p>
+                            <p className="text-sm text-amber-700 mt-1">
+                                Depois de aprovar, esta decisão é definitiva e não tem volta.
+                            </p>
+                        </div>
+                        <div className="flex items-center justify-end gap-3">
+                            <button
+                                onClick={() => setApprovalTarget(null)}
+                                disabled={isApproving}
+                                className="px-5 py-2.5 rounded-lg border border-gray-300 text-gray-700 text-sm font-medium hover:bg-gray-50 transition-colors"
+                            >
+                                Cancelar
+                            </button>
+                            <button
+                                onClick={handleConfirmarAprovacao}
+                                disabled={isApproving}
+                                className="px-5 py-2.5 rounded-lg bg-emerald-600 text-white text-sm font-medium hover:bg-emerald-700 transition-colors flex items-center gap-2"
+                            >
+                                {isApproving && (
+                                    <svg className="animate-spin h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                                    </svg>
+                                )}
+                                {isApproving ? 'Aprovando...' : 'Sim, Aprovar'}
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            <ModalGerarAquisicao
+                isOpen={!!gerarAquisicaoTarget}
+                onClose={() => !isGerarAquisicao && setGerarAquisicaoTarget(null)}
+                onSubmit={confirmGerarAquisicao}
+                isLoading={isGerarAquisicao}
+                response={gerarAquisicaoTarget}
+            />
         </div>
     );
 }

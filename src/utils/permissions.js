@@ -179,7 +179,7 @@ export function hasPermission(userOrRole, permission) {
     // 1. Se o user tem permissões carregadas da API, verificar contra elas
     if (isUserObject && userOrRole.apiPermissions) {
         const { permissionsMap } = userOrRole.apiPermissions;
-        if (permissionsMap && Object.keys(permissionsMap).length > 0) {
+        if (permissionsMap) {
             const perm = permissionsMap[permission];
             return perm ? perm.access !== false : false;
         }
@@ -214,7 +214,7 @@ export function hasWritePermission(user, permission) {
     // 1. Verificar contra permissões da API
     if (user.apiPermissions) {
         const { permissionsMap } = user.apiPermissions;
-        if (permissionsMap && Object.keys(permissionsMap).length > 0) {
+        if (permissionsMap) {
             const perm = permissionsMap[permission];
             return perm ? (perm.access !== false && perm.level === 'write') : false;
         }

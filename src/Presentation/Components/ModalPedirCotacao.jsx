@@ -327,12 +327,8 @@ export default function ModalPedirCotacao({ isOpen, onClose, fornecedor, activit
                 const formData = new FormData();
                 formData.append('title', pedidoAssunto);
                 formData.append('reference', pedidoReferencia);
-                formData.append('reference_number', pedidoReferencia);
                 formData.append('buyer_email', pedidoBuyerEmail);
                 formData.append('buyer', pedidoBuyerEmail);
-                formData.append('ocultar_referencia', '1');
-                formData.append('ocultar_referencia_automatica', '1');
-                formData.append('hide_auto_reference', '1');
                 formData.append('description', descriptionWithSignature);
                 formData.append('activity_description', pedidoReferencia);
                 formData.append('deadline', formattedDeadline);
@@ -359,12 +355,8 @@ export default function ModalPedirCotacao({ isOpen, onClose, fornecedor, activit
                 const quotationData = {
                     title: pedidoAssunto,
                     reference: pedidoReferencia,
-                    reference_number: pedidoReferencia,
                     buyer_email: pedidoBuyerEmail,
                     buyer: pedidoBuyerEmail,
-                    ocultar_referencia: true,
-                    ocultar_referencia_automatica: true,
-                    hide_auto_reference: true,
                     description: descriptionWithSignature,
                     activity_description: pedidoReferencia,
                     deadline: formattedDeadline,

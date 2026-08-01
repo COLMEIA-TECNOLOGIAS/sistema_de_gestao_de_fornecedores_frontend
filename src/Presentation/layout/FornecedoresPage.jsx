@@ -189,29 +189,46 @@ export default function FornecedoresPage() {
     const confirmSolicitarEliminacao = async (reason) => {
         if (!itemToDelete) return;
         try {
-            const res = await pendingDeletionsAPI.requestDelete(
+            await pendingDeletionsAPI.requestDelete(
                 itemToDelete.type,
                 itemToDelete.id,
                 reason
             );
-            if (res) {
-                showToast('success', 'Solicitação de eliminação enviada ao administrador!');
-            }
             setIsSolicitarEliminacaoModalOpen(false);
             setItemToDelete(null);
+            showToast('success', 'Solicitação de eliminação enviada ao administrador!');
         } catch (err) {
             console.error('Erro ao solicitar eliminação:', err);
-            const errorMsg = err.response?.data?.message || err.message || 'Erro ao solicitar eliminação';
+            const status = err.response?.status;
+            let errorMsg;
+            if (status === 422) {
+                const data = err.response?.data;
+                // Extrair mensagens de validação do Laravel
+                if (data?.errors) {
+                    errorMsg = Object.values(data.errors).flat().join(' ');
+                } else {
+                    errorMsg = data?.message || 'Já existe uma solicitação pendente para este item.';
+                }
+            } else if (status === 403) {
+                errorMsg = 'Não tem permissão para solicitar eliminações.';
+            } else if (status === 409) {
+                errorMsg = 'Já existe uma solicitação de eliminação pendente para este fornecedor.';
+            } else {
+                errorMsg = err.response?.data?.message || err.message || 'Erro ao solicitar eliminação';
+            }
             showToast('error', errorMsg);
+            // Re-throw para que o modal saiba que falhou
+            throw err;
         }
     };
 
-    const confirmDeleteFornecedor = async () => {
-        if (!selectedFornecedor) return;
+    const confirmDeleteFornecedor = async (fornecedor, reason = '') => {
+        const supplier = fornecedor || selectedFornecedor;
+        if (!supplier) return;
 
         setIsDeleting(true);
         try {
-            await suppliersAPI.delete(selectedFornecedor.id);
+            await suppliersAPI.delete(supplier.id, reason);
             showToast('success', 'Fornecedor eliminado com sucesso!');
             await reloadSuppliers();
             setIsDeleteModalOpen(false);

@@ -99,13 +99,17 @@ export function AuthProvider({ children }) {
         // API returns access_token, not token
         const { access_token: newToken, user: newUser } = response;
 
+        // Limpar permissões antigas imediatamente para evitar que o novo utilizador
+        // veja os menus do utilizador anterior enquanto as novas permissões carregam
+        localStorage.removeItem('apiPermissions');
+
         // Store in localStorage
         localStorage.setItem('token', newToken);
         localStorage.setItem('user', JSON.stringify(newUser));
 
-        // Update state
+        // Update state — sem apiPermissions para garantir sidebar limpa
         setToken(newToken);
-        setUser(newUser);
+        setUser({ ...newUser, apiPermissions: undefined });
 
         // Carregar permissões do utilizador após login
         await fetchUserPermissions(newUser);

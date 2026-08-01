@@ -6,7 +6,7 @@ import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 
 function Sidebar({ activeItem, onItemClick }) {
-  const { hasPermission, isAdmin, logout, user } = useAuth();
+  const { hasPermission, isAdmin, logout, user, permissionsLoaded } = useAuth();
   const [isLogoutModalOpen, setIsLogoutModalOpen] = useState(false);
   const [isLoggingOut, setIsLoggingOut] = useState(false);
   // Default expanded for "usuarios" if we are in one of its paths
@@ -20,22 +20,20 @@ function Sidebar({ activeItem, onItemClick }) {
 
   // Verifica se o utilizador tem permissão para um menu.
   // Para admins: sempre true.
-  // Para não-admins: usa estritamente as permissões da API quando disponíveis.
+  // Para não-admins: usa estritamente as permissões da API.
   const canSeeMenu = (permission) => {
     if (isAdmin) return true;
     if (!permission) return false;
 
-    // Se há permissões carregadas da API, usá-las estritamente
-    if (user?.apiPermissions?.permissionsMap) {
+    // Usar estritamente as permissões carregadas da API
+    if (user?.apiPermissions && user.apiPermissions.permissionsMap !== undefined) {
       const map = user.apiPermissions.permissionsMap;
-      if (Object.keys(map).length > 0) {
-        const perm = map[permission];
-        return !!(perm && perm.access !== false);
-      }
+      const perm = map[permission];
+      return !!(perm && perm.access !== false);
     }
 
-    // Fallback: usar hasPermission (baseado no role)
-    return hasPermission(permission);
+    // Se as permissões ainda não carregaram ou estão vazias, negar acesso por segurança
+    return false;
   };
 
   const mainMenuItems = [
@@ -62,6 +60,9 @@ function Sidebar({ activeItem, onItemClick }) {
     if (item.adminOnly && !isAdmin) return false;
     return canSeeMenu(item.permission);
   });
+
+  // Enquanto as permissões ainda não carregaram, não mostrar menus
+  const showMenu = isAdmin || permissionsLoaded;
 
   const handleLogoutConfirm = async () => {
     setIsLoggingOut(true);
@@ -104,6 +105,20 @@ function Sidebar({ activeItem, onItemClick }) {
         {/* Navigation */}
         <nav className="flex-1 overflow-y-auto px-3 pb-4">
           <p className="sidebar-section-label" style={{ marginTop: '8px' }}>Menu Principal</p>
+          
+          {!showMenu ? (
+            <div className="mt-4 space-y-2">
+              {[1,2,3].map(i => (
+                <div key={i} className="h-10 rounded-xl animate-pulse" style={{ background: 'var(--color-border-light)' }} />
+              ))}
+            </div>
+          ) : menuItems.length === 0 ? (
+            <div className="mt-4 p-3 rounded-xl border border-dashed text-center" style={{ borderColor: 'var(--color-border)', background: 'var(--color-bg)' }}>
+              <Shield size={24} className="mx-auto mb-2 text-gray-400 opacity-50" />
+              <p className="text-xs font-medium text-gray-500">Sem acessos</p>
+              <p className="text-[10px] text-gray-400 mt-1">Contacte o administrador para lhe atribuir permissões.</p>
+            </div>
+          ) : (
           <div className="space-y-0.5">
             {menuItems.map((item) => {
               const Icon = item.icon;
@@ -158,6 +173,7 @@ function Sidebar({ activeItem, onItemClick }) {
               );
             })}
           </div>
+          )}
         </nav>
       </aside>
 

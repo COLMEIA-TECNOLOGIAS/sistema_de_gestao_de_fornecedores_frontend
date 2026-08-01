@@ -84,14 +84,26 @@ export default function DashboardPage() {
 
     const STATUS_CONFIG = {
         draft:       { label: 'Rascunho',    cls: 'badge badge-neutral' },
+        pending:     { label: 'Pendente',    cls: 'badge badge-warning' },
         sent:        { label: 'Enviada',      cls: 'badge badge-info' },
+        submitted:   { label: 'Submetida',    cls: 'badge badge-info' },
+        pending_review: { label: 'Pendente',    cls: 'badge badge-warning' },
+        in_review:   { label: 'Em Revisão',  cls: 'badge badge-warning' },
+        revision_requested: { label: 'Revisão Solicitada', cls: 'badge badge-warning' },
+        needs_revision: { label: 'Revisão Necessária', cls: 'badge badge-neutral' },
+        approved:    { label: 'Aprovada',    cls: 'badge badge-success' },
+        rejected:    { label: 'Rejeitada',   cls: 'badge badge-error' },
+        published:   { label: 'Publicada',   cls: 'badge badge-info' },
+        open:        { label: 'Em Curso',    cls: 'badge badge-info' },
+        active:      { label: 'Ativa',       cls: 'badge badge-info' },
         in_progress: { label: 'Em Progresso', cls: 'badge badge-warning' },
-        completed:   { label: 'Completa',     cls: 'badge badge-success' },
-        cancelled:   { label: 'Cancelada',    cls: 'badge badge-error' },
+        completed:   { label: 'Concluída',   cls: 'badge badge-success' },
+        cancelled:   { label: 'Cancelada',   cls: 'badge badge-error' },
+        delivered:   { label: 'Entregue',    cls: 'badge badge-success' },
     };
 
     const getStatusBadge = (status) => {
-        const cfg = STATUS_CONFIG[status] || STATUS_CONFIG.draft;
+        const cfg = STATUS_CONFIG[status] || { label: 'Desconhecido', cls: 'badge badge-neutral' };
         return <span className={cfg.cls}>{cfg.label}</span>;
     };
 
@@ -305,9 +317,22 @@ export default function DashboardPage() {
                                         onClick={() => navigate('/aquisicoes', { state: { openDetails: q } })}
                                     >
                                         <td className="table-cell">
-                                            <span className="font-semibold text-sm" style={{ color: 'var(--color-primary)' }}>
-                                                {q.activity_description || q.reference_number}
-                                            </span>
+                                            {(() => {
+                                                const ppRef = q.reference || q.activity_description;
+                                                const systemRef = (q.reference_number && q.reference_number !== ppRef)
+                                                    ? q.reference_number
+                                                    : (q.id != null ? `CT-${String(q.id).padStart(3, '0')}` : '');
+                                                return (
+                                                    <div className="space-y-0.5">
+                                                        <span className="text-xs block" style={{ color: 'var(--color-text-secondary)' }}>
+                                                            Ref. PP: {ppRef || '—'}
+                                                        </span>
+                                                        <span className="text-xs block" style={{ color: 'var(--color-text-secondary)' }}>
+                                                            Ref. Sistema: {systemRef || '—'}
+                                                        </span>
+                                                    </div>
+                                                );
+                                            })()}
                                         </td>
                                         <td className="table-cell font-medium" style={{ color: 'var(--color-text-primary)' }}>
                                             {q.title}
