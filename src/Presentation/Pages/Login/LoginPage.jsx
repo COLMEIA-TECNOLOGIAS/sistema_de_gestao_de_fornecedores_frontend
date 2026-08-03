@@ -78,8 +78,7 @@ export default function LoginPage() {
               Entrar
             </h1>
             <p className="text-base" style={{ color: 'var(--color-text-secondary)' }}>
-              Entre com as sua conta para continuar<br />
-              com as suas atividades
+              Insira as suas credenciais para acessar o sistema
             </p>
           </div>
 

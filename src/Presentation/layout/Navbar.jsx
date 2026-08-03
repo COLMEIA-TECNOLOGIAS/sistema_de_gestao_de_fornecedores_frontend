@@ -12,7 +12,7 @@ const PAGE_TITLES = {
   dashboard:    "Painel de Controlo",
   fornecedores: "Fornecedores",
   cotacoes:     "Cotações",
-  usuarios:     "Gestão de utilizadores",
+  usuarios:     "Gestão de Utilizadores",
   relatorios:   "Relatórios",
   aquisicoes:   "Aquisições",
   categorias:   "Categorias",
