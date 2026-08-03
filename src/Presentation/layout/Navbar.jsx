@@ -21,7 +21,7 @@ const PAGE_TITLES = {
 };
 
 const PAGE_SUBTITLES = {
-  dashboard:    "Aqui está o resumo das suas atividades.",
+  dashboard:    "Visão geral do sistema.",
   fornecedores: "Gerencie os fornecedores cadastrados.",
   cotacoes:     "Consulte e gerencie as cotações.",
   usuarios:     "Gerencie os utilizadores do sistema.",

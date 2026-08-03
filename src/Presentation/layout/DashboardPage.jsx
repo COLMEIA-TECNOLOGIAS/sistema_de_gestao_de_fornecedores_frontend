@@ -115,9 +115,7 @@ export default function DashboardPage() {
                     <h1 className="text-2xl font-bold" style={{ color: 'var(--color-text-primary)' }}>
                         Dashboard
                     </h1>
-                    <p className="text-sm mt-0.5" style={{ color: 'var(--color-text-secondary)' }}>
-                        Aqui está o resumo das suas atividades de negócio.
-                    </p>
+                    <p>Visão geral do sistema</p>
                 </div>
                 <div className="flex items-center gap-2">
                     <button
