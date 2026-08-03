@@ -195,7 +195,7 @@ export default function ModalNovoUsuario({ isOpen, onClose, onSuccess, userToEdi
                                 >
                                     <option value="">Selecione a função</option>
                                     <option value="admin">Admin - Acesso total ao sistema</option>
-                                    <option value="procurement_technician">Técnico de Compras - Gestão de cotações e fornecedores</option>
+                                    <option value="procurement_technician">Técnico de Procurement - Gestão de cotações e fornecedores</option>
                                 </select>
                                 {formData.role && (
                                     <p className="text-xs text-gray-500 mt-2">

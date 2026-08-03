@@ -277,7 +277,7 @@ export default function PermissoesPage() {
     const getRoleLabel = (role) => {
         const roles = {
             admin: 'Administrador',
-            procurement_technician: 'Técnico de Compras',
+            procurement_technician: 'Técnico de Procurement',
             manager: 'Gestor',
             viewer: 'Visualizador',
         };
