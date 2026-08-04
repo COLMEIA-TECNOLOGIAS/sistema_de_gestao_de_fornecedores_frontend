@@ -1,10 +1,11 @@
 import React, { useEffect, useState } from 'react';
 import { X, AlertTriangle, Check, XCircle, FileText, Building2, MessageSquare } from 'lucide-react';
-import { pendingDeletionsAPI } from '../../services/api';
+import api, { pendingDeletionsAPI } from '../../services/api';
 
 export default function ModalAprovacoesExclusao({ isOpen, onClose }) {
     const [pendingRequests, setPendingRequests] = useState([]);
     const [isLoading, setIsLoading] = useState(false);
+    const [itemNames, setItemNames] = useState({});
 
     useEffect(() => {
         if (isOpen) {
@@ -19,6 +20,14 @@ export default function ModalAprovacoesExclusao({ isOpen, onClose }) {
         return ['pending', 'pendente', 'in_progress', 'inprogress', 'aguardando', 'requested', '0'].includes(s);
     };
 
+    // Detecta se o pedido se refere a um fornecedor, aceitando as várias formas
+    // que o backend pode devolver o tipo (App\Models\Supplier, supplier, etc).
+    const isSupplierRequest = (req) => {
+        const type = req.requestable_type || req.deletable_type || req.item_type || req.type || '';
+        const s = String(type).toLowerCase();
+        return s.includes('supplier');
+    };
+
     const fetchPending = async () => {
         setIsLoading(true);
         try {
@@ -27,6 +36,16 @@ export default function ModalAprovacoesExclusao({ isOpen, onClose }) {
             let requestsArray = Array.isArray(listData) ? listData : (listData.data || []);
             requestsArray = requestsArray.filter(isPendingRequest);
             setPendingRequests(requestsArray);
+
+            const names = {};
+            const missing = requestsArray.filter((req) => req.requestable_id != null && !getRawName(req));
+            await Promise.all(missing.map(async (req) => {
+                const key = itemKey(req);
+                if (names[key]) return;
+                const name = await resolveItemName(req);
+                if (name) names[key] = name;
+            }));
+            setItemNames(names);
         } catch (error) {
             console.error("Erro ao carregar aprovações", error);
         } finally {
@@ -34,11 +53,126 @@ export default function ModalAprovacoesExclusao({ isOpen, onClose }) {
         }
     };
 
+    const itemKey = (req) => `${isSupplierRequest(req) ? 's' : 'q'}_${req.requestable_id}`;
+
+    const supplierNameOf = (item) => (item.company_name || item.commercial_name || item.legal_name || item.name || item.title);
+
+    const quotationNameOf = (item) => (item.title || item.name);
+
+    // Remove envelopes de paginação/recursos ({ data: ... }) e arrays, deixando
+    // o objeto do item propriamente dito, para extrair o nome.
+    const extractItem = (payload) => {
+        let item = payload;
+        for (let i = 0; i < 3 && item && typeof item === 'object'; i++) {
+            if (Array.isArray(item)) { item = item[0]; continue; }
+            if ('data' in item) { item = item.data; continue; }
+            break;
+        }
+        return item && typeof item === 'object' ? item : {};
+    };
+
+    // Obtém o nome do item consultando primeiro o recurso pelo id e, se isso
+    // falhar, procurando o id nas listas (com paginação).
+    const resolveItemName = async (req) => {
+        const id = req.requestable_id;
+        const isSupplier = isSupplierRequest(req);
+
+        try {
+            const url = isSupplier ? `/suppliers/${id}` : `/quotation-requests/${id}`;
+            const res = await api.get(url);
+            const item = extractItem(res?.data);
+            const name = isSupplier ? supplierNameOf(item) : quotationNameOf(item);
+            if (name) return name;
+        } catch (error) {
+            console.warn(`[ModalAprovacoesExclusao] GET ${isSupplier ? '/suppliers' : '/quotation-requests'}/${id} falhou, a procurar na lista...`, error);
+        }
+
+        const listUrl = isSupplier ? '/suppliers' : '/quotation-requests';
+        let page = 1;
+        let lastPage = 1;
+        do {
+            try {
+                const res = await api.get(`${listUrl}?page=${page}`);
+                const body = res?.data || {};
+                const items = Array.isArray(body) ? body : (body.data || []);
+                lastPage = body.last_page || body.meta?.last_page || page;
+                for (const it of items) {
+                    if (String(it.id) === String(id)) {
+                        return isSupplier ? supplierNameOf(it) : quotationNameOf(it);
+                    }
+                }
+            } catch (error) {
+                console.warn(`[ModalAprovacoesExclusao] Não foi possível ler a lista ${listUrl} (página ${page})`, error);
+                return '';
+            }
+            page += 1;
+        } while (page <= lastPage);
+
+        // Último recurso: os itens eliminados já não estão nas listas, mas o
+        // backend guarda o nome em deleted_values nos audit logs de exclusão.
+        const eventName = isSupplier ? 'Exclusão de Fornecedor' : 'Exclusão de Pedido de Cotação';
+        try {
+            const res = await api.get('/audit-logs', { params: { event: eventName, per_page: 100 } });
+            const body = res?.data || {};
+            const logs = Array.isArray(body) ? body : (body.data || []);
+            for (const log of logs) {
+                const details = log.details || {};
+                if (String(details.model_id) !== String(id)) continue;
+                const dv = details.deleted_values || {};
+                const name = isSupplier
+                    ? (dv.company_name || dv.commercial_name || dv.legal_name || dv.name)
+                    : (dv.title || dv.name || dv.reference_number);
+                if (name) return name;
+            }
+        } catch (error) {
+            console.warn(`[ModalAprovacoesExclusao] Não foi possível consultar os audit logs para o item #${id}`, error);
+        }
+
+        return '';
+    };
+
+    // Extrai o nome do item directamente da resposta da API, procurando em todas
+    // as localizações/formatos possíveis em que o backend o pode devolver.
+    const getRawName = (req) => {
+        const isSupplier = isSupplierRequest(req);
+        const candidates = [
+            req.requestable,
+            req.deletable,
+            req.item,
+            req.supplier,
+            req.quotation_request,
+            req.pending_deletion,
+        ].filter(Boolean);
+
+        for (const obj of candidates) {
+            const target = obj.data || obj;
+            const name = isSupplier
+                ? (target.company_name || target.commercial_name || target.legal_name || target.name || target.title)
+                : (target.title || target.name || target.description);
+            if (name) return name;
+        }
+
+        const topName = isSupplier
+            ? (req.company_name || req.commercial_name || req.legal_name || req.name || req.item_name)
+            : (req.title || req.name || req.item_name || req.assunto || req.subject);
+        if (topName) return topName;
+
+        return '';
+    };
+
+    // Tenta várias formas possíveis de vir o nome do item na resposta da API.
+    // Se não vier, usa o nome obtido ao consultar o recurso pelo id.
     const getItemName = (req) => {
-        const isSupplier = req.requestable_type?.includes('Supplier');
-        return isSupplier
-            ? req.requestable?.company_name || req.requestable?.commercial_name || `#${req.requestable_id}`
-            : req.requestable?.title || `#${req.requestable_id}`;
+        const name = itemNames[itemKey(req)] || getRawName(req);
+
+        if (!name) {
+            console.warn(
+                '[ModalAprovacoesExclusao] O pedido não trouxe o item relacionado (requestable) preenchido — verifica se o backend está a fazer eager load dessa relação.',
+                req
+            );
+        }
+
+        return name || `#${req.requestable_id}`;
     };
 
     const handleApprove = async (req) => {
@@ -73,7 +207,7 @@ export default function ModalAprovacoesExclusao({ isOpen, onClose }) {
         <div className="fixed inset-0 z-[60] flex items-center justify-center p-4">
             <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={onClose} />
             <div className="relative rounded-2xl shadow-2xl w-full max-w-2xl mx-4 flex flex-col overflow-hidden max-h-[85vh]" style={{ background: 'var(--color-surface)' }}>
-                
+
                 {/* Header */}
                 <div className="px-6 py-4 flex items-center justify-between" style={{ borderBottom: '1px solid var(--color-border)', background: 'var(--color-surface)' }}>
                     <div className="flex items-center gap-3">
@@ -106,11 +240,9 @@ export default function ModalAprovacoesExclusao({ isOpen, onClose }) {
                             <div className="space-y-4">
                                 {pendingRequests.map(req => {
                                     const tecnico = req.requester?.name || 'Técnico';
-                                    const isSupplier = req.requestable_type?.includes('Supplier');
+                                    const isSupplier = isSupplierRequest(req);
                                     const tipo = isSupplier ? 'Fornecedor' : 'Cotação';
-                                    const itemNome = isSupplier
-                                        ? req.requestable?.company_name || req.requestable?.commercial_name || ''
-                                        : req.requestable?.title || '';
+                                    const itemNome = getItemName(req);
                                     const statusClass = isSupplier ? 'bg-blue-50 text-blue-700 border-blue-200' : 'bg-purple-50 text-purple-700 border-purple-200';
                                     return (
                                     <div key={req.id} className="p-3.5 rounded-xl shadow-sm" style={{ background: 'var(--color-surface)', border: '1px solid var(--color-border)' }}>
@@ -144,7 +276,7 @@ export default function ModalAprovacoesExclusao({ isOpen, onClose }) {
                                             )}
                                             <div>
                                                 <p className="text-[10px] font-semibold uppercase tracking-wider" style={{ color: 'var(--color-text-muted)' }}>Item a eliminar</p>
-                                                <p className="font-semibold text-sm" style={{ color: 'var(--color-text-primary)' }}>{itemNome || `#${req.requestable_id}`}</p>
+                                                <p className="font-semibold text-sm" style={{ color: 'var(--color-text-primary)' }}>{itemNome}</p>
                                             </div>
                                         </div>
 
