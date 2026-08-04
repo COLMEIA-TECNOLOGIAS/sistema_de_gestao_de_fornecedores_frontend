@@ -366,8 +366,8 @@ export const pendingDeletionsAPI = {
         const response = await api.post(`/deletion-requests/${id}/approve`);
         return response.data;
     },
-    reject: async (id) => {
-        const response = await api.post(`/deletion-requests/${id}/reject`);
+    reject: async (id, reason = '') => {
+        const response = await api.post(`/deletion-requests/${id}/reject`, { rejection_reason: reason });
         return response.data;
     }
 };

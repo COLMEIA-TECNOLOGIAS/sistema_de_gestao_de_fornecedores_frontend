@@ -6,6 +6,9 @@ export default function ModalAprovacoesExclusao({ isOpen, onClose }) {
     const [pendingRequests, setPendingRequests] = useState([]);
     const [isLoading, setIsLoading] = useState(false);
     const [itemNames, setItemNames] = useState({});
+    const [rejectTarget, setRejectTarget] = useState(null);
+    const [rejectReason, setRejectReason] = useState('');
+    const [isRejecting, setIsRejecting] = useState(false);
 
     useEffect(() => {
         if (isOpen) {
@@ -188,15 +191,23 @@ export default function ModalAprovacoesExclusao({ isOpen, onClose }) {
         }
     };
 
-    const handleReject = async (req) => {
-        const itemNome = getItemName(req);
-        if (!window.confirm(`Deseja REJEITAR a exclusão de "${itemNome}"? O item continuará intacto no sistema.`)) return;
+    const handleReject = (req) => {
+        setRejectTarget(req);
+        setRejectReason('');
+    };
+
+    const submitReject = async () => {
+        if (!rejectTarget || !rejectReason.trim()) return;
+        setIsRejecting(true);
         try {
-            await pendingDeletionsAPI.reject(req.id);
+            await pendingDeletionsAPI.reject(rejectTarget.id, rejectReason.trim());
+            setRejectTarget(null);
+            setRejectReason('');
             alert("Exclusão recusada.");
         } catch (error) {
             alert(error.response?.data?.message || error.message || "Erro ao rejeitar exclusão");
         } finally {
+            setIsRejecting(false);
             fetchPending();
         }
     };
@@ -204,6 +215,7 @@ export default function ModalAprovacoesExclusao({ isOpen, onClose }) {
     if (!isOpen) return null;
 
     return (
+        <>
         <div className="fixed inset-0 z-[60] flex items-center justify-center p-4">
             <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={onClose} />
             <div className="relative rounded-2xl shadow-2xl w-full max-w-2xl mx-4 flex flex-col overflow-hidden max-h-[85vh]" style={{ background: 'var(--color-surface)' }}>
@@ -313,5 +325,55 @@ export default function ModalAprovacoesExclusao({ isOpen, onClose }) {
                 </div>
             </div>
         </div>
+
+        {rejectTarget && (
+            <div className="fixed inset-0 z-[70] flex items-center justify-center p-4">
+                <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={() => setRejectTarget(null)} />
+                <div className="relative rounded-2xl shadow-2xl w-full max-w-md mx-4 p-6" style={{ background: 'var(--color-surface)' }}>
+                    <div className="flex items-center justify-between mb-1">
+                        <h3 className="font-bold text-lg flex items-center gap-2" style={{ color: 'var(--color-text-primary)' }}>
+                            <XCircle size={20} className="text-red-500" />
+                            Recusar exclusão
+                        </h3>
+                        <button onClick={() => setRejectTarget(null)} className="p-1.5 hover:bg-gray-100 rounded-full transition-colors text-gray-400">
+                            <X size={18} />
+                        </button>
+                    </div>
+                    <p className="text-sm mb-3" style={{ color: 'var(--color-text-secondary)' }}>
+                        Motivo da recusa de{' '}
+                        <strong style={{ color: 'var(--color-text-primary)' }}>{getItemName(rejectTarget)}</strong>:
+                    </p>
+                    <textarea
+                        value={rejectReason}
+                        onChange={(e) => setRejectReason(e.target.value)}
+                        rows={4}
+                        autoFocus
+                        placeholder="Escreve o motivo da recusa (obrigatório)"
+                        className="w-full p-3 rounded-xl text-sm resize-none focus:outline-none focus:ring-2"
+                        style={{ background: 'var(--color-bg)', border: '1px solid var(--color-border)', color: 'var(--color-text-primary)' }}
+                    />
+                    {!rejectReason.trim() && (
+                        <p className="text-xs text-red-500 mt-1">O motivo é obrigatório.</p>
+                    )}
+                    <div className="flex gap-2 mt-4">
+                        <button
+                            onClick={() => setRejectTarget(null)}
+                            className="flex-1 py-2 rounded-xl text-sm font-bold transition-all border border-gray-200 text-gray-600 hover:bg-gray-50"
+                        >
+                            Cancelar
+                        </button>
+                        <button
+                            onClick={submitReject}
+                            disabled={!rejectReason.trim() || isRejecting}
+                            className="flex-1 flex items-center justify-center gap-2 py-2 rounded-xl text-sm font-bold transition-all bg-red-500 text-white hover:bg-red-600 disabled:opacity-50"
+                        >
+                            <XCircle size={16} />
+                            {isRejecting ? 'A recusar...' : 'Confirmar recusa'}
+                        </button>
+                    </div>
+                </div>
+            </div>
+        )}
+        </>
     );
 }
