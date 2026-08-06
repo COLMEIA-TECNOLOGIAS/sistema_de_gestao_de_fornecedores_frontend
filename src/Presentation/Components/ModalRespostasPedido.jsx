@@ -1,9 +1,10 @@
 import { useModalLock } from '../../hooks/useModalLock';
 import { useState, useEffect, useRef } from "react";
-import { X, MoreVertical, FileText, Trash2, CheckCircle, MessageSquare, RefreshCw, Bell } from "lucide-react";
+import { X, MoreVertical, FileText, Trash2, CheckCircle, MessageSquare, RefreshCw, Loader2 } from "lucide-react";
 import { quotationResponsesAPI, quotationRequestsAPI, suppliersAPI } from "../../services/api";
 import FornecedorTableSkeleton from "./FornecedorTableSkeleton";
 import ModalGerarAquisicao from "./ModalGerarAquisicao";
+import ModalSolicitarRevisao from "./ModalSolicitarRevisao";
 
 export default function ModalRespostasPedido({
     isOpen,
@@ -14,6 +15,7 @@ export default function ModalRespostasPedido({
     onAprovar,
     onRejeitar,
     onSolicitarRevisao,
+    onSolicitarRevisaoError,
     onGerarAquisicao
 }) {
     const [respostas, setRespostas] = useState([]);
@@ -25,6 +27,8 @@ export default function ModalRespostasPedido({
     const [isApproving, setIsApproving] = useState(false);
     const [gerarAquisicaoTarget, setGerarAquisicaoTarget] = useState(null);
     const [isGerarAquisicao, setIsGerarAquisicao] = useState(false);
+    const [revisaoTarget, setRevisaoTarget] = useState(null);
+    const [isSubmittingRevisao, setIsSubmittingRevisao] = useState(false);
 
     const fetchIdRef = useRef(0);
 
@@ -226,6 +230,33 @@ export default function ModalRespostasPedido({
             // Erro já apresentado pelo parent
         } finally {
             setIsGerarAquisicao(false);
+        }
+    };
+
+    const handleSolicitarRevisao = (resposta) => {
+        setOpenMenuId(null);
+        setRevisaoTarget(resposta);
+    };
+
+    const confirmSolicitarRevisao = async ({ reason, message }) => {
+        if (!revisaoTarget) return;
+        setIsSubmittingRevisao(true);
+        setError(null);
+        try {
+            const idToReview = revisaoTarget.quotation_response_id || revisaoTarget.id;
+            await quotationResponsesAPI.requestRevision(idToReview, reason, message);
+            setRespostas(prev => prev.map(r =>
+                r.id === revisaoTarget.id ? { ...r, status: 'revision_requested' } : r
+            ));
+            if (onSolicitarRevisao) await onSolicitarRevisao(revisaoTarget);
+        } catch (err) {
+            console.error('Erro ao solicitar revisão:', err);
+            const errorMsg = err.response?.data?.message || 'Erro ao solicitar revisão. Verifique se o servidor permite esta acção para o estado actual da proposta.';
+            setError(errorMsg);
+            if (onSolicitarRevisaoError) onSolicitarRevisaoError(errorMsg);
+        } finally {
+            setIsSubmittingRevisao(false);
+            setRevisaoTarget(null);
         }
     };
 
@@ -489,29 +520,28 @@ export default function ModalRespostasPedido({
                                                                                             <Trash2 size={16} className="text-red-400" />
                                                                                             <span>Rejeitar Proposta</span>
                                                                                         </button>
-
-                                                                                        {/* Solicitar revisão */}
-                                                                                        <button
-                                                                                            onClick={() => {
-                                                                                                onSolicitarRevisao(resposta);
-                                                                                                setOpenMenuId(null);
-                                                                                            }}
-                                                                                            className="w-full px-4 py-2.5 text-left hover:bg-gray-50 text-sm flex items-center gap-3 transition-colors"
-                                                                                        >
-                                                                                            <MessageSquare size={16} className="text-gray-400" />
-                                                                                            <span className="text-gray-700">Solicitar Revisão</span>
-                                                                                        </button>
                                                                                     </>
                                                                                 )}
 
-                                                                                {/* Gerar aquisição */}
+                                                                                {/* Solicitar Revisão — sempre disponível */}
                                                                                 <button
-                                                                                    onClick={() => handleGerarAquisicao(resposta)}
+                                                                                    onClick={() => handleSolicitarRevisao(resposta)}
                                                                                     className="w-full px-4 py-2.5 text-left hover:bg-gray-50 text-sm flex items-center gap-3 transition-colors"
                                                                                 >
-                                                                                    <RefreshCw size={16} className="text-gray-400" />
-                                                                                    <span className="text-gray-700">Gerar Aquisição</span>
+                                                                                    <MessageSquare size={16} className="text-gray-400" />
+                                                                                    <span className="text-gray-700">Solicitar Revisão</span>
                                                                                 </button>
+
+                                                                                {/* Gerar aquisição — só disponível após aprovação */}
+                                                                                {resposta.status === 'approved' && (
+                                                                                    <button
+                                                                                        onClick={() => handleGerarAquisicao(resposta)}
+                                                                                        className="w-full px-4 py-2.5 text-left hover:bg-blue-50 text-sm flex items-center gap-3 transition-colors text-blue-600 font-medium"
+                                                                                    >
+                                                                                        <RefreshCw size={16} className="text-blue-500" />
+                                                                                        <span>Gerar Aquisição</span>
+                                                                                    </button>
+                                                                                )}
                                                                             </>
                                                                         )}
                                                                     </div>
@@ -601,6 +631,13 @@ export default function ModalRespostasPedido({
                 onSubmit={confirmGerarAquisicao}
                 isLoading={isGerarAquisicao}
                 response={gerarAquisicaoTarget}
+            />
+
+            <ModalSolicitarRevisao
+                isOpen={!!revisaoTarget}
+                onClose={() => !isSubmittingRevisao && setRevisaoTarget(null)}
+                onSubmit={confirmSolicitarRevisao}
+                isLoading={isSubmittingRevisao}
             />
         </div>
     );

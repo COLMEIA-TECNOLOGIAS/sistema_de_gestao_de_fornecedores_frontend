@@ -886,16 +886,11 @@ export default function AquisicoesPage() {
                         showToast('error', 'Erro ao rejeitar proposta');
                     }
                 }}
-                onSolicitarRevisao={async (resposta) => {
-                    try {
-                        await quotationResponsesAPI.requestRevision(resposta.id);
-                        showToast('success', 'Revisão solicitada');
-                        await fetchData();
-                    } catch (err) {
-                        console.error('Erro ao solicitar revisão:', err);
-                        showToast('error', 'Erro ao solicitar revisão');
-                    }
+                onSolicitarRevisao={async () => {
+                    showToast('success', 'Revisão solicitada com sucesso!');
+                    await fetchData();
                 }}
+                onSolicitarRevisaoError={(msg) => showToast('error', msg)}
                 onGerarAquisicao={async (resposta, expected_delivery_date, justification) => {
                     try {
                         await quotationResponsesAPI.createAcquisition(resposta.id, expected_delivery_date, justification);
@@ -911,12 +906,6 @@ export default function AquisicoesPage() {
                 }}
             />
 
-            <ModalSolicitarRevisao
-                isOpen={isSolicitarRevisaoModalOpen}
-                onClose={() => setIsSolicitarRevisaoModalOpen(false)}
-                onSubmit={confirmSolicitarRevisao}
-                isLoading={isSubmittingReview}
-            />
 
             <ModalSolicitarEliminacao
                 isOpen={isSolicitarEliminacaoModalOpen}
