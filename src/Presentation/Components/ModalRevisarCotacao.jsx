@@ -71,27 +71,6 @@ export default function ModalRevisarCotacao({
         }
     };
 
-    // Calcular total considerando quantidade
-    const calcularTotal = () => {
-        if (!cotacao.items || cotacao.items.length === 0) return '0,00';
-
-        const total = cotacao.items.reduce((acc, item) => {
-            // Find quantity from request item or item itself
-            const requestItem = item.quotation_item || cotacao.quotation_supplier?.quotation_request?.items?.find(
-                r => r.id === item.quotation_item_id
-            );
-            const quantity = parseFloat(requestItem?.quantity || item.quantity || 1);
-            const valor = parseFloat(item.unit_price || item.price || 0);
-            return acc + (valor * quantity);
-        }, 0);
-
-        // return total.toFixed(2); 
-        // Original returned string.
-        // Let's return number to be safe, or string formatted. 
-        // Original: total.toFixed(2).replace('.', ',');
-        return total.toFixed(2).replace('.', ',');
-    };
-
     return createPortal(
         <div className="fixed inset-0 flex items-center justify-center" style={{ zIndex: 9999 }}>
             {/* Backdrop */}
@@ -198,70 +177,6 @@ export default function ModalRevisarCotacao({
                             </>
                         )}
                     </div>
-
-                    {/* Tabela de Produtos */}
-                    {!isAcquisition && (
-                        <div className="mb-6 pb-6" style={{ borderBottom: '2px dashed var(--color-border)' }}>
-                            <div className="grid grid-cols-12 gap-4 font-bold mb-4" style={{ color: 'var(--color-text-primary)' }}>
-                                <div className="col-span-4">Produtos:</div>
-                                <div className="col-span-4">Descrição:</div>
-                                <div className="col-span-2 text-right">Unitário:</div>
-                                <div className="col-span-2 text-right">Total:</div>
-                            </div>
-
-                            {cotacao.items && cotacao.items.length > 0 ? (
-                                <div className="space-y-4">
-                                    {cotacao.items.map((item, index) => {
-                                        const requestItem = item.quotation_item || cotacao.quotation_supplier?.quotation_request?.items?.find(
-                                            r => r.id === item.quotation_item_id
-                                        );
-
-                                        const quantity = parseFloat(requestItem?.quantity || item.quantity || 1);
-                                        let unitPrice = parseFloat(item.unit_price || item.price || 0);
-
-                                        if (unitPrice === 0 && (cotacao.total_amount || cotacao.amount)) {
-                                            const total = parseFloat(cotacao.total_amount || cotacao.amount);
-                                            if (total > 0) {
-                                                if (cotacao.items.length === 1 && quantity > 0) {
-                                                    unitPrice = total / quantity;
-                                                } else if (cotacao.items.length > 1 && quantity > 0) {
-                                                    unitPrice = parseFloat(item.estimated_price || 0);
-                                                }
-                                            }
-                                        }
-
-                                        const lineTotal = quantity * unitPrice;
-
-                                        return (
-                                            <div key={index} className="grid grid-cols-12 gap-4 text-sm items-center" style={{ color: 'var(--color-text-secondary)' }}>
-                                                <div className="col-span-4">
-                                                    <span style={{ color: 'var(--color-text-primary)' }}>
-                                                        {String(index + 1).padStart(2, '0')} - {requestItem ? requestItem.name : (item.name || item.product_name || `Item #${item.quotation_item_id || index + 1}`)}
-                                                    </span>
-                                                    {requestItem && (
-                                                        <span className="ml-1" style={{ color: 'var(--color-text-secondary)' }}>
-                                                            ({requestItem.quantity} {requestItem.unit || 'uni'})
-                                                        </span>
-                                                    )}
-                                                </div>
-                                                <div className="col-span-4" style={{ color: 'var(--color-text-secondary)' }}>
-                                                    {requestItem?.specifications || item.notes || item.description || item.specifications || '-'}
-                                                </div>
-                                                <div className="col-span-2 text-right font-medium" style={{ color: 'var(--color-text-primary)' }}>
-                                                    {(unitPrice !== undefined && unitPrice !== null) ? `${unitPrice.toLocaleString('pt-AO', { minimumFractionDigits: 2 })} AOA` : '---'}
-                                                </div>
-                                                <div className="col-span-2 text-right font-bold" style={{ color: 'var(--color-text-primary)' }}>
-                                                    {(lineTotal !== undefined && lineTotal !== null) ? `${lineTotal.toLocaleString('pt-AO', { minimumFractionDigits: 2 })} AOA` : '---'}
-                                                </div>
-                                            </div>
-                                        );
-                                    })}
-                                </div>
-                            ) : (
-                                <p className="text-sm" style={{ color: 'var(--color-text-muted)' }}>Nenhum item cotado.</p>
-                            )}
-                        </div>
-                    )}
 
                     {/* Documentos */}
                     <div className="mb-6 pb-6" style={{ borderBottom: '1px solid var(--color-border)' }}>
@@ -371,21 +286,7 @@ export default function ModalRevisarCotacao({
                         </button>
                     </div>
 
-                    {/* Total */}
-                    {!isAcquisition && (
-                        <div className="flex justify-end items-center mt-4">
-                            <span className="text-xl font-bold mr-2" style={{ color: 'var(--color-text-primary)' }}>Total:</span>
-                            <span className="text-4xl font-black tracking-tight" style={{ color: 'var(--color-text-primary)' }}>
-                                {(() => {
-                                    const calculated = cotacao.items && cotacao.items.length > 0 ? calcularTotal() : '0,00';
-                                    if (calculated === '0,00' && (cotacao.total_amount || cotacao.amount)) {
-                                        return parseFloat(cotacao.total_amount || cotacao.amount).toLocaleString('pt-AO', { minimumFractionDigits: 2 }).replace('.', ',');
-                                    }
-                                    return calculated;
-                                })()} AOA
-                            </span>
-                        </div>
-                    )}
+                    {/* Total removido — as cotações já não exibem valores */}
                 </div>
 
                 {/* Footer com botões */}

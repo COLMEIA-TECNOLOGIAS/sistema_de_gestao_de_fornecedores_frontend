@@ -589,9 +589,7 @@ export default function ModalRespostasPedido({
                             ?
                         </p>
                         <p className="text-xs text-gray-500 mb-4">
-                            {approvalTarget.total_amount
-                                ? `Valor total: ${parseFloat(approvalTarget.total_amount).toLocaleString('pt-AO', { minimumFractionDigits: 2 })} AOA`
-                                : `ID da resposta: ${approvalTarget.id}`}
+                            ID da resposta: {approvalTarget.id}
                         </p>
                         <div className="rounded-lg p-4 mb-6" style={{ background: 'rgba(245,158,11,0.08)', border: '1px solid rgba(245,158,11,0.2)' }}>
                             <p className="text-sm font-semibold text-amber-700">Atenção</p>
