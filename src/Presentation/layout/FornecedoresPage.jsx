@@ -103,11 +103,18 @@ export default function FornecedoresPage() {
         fetchSuppliersAndCategories();
     }, []);
 
+    // Fornecedor com status "activo" — aparece na lista principal e na criação de cotação
+    const isActiveFornecedor = (f) => (f.is_active === 1 || f.is_active === true);
+
     // Filtering Logic
     useEffect(() => {
         let result = fornecedores;
 
-        result = result.filter(f => f.is_active || f.registration_status === 'invited' || f.registration_status !== 'completed');
+        if (activeTab === 'fornecedores') {
+            result = result.filter(isActiveFornecedor);
+        } else if (activeTab === 'pendentes') {
+            result = result.filter(f => !isActiveFornecedor(f));
+        }
 
         if (searchQuery) {
             const lowerQuery = searchQuery.toLowerCase();
@@ -313,6 +320,18 @@ export default function FornecedoresPage() {
                     className={`tab-item ${activeTab === "fornecedores" ? 'active' : ''}`}
                 >
                     Fornecedores
+                    <span className="ml-1.5 px-1.5 py-0.5 rounded-full text-[10px] font-bold bg-[#44B16F]/10 text-[#44B16F]">
+                        {fornecedores.filter(isActiveFornecedor).length}
+                    </span>
+                </button>
+                <button
+                    onClick={() => { setActiveTab("pendentes"); setCurrentPage(1); }}
+                    className={`tab-item ${activeTab === "pendentes" ? 'active' : ''}`}
+                >
+                    Pendentes & Convidados
+                    <span className={`ml-1.5 px-1.5 py-0.5 rounded-full text-[10px] font-bold ${activeTab === "pendentes" ? 'bg-amber-100 text-amber-700' : 'bg-amber-50 text-amber-600'}`}>
+                        {fornecedores.filter(f => !isActiveFornecedor(f)).length}
+                    </span>
                 </button>
                 <button
                     onClick={() => { setActiveTab("categorias"); setCurrentPage(1); }}
@@ -323,6 +342,7 @@ export default function FornecedoresPage() {
             </div>
 
             {/* Actions Bar */}
+            {activeTab !== "categorias" && (
             <div className="flex flex-wrap items-center gap-3">
                 {/* Search */}
                 <div className="search-bar" style={{ maxWidth: '360px' }}>
@@ -429,6 +449,7 @@ export default function FornecedoresPage() {
                     )}
                 </div>
             </div>
+            )}
 
             {/* Content Area */}
             {activeTab === "categorias" ? (
@@ -508,16 +529,16 @@ export default function FornecedoresPage() {
                                 <th className="px-3 py-3 text-left">
                                     <input type="checkbox" className="rounded border-gray-300" />
                                 </th>
-                                <th className="px-3 py-3 text-left text-sm font-semibold whitespace-nowrap" style={{ color: 'var(--color-text-secondary)' }}>ID</th>
-                                <th className="px-3 py-3 text-left text-sm font-semibold whitespace-nowrap" style={{ color: 'var(--color-text-secondary)' }}>Fornecedor</th>
-                                <th className="px-3 py-3 text-left text-sm font-semibold whitespace-nowrap" style={{ color: 'var(--color-text-secondary)' }}>NIF</th>
-                                <th className="px-3 py-3 text-left text-sm font-semibold whitespace-nowrap" style={{ color: 'var(--color-text-secondary)' }}>Contactos</th>
-                                <th className="px-3 py-3 text-left text-sm font-semibold whitespace-nowrap" style={{ color: 'var(--color-text-secondary)' }}>Avaliação</th>
-                                <th className="px-3 py-3 text-left text-sm font-semibold whitespace-nowrap" style={{ color: 'var(--color-text-secondary)' }}>Categoria</th>
-                                <th className="px-3 py-3 text-left text-sm font-semibold whitespace-nowrap" style={{ color: 'var(--color-text-secondary)' }}>Localização</th>
-                                <th className="px-3 py-3 text-left text-sm font-semibold whitespace-nowrap" style={{ color: 'var(--color-text-secondary)' }}>Data Registo</th>
-                                <th className="px-3 py-3 text-left text-sm font-semibold whitespace-nowrap" style={{ color: 'var(--color-text-secondary)' }}>Status</th>
-                                <th className="px-3 py-3 text-center text-sm font-semibold whitespace-nowrap" style={{ color: 'var(--color-text-secondary)' }}>Ações</th>
+                                <th className="px-3 py-3 text-left text-[13px] font-semibold whitespace-nowrap" style={{ color: 'var(--color-text-secondary)' }}>ID</th>
+                                <th className="px-3 py-3 text-left text-[13px] font-semibold whitespace-nowrap" style={{ color: 'var(--color-text-secondary)' }}>Fornecedor</th>
+                                <th className="px-3 py-3 text-left text-[13px] font-semibold whitespace-nowrap" style={{ color: 'var(--color-text-secondary)' }}>NIF</th>
+                                <th className="px-3 py-3 text-left text-[13px] font-semibold whitespace-nowrap" style={{ color: 'var(--color-text-secondary)' }}>Contactos</th>
+                                <th className="px-3 py-3 text-left text-[13px] font-semibold whitespace-nowrap" style={{ color: 'var(--color-text-secondary)' }}>Avaliação</th>
+                                <th className="px-3 py-3 text-left text-[13px] font-semibold whitespace-nowrap" style={{ color: 'var(--color-text-secondary)' }}>Categoria</th>
+                                <th className="px-3 py-3 text-left text-[13px] font-semibold whitespace-nowrap" style={{ color: 'var(--color-text-secondary)' }}>Localização</th>
+                                <th className="px-3 py-3 text-left text-[13px] font-semibold whitespace-nowrap" style={{ color: 'var(--color-text-secondary)' }}>Data Registo</th>
+                                <th className="px-3 py-3 text-left text-[13px] font-semibold whitespace-nowrap" style={{ color: 'var(--color-text-secondary)' }}>Status</th>
+                                <th className="px-3 py-3 text-center text-[13px] font-semibold whitespace-nowrap" style={{ color: 'var(--color-text-secondary)' }}>Ações</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -530,8 +551,8 @@ export default function FornecedoresPage() {
                                             <svg className="w-12 h-12 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2.586a1 1 0 00-.707.293l-2.414 2.414a1 1 0 01-.707.293h-3.172a1 1 0 01-.707-.293l-2.414-2.414A1 1 0 006.586 13H4" />
                                             </svg>
-                                            <p className="text-lg font-medium">Nenhum fornecedor encontrado</p>
-                                            <p className="text-sm">Adicione um fornecedor para começar</p>
+                                            <p className="text-lg font-medium">{activeTab === 'pendentes' ? 'Nenhum fornecedor pendente' : 'Nenhum fornecedor encontrado'}</p>
+                                            <p className="text-sm">{activeTab === 'pendentes' ? 'Os convidados que ainda não concluíram o registo aparecerão aqui' : 'Adicione um fornecedor para começar'}</p>
                                         </div>
                                     </td>
                                 </tr>
@@ -552,14 +573,14 @@ export default function FornecedoresPage() {
                                                     className="w-10 h-10 rounded-lg flex-shrink-0"
                                                 />
                                                 <div className="flex flex-col min-w-[120px]">
-                                                    <span className="font-semibold text-sm line-clamp-1 truncate" style={{ color: 'var(--color-text-primary)' }}>{f.company_name || f.commercial_name || 'N/A'}</span>
+                                                    <span className="font-semibold text-[13px] line-clamp-1 truncate" style={{ color: 'var(--color-text-primary)' }}>{f.company_name || f.commercial_name || 'N/A'}</span>
                                                 </div>
                                             </div>
                                         </td>
-                                        <td className="px-3 py-3 cursor-pointer text-sm" style={{ color: 'var(--color-text-secondary)' }} onClick={() => { setSelectedFornecedor(f); setIsDetalhesModalOpen(true); }}>
+                                        <td className="px-3 py-3 cursor-pointer text-[13px]" style={{ color: 'var(--color-text-secondary)' }} onClick={() => { setSelectedFornecedor(f); setIsDetalhesModalOpen(true); }}>
                                             <span className="whitespace-nowrap">{f.nif || 'N/A'}</span>
                                         </td>
-                                        <td className="px-3 py-3 cursor-pointer text-sm" style={{ color: 'var(--color-text-secondary)' }} onClick={() => { setSelectedFornecedor(f); setIsDetalhesModalOpen(true); }}>
+                                        <td className="px-3 py-3 cursor-pointer text-[13px]" style={{ color: 'var(--color-text-secondary)' }} onClick={() => { setSelectedFornecedor(f); setIsDetalhesModalOpen(true); }}>
                                             <div className="flex flex-col">
                                                 <span className="whitespace-nowrap">{f.phone || 'N/A'}</span>
                                                 <span className="text-xs truncate max-w-[140px]" title={f.email}>{f.email || 'N/A'}</span>
@@ -591,10 +612,10 @@ export default function FornecedoresPage() {
                                                 )}
                                             </div>
                                         </td>
-                                        <td className="px-3 py-3 text-sm" style={{ color: 'var(--color-text-secondary)' }}>
+                                        <td className="px-3 py-3 text-[13px]" style={{ color: 'var(--color-text-secondary)' }}>
                                             <span className="line-clamp-1 truncate block max-w-[120px]">{f.municipality || 'N/A'}, {f.province || 'N/A'}</span>
                                         </td>
-                                        <td className="px-3 py-3 text-sm" style={{ color: 'var(--color-text-secondary)' }}>
+                                        <td className="px-3 py-3 text-[13px]" style={{ color: 'var(--color-text-secondary)' }}>
                                             <span className="whitespace-nowrap">
                                                 {f.created_at ? new Date(f.created_at).toLocaleDateString('pt-AO', { day: '2-digit', month: '2-digit', year: '2-digit' }) : 'N/A'}
                                             </span>

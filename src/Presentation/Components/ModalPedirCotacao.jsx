@@ -146,11 +146,8 @@ export default function ModalPedirCotacao({ isOpen, onClose, fornecedor, activit
 
     // Filter fornecedores by category and search
     const filteredFornecedores = useMemo(() => {
-        // Filter out pending suppliers, only keep approved/active ones
-        let result = fornecedoresList.filter(f => 
-            f.registration_status === 'approved' || 
-            (f.is_active && (f.registration_status === 'invited' || f.registration_status === 'completed' || !f.registration_status))
-        );
+        // Apenas fornecedores com status activo (cadastro directo ou via link)
+        let result = fornecedoresList.filter(f => (f.is_active === 1 || f.is_active === true));
 
         // Filter by category
         if (categoriaFiltro) {

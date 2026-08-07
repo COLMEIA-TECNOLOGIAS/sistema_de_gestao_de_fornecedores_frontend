@@ -1,5 +1,5 @@
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { Package, Zap, Users, FileText, Calendar, Download, TrendingUp, AlertCircle, ShoppingCart, RefreshCw } from 'lucide-react';
 import { reportsAPI } from '../../services/api';
 import jsPDF from 'jspdf';
@@ -16,47 +16,59 @@ export default function RelatoriosPage() {
   const [error, setError] = useState(null);
 
   // Initialize dates based on period
-  useEffect(() => {
+  const getPeriodRange = useCallback((p) => {
     const today = new Date();
     const start = new Date(today);
     let end = new Date(today);
 
-    if (period === 'weekly') {
+    if (p === 'weekly') {
       const day = start.getDay();
       const diff = start.getDate() - day + (day === 0 ? -6 : 1); // Adjust when day is sunday
       start.setDate(diff);
       end.setDate(start.getDate() + 6);
-    } else if (period === 'monthly') {
+    } else if (p === 'monthly') {
       start.setDate(1);
       end = new Date(today.getFullYear(), today.getMonth() + 1, 0);
-    } else if (period === 'yearly') {
+    } else if (p === 'yearly') {
       start.setMonth(0, 1);
       end.setMonth(11, 31);
     }
 
-    setDateRange({
+    return {
       start: start.toISOString().split('T')[0],
       end: end.toISOString().split('T')[0]
-    });
-  }, [period]);
+    };
+  }, []);
+
+  const getEffectiveRange = useCallback((p) => {
+    if (p === 'custom') {
+      return { start: dateRange.start, end: dateRange.end };
+    }
+    return getPeriodRange(p);
+  }, [dateRange.start, dateRange.end, getPeriodRange]);
+
+  const buildParams = useCallback((p) => {
+    const range = getEffectiveRange(p);
+    return {
+      period: p === 'custom' ? undefined : p,
+      start_date: range.start,
+      end_date: range.end
+    };
+  }, [getEffectiveRange]);
+
+  const lastFetchedKey = useRef('');
 
   // Fetch report data
-  useEffect(() => {
-    fetchReport();
-  }, [dateRange, period]);
+  const fetchReport = useCallback(async () => {
+    const params = buildParams(period);
+    const key = `${period}:${params.start_date}:${params.end_date}`;
+    if (lastFetchedKey.current === key) return;
 
-  const fetchReport = async () => {
+    setIsLoading(true);
+    setError(null);
     try {
-      setIsLoading(true);
-      setError(null);
-
-      const params = {
-        period: period === 'custom' ? undefined : period,
-        start_date: dateRange.start, // Send anyway for confirmation or custom
-        end_date: dateRange.end
-      };
-
       const data = await reportsAPI.getSummary(params);
+      lastFetchedKey.current = key;
       setReportData(data);
     } catch (err) {
       console.error("Erro ao carregar relatório:", err);
@@ -64,13 +76,27 @@ export default function RelatoriosPage() {
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [buildParams, period]);
+
+  // Keep the date range inputs in sync with the selected period
+  useEffect(() => {
+    if (period === 'custom') return;
+    const range = getPeriodRange(period);
+    setDateRange(range);
+  }, [period, getPeriodRange]);
+
+  useEffect(() => {
+    fetchReport();
+  }, [fetchReport, dateRange.start, dateRange.end]);
 
   const handleExportPDF = async () => {
-    if (!reportData) return;
-
     setIsLoading(true);
     try {
+      // Buscar dados actualizados do reporte para o período/filtros actualmente seleccionados
+      const params = buildParams(period);
+      const data = await reportsAPI.getSummary(params);
+      setReportData(data);
+
       const doc = new jsPDF();
 
       // --- Header ---
@@ -159,7 +185,7 @@ export default function RelatoriosPage() {
       doc.setTextColor(brandGreen);
       doc.text(periodLabel.toUpperCase(), 196, 26, { align: 'right' });
 
-      const dateStr = `${new Date(reportData.period?.start || dateRange.start).toLocaleDateString('pt-AO')} - ${new Date(reportData.period?.end || dateRange.end).toLocaleDateString('pt-AO')}`;
+      const dateStr = `${new Date(params.start_date).toLocaleDateString('pt-AO')} - ${new Date(params.end_date).toLocaleDateString('pt-AO')}`;
       doc.setTextColor(156, 163, 175);
       doc.text(dateStr, 196, 32, { align: 'right' });
 
@@ -173,12 +199,12 @@ export default function RelatoriosPage() {
       currentY += 5;
 
       const metricsData = [
-        ['Total de Cotações', reportData.metrics?.total_quotations || 0],
-        ['Cotações Enviadas', reportData.metrics?.sent_quotations || 0],
-        ['Licitantes Registrados', reportData.metrics?.total_suppliers || 0],
-        ['Total Aquisições', reportData.metrics?.total_acquisitions || 0],
-        ['Pendentes', reportData.metrics?.pending_count || 0],
-        ['Concluídas', reportData.metrics?.completed_count || 0]
+        ['Total de Cotações', data.metrics?.total_quotations || 0],
+        ['Cotações Enviadas', data.metrics?.sent_quotations || 0],
+        ['Licitantes Registrados', data.metrics?.total_suppliers || 0],
+        ['Total Aquisições', data.metrics?.total_acquisitions || 0],
+        ['Pendentes', data.metrics?.pending_count || 0],
+        ['Concluídas', data.metrics?.completed_count || 0]
       ];
 
       autoTable(doc, {
@@ -238,7 +264,7 @@ export default function RelatoriosPage() {
       doc.setTextColor(150, 150, 150);
       doc.text(`Gerado em ${new Date().toLocaleString('pt-AO')} - MOSAP3`, 105, pageHeight - 10, { align: 'center' });
 
-      doc.save(`relatorio_${period}_${dateRange.start}.pdf`);
+      doc.save(`relatorio_${period}_${params.start_date}.pdf`);
     } catch (err) {
       console.error("Erro ao gerar PDF:", err);
       setError("Erro ao gerar PDF");
