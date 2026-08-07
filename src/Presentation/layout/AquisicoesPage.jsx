@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useLocation } from "react-router-dom";
 import { createPortal } from "react-dom";
 import { Search, SlidersHorizontal, Eye, FileText, CheckCircle, Clock, AlertCircle, TrendingUp, Truck, Plus, X, Package, Trash2, Loader2 } from "lucide-react";
@@ -163,6 +163,18 @@ export default function AquisicoesPage() {
         const matchStatus = filterStatus === "" || act.status === filterStatus;
         return matchSearch && matchSubmissionDate && matchStatus;
     });
+
+    const activeRows = useMemo(() => {
+        if (activeTab === 'lista_aquisicoes') return filteredResponses;
+        if (activeTab === 'atividades') return filteredAtividades;
+        if (activeTab === 'aquisicoes') {
+            return filteredAtividades.filter(a => ['sent', 'draft', 'pending', 'pending_review', 'open', 'published', 'active', 'in_progress', 'awaiting_delivery'].includes(getEffectiveStatus(a)));
+        }
+        if (activeTab === 'concluidas') {
+            return filteredAtividades.filter(a => getEffectiveStatus(a) === 'completed' || a.status === 'approved');
+        }
+        return filteredAtividades.filter(a => a.status === 'cancelled');
+    }, [activeTab, filteredResponses, filteredAtividades]);
 
     const handleClearFilters = () => {
         setSearchTerm("");
@@ -494,7 +506,7 @@ export default function AquisicoesPage() {
                             </button>
                         </div>
                         <div className="flex items-center gap-3 text-xs font-bold text-gray-400 uppercase tracking-widest">
-                            Mostrando <span className="text-[#44B16F]">{filteredResponses.length}</span> resultados
+                            Mostrando <span className="text-[#44B16F]">{activeRows.length}</span> resultados
                         </div>
                     </div>
                     
@@ -640,13 +652,7 @@ export default function AquisicoesPage() {
                                 </tr>
                             ) : (
                                 (() => {
-                                    const tabAtividades = activeTab === 'atividades'
-                                        ? filteredAtividades
-                                        : activeTab === 'aquisicoes'
-                                        ? filteredAtividades.filter(a => ['sent', 'draft', 'pending', 'pending_review', 'open', 'published', 'active', 'in_progress', 'awaiting_delivery'].includes(getEffectiveStatus(a)))
-                                        : activeTab === 'concluidas'
-                                        ? filteredAtividades.filter(a => getEffectiveStatus(a) === 'completed' || a.status === 'approved')
-                                        : filteredAtividades.filter(a => a.status === 'cancelled');
+                                    const tabAtividades = activeRows;
                                     return tabAtividades.length === 0 ? (
                                         <tr>
                                             <td colSpan="6" className="px-6 py-12 text-center text-gray-400 font-bold uppercase tracking-widest text-[10px]">

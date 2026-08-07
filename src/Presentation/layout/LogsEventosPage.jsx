@@ -254,11 +254,11 @@ export default function LogsEventosPage() {
                     <table className="w-full">
                         <thead style={{ background: 'var(--color-bg)', borderBottom: '1px solid var(--color-border-light)' }}>
                             <tr>
-                                <th onClick={() => handleSort('user_name')} className="cursor-pointer px-6 py-5 text-left text-[10px] font-black uppercase tracking-widest hover:text-gray-700 transition-colors" style={{ color: 'var(--color-text-muted)' }}>Utilizador {sortConfig.key === 'user_name' && (sortConfig.direction === 'asc' ? '↑' : '↓')}</th>
-                                <th onClick={() => handleSort('created_at')} className="cursor-pointer px-6 py-5 text-left text-[10px] font-black uppercase tracking-widest hover:text-gray-700 transition-colors" style={{ color: 'var(--color-text-muted)' }}>Data/Hora {sortConfig.key === 'created_at' && (sortConfig.direction === 'asc' ? '↑' : '↓')}</th>
-                                <th onClick={() => handleSort('event')} className="cursor-pointer px-6 py-5 text-left text-[10px] font-black uppercase tracking-widest hover:text-gray-700 transition-colors" style={{ color: 'var(--color-text-muted)' }}>Evento {sortConfig.key === 'event' && (sortConfig.direction === 'asc' ? '↑' : '↓')}</th>
-                                <th className="px-6  py-5 text-left text-[10px] font-black uppercase tracking-widest" style={{ color: 'var(--color-text-muted)' }}>Descrição</th>
-                                <th className="px-6 py-5 text-right text-[10px] font-black uppercase tracking-widest" style={{ color: 'var(--color-text-muted)' }}>Ações</th>
+                                <th onClick={() => handleSort('user_name')} className="cursor-pointer px-4 py-4 text-left text-[10px] font-black uppercase tracking-wider hover:text-gray-700 transition-colors" style={{ color: 'var(--color-text-muted)' }}>Utilizador {sortConfig.key === 'user_name' && (sortConfig.direction === 'asc' ? '↑' : '↓')}</th>
+                                <th onClick={() => handleSort('created_at')} className="cursor-pointer px-4 py-4 text-left text-[10px] font-black uppercase tracking-wider hover:text-gray-700 transition-colors" style={{ color: 'var(--color-text-muted)' }}>Data/Hora {sortConfig.key === 'created_at' && (sortConfig.direction === 'asc' ? '↑' : '↓')}</th>
+                                <th onClick={() => handleSort('event')} className="cursor-pointer px-4 py-4 text-left text-[10px] font-black uppercase tracking-wider hover:text-gray-700 transition-colors" style={{ color: 'var(--color-text-muted)' }}>Evento {sortConfig.key === 'event' && (sortConfig.direction === 'asc' ? '↑' : '↓')}</th>
+                                <th className="px-4 py-4 text-left text-[10px] font-black uppercase tracking-wider" style={{ color: 'var(--color-text-muted)' }}>Descrição</th>
+                                <th className="px-4 py-4 text-right text-[10px] font-black uppercase tracking-wider" style={{ color: 'var(--color-text-muted)' }}>Ações</th>
                             </tr>
                         </thead>
                         <tbody className="divide-y" style={{ divideColor: 'var(--color-border-light)' }}>
@@ -286,32 +286,32 @@ export default function LogsEventosPage() {
                                     const userName = log.user?.name || "Desconhecido";
                                     return (
                                         <tr key={log.id} className="transition-colors group" onMouseEnter={e => e.currentTarget.style.background = 'var(--color-bg)'} onMouseLeave={e => e.currentTarget.style.background = 'transparent'} style={{ borderBottom: '1px solid var(--color-border-light)' }}>
-                                            <td className="px-6 py-4">
-                                                <div className="flex items-center gap-3">
-                                                    <div className="w-8 h-8 rounded-full bg-emerald-100 text-[#44B16F] flex items-center justify-center font-bold text-xs uppercase">
+                                            <td className="px-4 py-3 whitespace-nowrap">
+                                                <div className="flex items-center gap-2">
+                                                    <div className="w-7 h-7 rounded-full bg-emerald-100 text-[#44B16F] flex items-center justify-center font-bold text-[10px] uppercase">
                                                         {userName.charAt(0)}
                                                     </div>
-                                                    <span className="text-sm font-bold" style={{ color: 'var(--color-text-primary)' }}>{userName}</span>
+                                                    <span className="text-xs font-bold" style={{ color: 'var(--color-text-primary)' }}>{userName}</span>
                                                 </div>
                                             </td>
-                                            <td className="px-6 py-4 text-sm font-medium" style={{ color: 'var(--color-text-secondary)' }}>
+                                            <td className="px-4 py-3 text-xs font-medium whitespace-nowrap" style={{ color: 'var(--color-text-secondary)' }}>
                                                 <div className="flex items-center gap-2">
-                                                    <Calendar size={14} className="text-gray-400" />
+                                                    <Calendar size={13} className="text-gray-400" />
                                                     {formatDate(log.created_at)}
                                                 </div>
                                             </td>
-                                            <td className="px-6 py-4">
-                                                <span className={`px-3  py-1.5  rounded-lg text-xs font-bold border ${badge.classes}`}>
+                                            <td className="px-4 py-3">
+                                                <span className={`px-2.5 py-1 rounded-lg text-[11px] font-bold border whitespace-nowrap ${badge.classes}`}>
                                                     {badge.label}
                                                 </span>
                                             </td>
-                                            <td className="px-4 py-4 text-xs" style={{ color: 'var(--color-text-secondary)' }}>
+                                            <td className="px-4 py-3 text-xs max-w-[360px] truncate" style={{ color: 'var(--color-text-secondary)' }} title={log.description}>
                                                 {log.description}
                                             </td>
-                                            <td className="px-6 py-4 text-right">
+                                            <td className="px-4 py-3 text-right whitespace-nowrap">
                                                 <button
                                                     onClick={() => { setSelectedLog(log); setIsDetailsModalOpen(true); }}
-                                                    className="text-[#44B16F] font-bold text-xs uppercase hover:underline"
+                                                    className="text-[#44B16F] font-bold text-[11px] uppercase hover:underline"
                                                 >
                                                     Ver Detalhes
                                                 </button>
