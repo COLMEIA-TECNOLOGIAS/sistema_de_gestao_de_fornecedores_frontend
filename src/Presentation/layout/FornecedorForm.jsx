@@ -1,7 +1,7 @@
 import { ArrowLeft, AlertCircle, FileText, CheckCircle, Upload, X, Eye, Plus } from "lucide-react";
 import { useState, useEffect, useRef, useCallback } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
-import { suppliersAPI, categoriesAPI } from "../../services/api";
+import api, { suppliersAPI, categoriesAPI } from "../../services/api";
 import Toast from "../Components/Toast";
 
 // Categories are now fetched from the API
@@ -22,6 +22,78 @@ export default function FornecedorFormWrapper() {
   const location = useLocation();
   const editingFornecedor = location.state?.fornecedor || null;
   const submitRef = useRef(false); // Prevent double-submit
+
+  // Documentos existentes marcados para eliminação/substituição
+  const [removedDocuments, setRemovedDocuments] = useState([]);
+  const [removedLicenses, setRemovedLicenses] = useState([]);
+
+  const handleRemoveExistingDocument = (type) => {
+    setRemovedDocuments(prev => (prev.includes(type) ? prev : [...prev, type]));
+  };
+
+  const handleRemoveExistingLicense = (index) => {
+    setRemovedLicenses(prev => (prev.includes(index) ? prev : [...prev, index]));
+  };
+
+  // Detect existing uploaded documents (for the edit flow)
+  const existingDocuments = (() => {
+    const f = editingFornecedor;
+    if (!f) return {};
+    const first = (...keys) => {
+      for (const k of keys) {
+        const v = f[k];
+        if (typeof v === 'string' && v) return v;
+      }
+      return null;
+    };
+    const licenses = (() => {
+      const raw = f.commercial_license_url || f.commercial_license;
+      if (Array.isArray(raw)) return raw.filter(v => typeof v === 'string' && v);
+      if (typeof raw === 'string' && raw) return [raw];
+      return [];
+    })();
+    return {
+      commercial_certificate: first('commercial_certificate_url', 'commercial_certificate'),
+      pacto_social: first('pacto_social_url', 'pacto_social'),
+      agt_certificate: first('agt_certificate_url', 'agt_certificate', 'non_debtor_certificate_agt_url', 'non_debtor_certificate_agt'),
+      inss_certificate: first('inss_certificate_url', 'inss_certificate', 'non_debtor_certificate_inss_url', 'non_debtor_certificate_inss'),
+      nif_proof: first('nif_proof_url', 'nif_proof'),
+      product_list: first('product_list_url', 'product_list'),
+      licenses,
+    };
+  })();
+
+  const handleViewExistingDocument = async (type, index) => {
+    if (!editingFornecedor) return;
+
+    // Alguns documentos podem ser armazenados com nomes de tipo diferentes —
+    // tentamos todas as variantes conhecidas até uma responder.
+    const candidates = (type === 'agt_certificate' || type === 'non_debtor_certificate_agt')
+      ? ['agt_certificate', 'non_debtor_certificate_agt']
+      : (type === 'inss_certificate' || type === 'non_debtor_certificate_inss')
+        ? ['inss_certificate', 'non_debtor_certificate_inss']
+        : [type];
+
+    for (const candidate of candidates) {
+      try {
+        const url = `/suppliers/${editingFornecedor.id}/documents/${candidate}`;
+        const params = index !== undefined ? { index } : {};
+        const response = await api.get(url, {
+          params,
+          responseType: 'blob',
+          headers: { 'Accept': 'application/pdf, image/*' }
+        });
+        const blob = new Blob([response.data], { type: response.headers['content-type'] });
+        const objectUrl = window.URL.createObjectURL(blob);
+        window.open(objectUrl, '_blank');
+        setTimeout(() => window.URL.revokeObjectURL(objectUrl), 10000);
+        return;
+      } catch (error) {
+        console.warn(`Documento não disponível como "${candidate}":`, error);
+      }
+    }
+    alert("Erro ao carregar o documento.");
+  };
 
   useEffect(() => {
     const fetchCategories = async () => {
@@ -285,6 +357,24 @@ export default function FornecedorFormWrapper() {
       if (editingFornecedor) {
         data.append("_method", "PUT");
         await suppliersAPI.updateMultipart(editingFornecedor.id, data);
+
+        // Eliminar no servidor os documentos marcados com X (best-effort)
+        for (const type of removedDocuments) {
+          try {
+            const [docType, query] = type.split('&');
+            const params = query && query.startsWith('index=') ? { index: query.split('=')[1] } : {};
+            await api.delete(`/suppliers/${editingFornecedor.id}/documents/${docType}`, { params });
+          } catch (delErr) {
+            console.warn("Falha ao eliminar documento no servidor:", delErr);
+          }
+        }
+        for (const index of removedLicenses) {
+          try {
+            await api.delete(`/suppliers/${editingFornecedor.id}/documents/commercial_license`, { params: { index } });
+          } catch (delErr) {
+            console.warn("Falha ao eliminar alvará no servidor:", delErr);
+          }
+        }
       } else {
         await suppliersAPI.create(data);
       }
@@ -321,7 +411,7 @@ export default function FornecedorFormWrapper() {
       setIsLoading(false);
       submitRef.current = false;
     }
-  }, [formData, editingFornecedor]);
+  }, [formData, editingFornecedor, removedDocuments, removedLicenses]);
 
   const provinces = provincesData.length > 0 
     ? provincesData.map(p => p.nome).sort()
@@ -665,6 +755,11 @@ export default function FornecedorFormWrapper() {
                         onChange={handleFileChange}
                         error={errors.commercial_certificate}
                         onPreview={handlePreviewFile}
+                        existingDoc={existingDocuments.commercial_certificate}
+                        existingDocType="commercial_certificate"
+                        onViewExisting={handleViewExistingDocument}
+                        onRemoveExisting={handleRemoveExistingDocument}
+                        existingRemoved={removedDocuments.includes('commercial_certificate')}
                         helperText="Formato PDF (.pdf)"
                         accept=".pdf"
                       />
@@ -675,6 +770,11 @@ export default function FornecedorFormWrapper() {
                         onChange={handleFileChange}
                         error={errors.pacto_social}
                         onPreview={handlePreviewFile}
+                        existingDoc={existingDocuments.pacto_social}
+                        existingDocType="pacto_social"
+                        onViewExisting={handleViewExistingDocument}
+                        onRemoveExisting={handleRemoveExistingDocument}
+                        existingRemoved={removedDocuments.includes('pacto_social')}
                         helperText="Formato PDF (.pdf)"
                         accept=".pdf"
                       />
@@ -685,6 +785,11 @@ export default function FornecedorFormWrapper() {
                         onChange={handleFileChange}
                         error={errors.non_debtor_certificate_agt}
                         onPreview={handlePreviewFile}
+                        existingDoc={existingDocuments.agt_certificate}
+                        existingDocType="agt_certificate"
+                        onViewExisting={handleViewExistingDocument}
+                        onRemoveExisting={handleRemoveExistingDocument}
+                        existingRemoved={removedDocuments.includes('agt_certificate')}
                         helperText="PDF, JPG ou PNG (máx 5MB) — Opcional"
                         accept=".pdf,.jpg,.jpeg,.png"
                       />
@@ -695,7 +800,12 @@ export default function FornecedorFormWrapper() {
                         onChange={handleFileChange}
                         error={errors.non_debtor_certificate_inss}
                         onPreview={handlePreviewFile}
-                        helperText="PDF, JPG ou PNG (máx 5MB) — Opcional"
+                        existingDoc={existingDocuments.inss_certificate}
+                        existingDocType="inss_certificate"
+                        onViewExisting={handleViewExistingDocument}
+                        onRemoveExisting={handleRemoveExistingDocument}
+                        existingRemoved={removedDocuments.includes('inss_certificate')}
+                        helperText="PDF, JPG ou PNG (máx 5MB) — OPCIONAL"
                         accept=".pdf,.jpg,.jpeg,.png"
                       />
                       <FileUploadField
@@ -706,6 +816,11 @@ export default function FornecedorFormWrapper() {
                         onChange={handleFileChange}
                         error={errors.nif_proof}
                         onPreview={handlePreviewFile}
+                        existingDoc={existingDocuments.nif_proof}
+                        existingDocType="nif_proof"
+                        onViewExisting={handleViewExistingDocument}
+                        onRemoveExisting={handleRemoveExistingDocument}
+                        existingRemoved={removedDocuments.includes('nif_proof')}
                         helperText="Formato PDF (.pdf)"
                         accept=".pdf"
                       />
@@ -716,6 +831,11 @@ export default function FornecedorFormWrapper() {
                         onChange={handleFileChange}
                         error={errors.product_list}
                         onPreview={handlePreviewFile}
+                        existingDoc={existingDocuments.product_list}
+                        existingDocType="product_list"
+                        onViewExisting={handleViewExistingDocument}
+                        onRemoveExisting={handleRemoveExistingDocument}
+                        existingRemoved={removedDocuments.includes('product_list')}
                         helperText="Documento com a lista de produtos (PDF)"
                         accept=".pdf"
                       />
@@ -729,6 +849,32 @@ export default function FornecedorFormWrapper() {
                       <p className="text-xs text-gray-500 mb-3">Pode anexar mais de um alvará comercial</p>
 
                       <div className="flex flex-wrap gap-3 mb-3">
+                        {existingDocuments.licenses && existingDocuments.licenses.length > 0 && (
+                          existingDocuments.licenses.map((lic, index) => (
+                            !removedLicenses.includes(index) && (
+                              <div key={`existing-${index}`} className="flex items-center gap-2 bg-emerald-50 border border-[#44B16F]/30 px-3 py-2 rounded-xl">
+                                <FileText size={16} className="text-[#44B16F]" />
+                                <span className="text-xs font-bold text-[#44B16F] max-w-[150px] truncate">Alvará {index + 1}</span>
+                                <button
+                                  type="button"
+                                  onClick={() => handleViewExistingDocument('commercial_license', index)}
+                                  className="p-1 hover:bg-[#44B16F]/10 rounded transition-colors"
+                                  title="Ver"
+                                >
+                                  <Eye size={14} className="text-[#44B16F]" />
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => handleRemoveExistingLicense(index)}
+                                  className="p-1 hover:bg-red-50 rounded transition-colors"
+                                  title="Eliminar alvará"
+                                >
+                                  <X size={14} className="text-red-500" />
+                                </button>
+                              </div>
+                            )
+                          ))
+                        )}
                         {formData.commercial_licenses.map((file, index) => (
                           <div key={index} className="flex items-center gap-2 bg-emerald-50 border border-[#44B16F]/30 px-3 py-2 rounded-xl">
                             <FileText size={16} className="text-[#44B16F]" />
@@ -820,13 +966,46 @@ function InputField({ label, name, type = "text", placeholder, value, onChange, 
   );
 }
 
-function FileUploadField({ label, name, file, onChange, error, onPreview, required, helperText, accept=".pdf" }) {
+function FileUploadField({ label, name, file, onChange, error, onPreview, required, helperText, accept = ".pdf", existingDoc, existingDocType, onViewExisting, onRemoveExisting, existingRemoved }) {
   return (
     <div>
       <label className="flex items-center gap-2 text-sm font-bold text-gray-700 mb-2 uppercase tracking-wider">
         {label}
         {required && <span className="bg-red-50 text-red-600 px-2 py-0.5 rounded-full text-[10px]">Obrigatório</span>}
       </label>
+      {!file && existingDoc && !existingRemoved && (
+        <div className="flex items-center justify-between gap-2 mb-2 bg-emerald-50 border border-[#44B16F]/30 px-3 py-2 rounded-xl">
+          <span className="text-xs font-bold text-[#44B16F] truncate">Documento carregado</span>
+          <div className="flex items-center gap-1 shrink-0">
+            {onViewExisting && existingDocType && (
+              <button
+                type="button"
+                onClick={() => onViewExisting(existingDocType)}
+                className="flex items-center gap-1 text-xs font-bold text-[#44B16F] hover:underline"
+              >
+                <Eye size={14} />
+                Ver
+              </button>
+            )}
+            {onRemoveExisting && existingDocType && (
+              <button
+                type="button"
+                onClick={() => onRemoveExisting(existingDocType)}
+                title="Eliminar documento"
+                className="p-1 rounded hover:bg-red-50 transition-colors"
+              >
+                <X size={14} className="text-red-500" />
+              </button>
+            )}
+          </div>
+        </div>
+      )}
+      {!file && existingDoc && existingRemoved && (
+        <div className="flex items-center gap-2 mb-2 bg-red-50 border border-red-200 px-3 py-2 rounded-xl">
+          <X size={14} className="text-red-500" />
+          <span className="text-xs font-bold text-red-500">Documento removido — carregue um novo para substituir, se desejar.</span>
+        </div>
+      )}
       <label
         className={`relative flex flex-col items-center justify-center p-6 border-2 border-dashed rounded-2xl cursor-pointer transition-all ${file
           ? "bg-emerald-50 border-[#44B16F]"
