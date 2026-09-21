@@ -3,16 +3,16 @@ import { useState, useEffect, useRef, useCallback } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import api, { suppliersAPI, categoriesAPI } from "../../services/api";
 import Toast from "../Components/Toast";
+import { PROVINCE_NAMES, getMunicipalities } from "../../utils/angolaLocations";
 
 // Categories are now fetched from the API
+// As províncias e municípios vêm do dataset local (angolaLocations.js)
 
 export default function FornecedorFormWrapper() {
   const [currentStep, setCurrentStep] = useState(1);
   const [isLoading, setIsLoading] = useState(false);
   const [categories, setCategories] = useState([]);
   const [isLoadingCategories, setIsLoadingCategories] = useState(false);
-  const [provincesData, setProvincesData] = useState([]);
-  const [isLoadingGeography, setIsLoadingGeography] = useState(false);
   const [toast, setToast] = useState(null);
   const [previewFile, setPreviewFile] = useState(null);
   const [isCreatingCategory, setIsCreatingCategory] = useState(false);
@@ -109,39 +109,6 @@ export default function FornecedorFormWrapper() {
       }
     };
     fetchCategories();
-  }, []);
-
-  useEffect(() => {
-    const fetchGeography = async () => {
-      try {
-        setIsLoadingGeography(true);
-        const res = await fetch("https://angolaprovinciasapi.ggwp.com.br/api/v1/provincias");
-        if (res.ok) {
-          const json = await res.json();
-          console.log("API de províncias retornou:", json);
-          
-          let list = [];
-          if (json && Array.isArray(json.data)) {
-            list = json.data;
-          } else if (Array.isArray(json)) {
-            list = json;
-          }
-          
-          if (list.length > 0) {
-            setProvincesData(list);
-          } else {
-            console.warn("API de províncias não retornou itens válidos.");
-          }
-        } else {
-          console.error("Erro na API de províncias, status:", res.status);
-        }
-      } catch (err) {
-        console.error("Erro no fetch de províncias:", err);
-      } finally {
-        setIsLoadingGeography(false);
-      }
-    };
-    fetchGeography();
   }, []);
 
   const [formData, setFormData] = useState({
@@ -413,24 +380,9 @@ export default function FornecedorFormWrapper() {
     }
   }, [formData, editingFornecedor, removedDocuments, removedLicenses]);
 
-  const provinces = provincesData.length > 0 
-    ? provincesData.map(p => p.nome).sort()
-    : ["Luanda", "Benguela", "Huambo", "Huíla", "Cabinda", "Namibe", "Lunda Norte", "Lunda Sul", "Malanje", "Moxico", "Bié", "Cunene", "Cuando Cubango", "Kwanza Norte", "Kwanza Sul", "Uíge", "Zaire", "Bengo"];
+const provinces = PROVINCE_NAMES;
 
-  const municipalities = (() => {
-    if (provincesData.length > 0) {
-      const selectedProv = provincesData.find(p => p.nome === formData.province);
-      if (selectedProv && Array.isArray(selectedProv.municipios)) {
-        try {
-          return selectedProv.municipios.map(m => m.nome).sort();
-        } catch (e) {
-          return [];
-        }
-      }
-      return [];
-    }
-    return ["Viana", "Luanda", "Cazenga", "Belas", "Talatona", "Lobito", "Benguela", "Kilamba Kiaxi", "Cacuaco", "Icolo e Bengo"];
-  })();
+  const municipalities = getMunicipalities(formData.province);
 
   if (currentStep === 4) {
     return (
@@ -682,8 +634,7 @@ export default function FornecedorFormWrapper() {
                         name="province"
                         value={formData.province}
                         onChange={handleInputChange}
-                        disabled={isLoadingGeography}
-                        className={`w-full px-5 py-4 bg-gray-50 border-2 border-transparent focus:border-[#44B16F] focus:bg-white rounded-2xl outline-none transition-all font-medium ${isLoadingGeography ? "opacity-50 cursor-not-allowed" : ""}`}
+                        className="w-full px-5 py-4 bg-gray-50 border-2 border-transparent focus:border-[#44B16F] focus:bg-white rounded-2xl outline-none transition-all font-medium"
                       >
                         <option value="">Selecione uma província...</option>
                         {provinces.map((p) => (
@@ -701,8 +652,8 @@ export default function FornecedorFormWrapper() {
                         name="municipality"
                         value={formData.municipality}
                         onChange={handleInputChange}
-                        disabled={!formData.province || isLoadingGeography}
-                        className={`w-full px-5 py-4 bg-gray-50 border-2 border-transparent focus:border-[#44B16F] focus:bg-white rounded-2xl outline-none transition-all font-medium ${!formData.province || isLoadingGeography ? "opacity-50 cursor-not-allowed" : ""}`}
+                        disabled={!formData.province}
+                        className={`w-full px-5 py-4 bg-gray-50 border-2 border-transparent focus:border-[#44B16F] focus:bg-white rounded-2xl outline-none transition-all font-medium ${!formData.province ? "opacity-50 cursor-not-allowed" : ""}`}
                       >
                         <option value="">Selecione um município...</option>
                         {municipalities.map((m) => (

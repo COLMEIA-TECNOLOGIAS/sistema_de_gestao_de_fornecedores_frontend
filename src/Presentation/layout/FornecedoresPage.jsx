@@ -646,7 +646,7 @@ export default function FornecedoresPage() {
                                                     </span>
                                                 ) : (
                                                     <span className="px-2 py-1 rounded-md text-[11px] font-bold w-fit" style={{ color: 'var(--color-text-secondary)', background: 'var(--color-bg)' }}>
-                                                        {f.registration_status || 'Directo'}
+                                                        {f.registration_status || 'Externo'}
                                                     </span>
                                                 )}
                                             </div>

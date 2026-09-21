@@ -135,7 +135,7 @@ export default function ModalDetalhesFornecedor({
                                 </h2>
                                 <StatusBadge isActive={fornecedor.is_active} />
                                 <span className={`px-3 py-1 rounded-full text-xs font-bold border ${fornecedor.registration_status !== 'invited' ? 'bg-orange-50 text-orange-700 border-orange-200' : 'bg-purple-50 text-purple-700 border-purple-200'}`}>
-                                    {fornecedor.registration_status !== 'invited' ? 'Cadastro Directo' : 'Cadastro Externo'}
+                                    {fornecedor.registration_status !== 'invited' ? 'Cadastro Externo' : 'Cadastro Directo'}
                                 </span>
                             </div>
                             <div className="flex items-center gap-4 mt-2 text-sm text-gray-500">
