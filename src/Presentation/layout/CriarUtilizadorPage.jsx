@@ -10,7 +10,9 @@ export default function CriarUtilizadorPage() {
         name: '',
         email: '',
         password: '',
+        password_confirmation: '',
         role: ROLES.PROCUREMENT_TECHNICIAN,
+        is_active: true,
     });
     const [showPassword, setShowPassword] = useState(false);
     const [isSubmitting, setIsSubmitting] = useState(false);
@@ -28,16 +30,31 @@ export default function CriarUtilizadorPage() {
         setError(null);
         setSuccess(false);
 
+        if (formData.password !== formData.password_confirmation) {
+            setError("A palavra-passe e a confirmação não coincidem.");
+            setIsSubmitting(false);
+            return;
+        }
+
         try {
-            await usersAPI.create(formData);
+            const payload = { ...formData };
+            await usersAPI.create(payload);
             setSuccess(true);
-            setFormData({ name: '', email: '', password: '', role: ROLES.PROCUREMENT_TECHNICIAN });
+            setFormData({ name: '', email: '', password: '', password_confirmation: '', role: ROLES.PROCUREMENT_TECHNICIAN, is_active: true });
             setTimeout(() => {
                 navigate('/usuarios');
             }, 1500);
         } catch (err) {
             console.error("Error creating user:", err);
-            setError("Ocorreu um erro ao criar o utilizador. Verifique os dados e tente novamente.");
+            const serverMsg = err.response?.data?.message || err.response?.data?.error;
+            const fieldErrors = err.response?.data?.errors
+                ? Object.values(err.response.data.errors).flat().join(' ')
+                : '';
+            setError(
+                serverMsg ||
+                fieldErrors ||
+                "Ocorreu um erro ao criar o utilizador. Verifique os dados e tente novamente."
+            );
         } finally {
             setIsSubmitting(false);
         }
@@ -131,6 +148,26 @@ export default function CriarUtilizadorPage() {
                             >
                                 {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
                             </button>
+                        </div>
+                    </div>
+
+                    {/* Confirmar Senha */}
+                    <div className="space-y-2">
+                        <label className="text-sm font-semibold text-gray-700">Confirmar Palavra-passe</label>
+                        <div className="relative">
+                            <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                                <Lock size={18} className="text-gray-400" />
+                            </div>
+                            <input
+                                type={showPassword ? "text" : "password"}
+                                name="password_confirmation"
+                                value={formData.password_confirmation}
+                                onChange={handleChange}
+                                required
+                                minLength={6}
+                                className="w-full pl-10 pr-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl focus:bg-white focus:ring-2 focus:ring-[#44B16F]/20 focus:border-[#44B16F] transition-all outline-none"
+                                placeholder="Repita a palavra-passe"
+                            />
                         </div>
                     </div>
 
