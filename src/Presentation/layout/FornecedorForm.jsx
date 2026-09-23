@@ -76,13 +76,8 @@ export default function FornecedorFormWrapper() {
 
     for (const candidate of candidates) {
       try {
-        const url = `/suppliers/${editingFornecedor.id}/documents/${candidate}`;
         const params = index !== undefined ? { index } : {};
-        const response = await api.get(url, {
-          params,
-          responseType: 'blob',
-          headers: { 'Accept': 'application/pdf, image/*' }
-        });
+        const response = await suppliersAPI.getDocument(editingFornecedor.id, candidate, params);
         const blob = new Blob([response.data], { type: response.headers['content-type'] });
         const objectUrl = window.URL.createObjectURL(blob);
         window.open(objectUrl, '_blank');

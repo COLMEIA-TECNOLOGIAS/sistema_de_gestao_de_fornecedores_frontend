@@ -9,7 +9,7 @@ const api = axios.create({
     },
 });
 
-// Interceptor to add auth token to requests
+// Intercecptor to add auth token to requests
 api.interceptors.request.use(
     (config) => {
         const token = localStorage.getItem('token');
@@ -45,6 +45,37 @@ export const authAPI = {
         const response = await api.post('/logout');
         return response.data;
     },
+    // Confirmação de email por código de 6 dígitos
+    verifyEmail: async (email, code) => {
+        const response = await api.post('/email/verify', { email, code });
+        return response.data;
+    },
+    // Reenviar o código de confirmação de email
+    resendEmailVerification: async () => {
+        const response = await api.post('/email/resend-verification');
+        return response.data;
+    },
+    // Recuperação de senha
+    forgotPassword: async (email) => {
+        const response = await api.post('/password/forgot', { email });
+        return response.data;
+    },
+    // Validar o código de recuperação (devolve token de curta duração)
+    verifyPasswordCode: async (email, code) => {
+        const response = await api.post('/password/verify-code', { email, code });
+        return response.data;
+    },
+    // Definir nova senha (aceita código directamente ou o token do verify-code)
+    resetPassword: async ({ email, code, token, password, password_confirmation }) => {
+        const response = await api.post('/password/reset', {
+            email,
+            code,
+            token,
+            password,
+            password_confirmation,
+        });
+        return response.data;
+    },
 };
 
 // Users API
@@ -63,6 +94,11 @@ export const usersAPI = {
     },
     delete: async (id) => {
         const response = await api.delete(`/users/${id}`);
+        return response.data;
+    },
+    // Reenviar o código de confirmação (Admin)
+    resendVerification: async (userId) => {
+        const response = await api.post(`/users/${userId}/resend-verification`);
         return response.data;
     },
 };
@@ -131,6 +167,15 @@ export const suppliersAPI = {
     approve: async (id) => {
         const response = await api.post(`/suppliers/${id}/approve`);
         return response.data;
+    },
+    // Visualizar documento do fornecedor (PDF ou imagem)
+    getDocument: async (id, documentType, params = {}) => {
+        const response = await api.get(`/suppliers/${id}/documents/${documentType}`, {
+            params,
+            responseType: 'blob',
+            headers: { 'Accept': 'application/pdf, image/*' },
+        });
+        return response;
     },
 };
 

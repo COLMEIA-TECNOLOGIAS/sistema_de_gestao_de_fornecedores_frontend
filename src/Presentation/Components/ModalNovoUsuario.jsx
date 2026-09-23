@@ -1,5 +1,5 @@
 import { useModalLock } from '../../hooks/useModalLock';
-import { X, UserPlus, Eye, EyeOff, Edit, Save } from "lucide-react";
+import { X, UserPlus, Edit, Save } from "lucide-react";
 import { useState, useEffect } from "react";
 import { createPortal } from "react-dom";
 import { usersAPI } from "../../services/api";
@@ -7,11 +7,9 @@ import { usersAPI } from "../../services/api";
 export default function ModalNovoUsuario({ isOpen, onClose, onSuccess, userToEdit }) {
     const [isLoading, setIsLoading] = useState(false);
     const [error, setError] = useState("");
-    const [showPassword, setShowPassword] = useState(false);
     const [formData, setFormData] = useState({
         name: "",
         email: "",
-        password: "",
         role: "",
         is_active: true,
     });
@@ -21,7 +19,6 @@ export default function ModalNovoUsuario({ isOpen, onClose, onSuccess, userToEdi
             setFormData({
                 name: userToEdit.name || "",
                 email: userToEdit.email || "",
-                password: "", // Password empty on edit means "don't change"
                 role: userToEdit.role || "",
                 is_active: userToEdit.is_active !== false,
             });
@@ -29,7 +26,6 @@ export default function ModalNovoUsuario({ isOpen, onClose, onSuccess, userToEdi
             setFormData({
                 name: "",
                 email: "",
-                password: "",
                 role: "",
                 is_active: true,
             });
@@ -52,24 +48,17 @@ export default function ModalNovoUsuario({ isOpen, onClose, onSuccess, userToEdi
 
         try {
             if (userToEdit) {
-                // Remove password if empty so it doesn't try to update it
-                const dataToUpdate = { ...formData };
-                if (!dataToUpdate.password) delete dataToUpdate.password;
-
-                await usersAPI.update(userToEdit.id, dataToUpdate);
-            } else {
-                await usersAPI.create(formData);
+                await usersAPI.update(userToEdit.id, formData);
+                onSuccess?.();
+                return;
             }
 
-            // Reset form
-            setFormData({
-                name: "",
-                email: "",
-                password: "",
-                role: "",
-                is_active: true,
+            // Criação: o utilizador ativa a conta e define a senha através do email recebido
+            const resp = await usersAPI.create(formData);
+            onSuccess?.({
+                message: resp?.message || `Utilizador criado. Foi enviado um link para ${formData.email} para o utilizador definir a sua senha.`,
+                email: formData.email,
             });
-            onSuccess?.();
         } catch (err) {
             console.error("Error saving user:", err);
             setError(
@@ -120,6 +109,15 @@ export default function ModalNovoUsuario({ isOpen, onClose, onSuccess, userToEdi
                             </div>
                         )}
 
+                        {/* Informativo sobre ativação por email */}
+                        {!userToEdit && (
+                            <div className="p-4 bg-blue-50 border border-blue-200 rounded-lg">
+                                <p className="text-blue-700 text-sm">
+                                    Será enviado um link para o email do utilizador para ele ativar a conta e definir a sua própria senha.
+                                </p>
+                            </div>
+                        )}
+
                         {/* Row 1: Nome Completo e Email */}
                         <div className="grid grid-cols-2 gap-4">
                             <div>
@@ -154,56 +152,29 @@ export default function ModalNovoUsuario({ isOpen, onClose, onSuccess, userToEdi
                             </div>
                         </div>
 
-                        {/* Row 2: Senha e Função */}
-                        <div className="grid grid-cols-2 gap-4">
-                            <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-2">
-                                    {userToEdit ? "Senha (opcional)" : "Senha *"}
-                                </label>
-                                <div className="relative">
-                                    <input
-                                        type={showPassword ? "text" : "password"}
-                                        name="password"
-                                        value={formData.password}
-                                        onChange={handleChange}
-                                        placeholder={userToEdit ? "Deixe em branco para manter" : "Mínimo 6 caracteres"}
-                                        required={!userToEdit}
-                                        minLength={!userToEdit ? 6 : undefined}
-                                        disabled={isLoading}
-                                        className="w-full px-4 py-3 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#44B16F] focus:border-transparent transition-all pr-12 disabled:bg-gray-100"
-                                    />
-                                    <button
-                                        type="button"
-                                        onClick={() => setShowPassword(!showPassword)}
-                                        className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
-                                    >
-                                        {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
-                                    </button>
-                                </div>
-                            </div>
-                            <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-2">
-                                    Função *
-                                </label>
-                                <select
-                                    name="role"
-                                    value={formData.role}
-                                    onChange={handleChange}
-                                    required
-                                    disabled={isLoading}
-                                    className="w-full px-4 py-3 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#44B16F] focus:border-transparent transition-all bg-white disabled:bg-gray-100"
-                                >
-                                    <option value="">Selecione a função</option>
-                                    <option value="admin">Admin - Acesso total ao sistema</option>
-                                    <option value="procurement_technician">Técnico de Procurement - Gestão de cotações e fornecedores</option>
-                                </select>
-                                {formData.role && (
-                                    <p className="text-xs text-gray-500 mt-2">
-                                        {formData.role === 'admin' && '✓ Acesso completo a todas as funcionalidades'}
-                                        {formData.role === 'procurement_technician' && '✓ Gestão de fornecedores, cotações e relatórios'}
-                                    </p>
-                                )}
-                            </div>
+                        {/* Row 2: Função */}
+                        <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-2">
+                                Função *
+                            </label>
+                            <select
+                                name="role"
+                                value={formData.role}
+                                onChange={handleChange}
+                                required
+                                disabled={isLoading}
+                                className="w-full px-4 py-3 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#44B16F] focus:border-transparent transition-all bg-white disabled:bg-gray-100"
+                            >
+                                <option value="">Selecione a função</option>
+                                <option value="admin">Admin - Acesso total ao sistema</option>
+                                <option value="procurement_technician">Técnico de Procurement - Gestão de cotações e fornecedores</option>
+                            </select>
+                            {formData.role && (
+                                <p className="text-xs text-gray-500 mt-2">
+                                    {formData.role === 'admin' && '✓ Acesso completo a todas as funcionalidades'}
+                                    {formData.role === 'procurement_technician' && '✓ Gestão de fornecedores, cotações e relatórios'}
+                                </p>
+                            )}
                         </div>
 
                         {/* Row 3: Status da Conta */}

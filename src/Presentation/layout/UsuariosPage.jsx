@@ -1,9 +1,10 @@
 import { useState, useEffect } from "react";
-import { Eye, Edit, Trash2, RefreshCw } from "lucide-react";
+import { Eye, Edit, Trash2, RefreshCw, MailCheck, MailX } from "lucide-react";
 import ModalNovoUsuario from "../Components/ModalNovoUsuario";
 import UsuarioTableSkeleton from "../Components/UsuarioTableSkeleton";
 import ModalDetalhesUsuario from "../Components/ModalDetalhesUsuario";
 import ModalConfirmarExclusaoUsuario from "../Components/ModalConfirmarExclusaoUsuario";
+import Toast from "../Components/Toast";
 import { usersAPI } from "../../services/api";
 
 export default function UsuariosPage() {
@@ -15,6 +16,8 @@ export default function UsuariosPage() {
   const [selectedUser, setSelectedUser] = useState(null);
   const [error, setError] = useState(null);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [resendingId, setResendingId] = useState(null);
+  const [toast, setToast] = useState(null);
 
   const [searchTerm, setSearchTerm] = useState("");
 
@@ -36,10 +39,33 @@ export default function UsuariosPage() {
     fetchUsuarios();
   }, []);
 
-  const handleUserCreated = () => {
+  useEffect(() => {
+    if (!toast) return;
+    const t = setTimeout(() => setToast(null), 3000);
+    return () => clearTimeout(t);
+  }, [toast]);
+
+  const handleUserCreated = (result) => {
     fetchUsuarios();
     setIsModalOpen(false);
     setSelectedUser(null);
+    if (result?.message) {
+      setToast({ type: "success", message: result.message });
+    }
+  };
+
+  const handleResendVerification = async (user) => {
+    if (resendingId) return;
+    setResendingId(user.id);
+    try {
+      await usersAPI.resendVerification(user.id);
+      setToast({ type: "success", message: `Novo código enviado para ${user.email}.` });
+    } catch (err) {
+      console.error("Resend verification error:", err);
+      setToast({ type: "error", message: err.response?.data?.message || "Erro ao reenviar o código." });
+    } finally {
+      setResendingId(null);
+    }
   };
 
   const handleEdit = (user) => {
@@ -170,6 +196,7 @@ export default function UsuariosPage() {
                   </div>
                 </th>
                 <th className="px-6 py-4 text-left text-sm font-semibold" style={{ color: 'var(--color-text-secondary)' }}>Email</th>
+                <th className="px-6 py-4 text-left text-sm font-semibold" style={{ color: 'var(--color-text-secondary)' }}>Verificação</th>
                 <th className="px-6 py-4 text-left text-sm font-semibold" style={{ color: 'var(--color-text-secondary)' }}>Função</th>
                 <th className="px-6 py-4 text-center text-sm font-semibold" style={{ color: 'var(--color-text-secondary)' }}>Ações</th>
               </tr>
@@ -203,6 +230,27 @@ export default function UsuariosPage() {
                       </div>
                     </td>
                     <td className="px-6 py-4" style={{ color: 'var(--color-text-secondary)' }}>{u.email}</td>
+                    <td className="px-6 py-4">
+                      {u.email_verified_at ? (
+                        <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-green-50 text-green-700">
+                          <MailCheck size={14} />
+                          Verificado
+                        </span>
+                      ) : (
+                        <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-amber-50 text-amber-700">
+                          <MailX size={14} />
+                          Não verificado
+                          <button
+                            onClick={() => handleResendVerification(u)}
+                            disabled={resendingId === u.id}
+                            className="ml-1 text-amber-800 hover:text-amber-900 hover:underline disabled:opacity-50"
+                            title="Reenviar código de confirmação"
+                          >
+                            {resendingId === u.id ? "Enviando..." : "Reenviar código"}
+                          </button>
+                        </span>
+                      )}
+                    </td>
                     <td className="px-6 py-4" style={{ color: 'var(--color-text-secondary)' }}>{getRoleLabel(u.role)}</td>
                     <td className="px-6 py-4">
                       <div className="flex items-center justify-center gap-2">
@@ -285,6 +333,14 @@ export default function UsuariosPage() {
         user={selectedUser}
         isLoading={isDeleting}
       />
+
+      {toast && (
+        <Toast
+          type={toast.type}
+          message={toast.message}
+          onClose={() => setToast(null)}
+        />
+      )}
     </div>
   );
 }

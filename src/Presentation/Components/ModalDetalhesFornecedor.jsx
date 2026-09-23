@@ -2,7 +2,7 @@ import { useModalLock } from '../../hooks/useModalLock';
 import React, { useState } from 'react';
 import { createPortal } from 'react-dom';
 import { X, FileText, MapPin, Mail, Phone, Building2, Calendar, CheckCircle, XCircle, Loader2 } from 'lucide-react';
-import api from '../../services/api';
+import { suppliersAPI } from '../../services/api';
 
 export default function ModalDetalhesFornecedor({
     isOpen,
@@ -37,17 +37,8 @@ export default function ModalDetalhesFornecedor({
                 params.index = query.split('=')[1];
             }
 
-            // Construct the URL based on the API definition
-            const url = `/suppliers/${fornecedor.id}/documents/${type}`;
-
             // Request with authentication and blob response type
-            const response = await api.get(url, {
-                params,
-                responseType: 'blob',
-                headers: {
-                    'Accept': 'application/pdf, image/*',
-                }
-            });
+            const response = await suppliersAPI.getDocument(fornecedor.id, type, params);
 
             // Create object URL
             const blob = new Blob([response.data], { type: response.headers['content-type'] });

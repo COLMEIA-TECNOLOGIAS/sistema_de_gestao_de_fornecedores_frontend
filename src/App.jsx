@@ -5,6 +5,10 @@ import { AdminRoute } from './Presentation/Components/RoleProtectedRoute'
 import SplashScreen from './Presentation/Components/SplashScreen.jsx'
 import LoginPage from './Presentation/Pages/Login/LoginPage.jsx'
 import SuccessPasswordReset from './Presentation/Pages/Login/SuccessPasswordReset..jsx'
+import ForgotPasswordPage from './Presentation/Pages/Login/ForgotPasswordPage.jsx'
+import VerifyCodePage from './Presentation/Pages/Login/VerifyCodePage.jsx'
+import ResetPasswordPage from './Presentation/Pages/Login/ResetPasswordPage.jsx'
+import EmailVerificationPage from './Presentation/Pages/Login/EmailVerificationPage.jsx'
 import Home from './Presentation/Pages/Home.jsx'
 import DashboardLayout from './DashboardLayout.jsx'
 import AddFornecedorPage from './Presentation/layout/AddFornecedor.jsx'
@@ -52,6 +56,10 @@ function AppRoutes() {
       <Route path="/" element={<LoginPage />} />
       <Route path="/login" element={<LoginPage />} />
       <Route path="/success-reset" element={<SuccessPasswordReset />} />
+      <Route path="/forgot-password" element={<ForgotPasswordPage />} />
+      <Route path="/verify-code" element={<VerifyCodePage />} />
+      <Route path="/reset-password" element={<ResetPasswordPage />} />
+      <Route path="/confirm-email" element={<EmailVerificationPage />} />
 
       {/* Landing Page */}
       <Route path="/landingpage" element={<LandingPage />} />

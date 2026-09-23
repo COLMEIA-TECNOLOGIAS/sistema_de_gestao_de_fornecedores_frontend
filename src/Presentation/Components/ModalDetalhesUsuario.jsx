@@ -72,6 +72,18 @@ export default function ModalDetalhesUsuario({ isOpen, onClose, user }) {
                         </div>
 
                         <div className="flex items-center gap-4 p-4 rounded-xl bg-gray-50 border border-gray-100">
+                            <div className={`p-2 bg-white rounded-lg shadow-sm ${user.email_verified_at ? 'text-green-600' : 'text-amber-600'}`}>
+                                {user.email_verified_at ? <CheckCircle2 size={20} /> : <XCircle size={20} />}
+                            </div>
+                            <div>
+                                <p className="text-xs text-gray-400 font-medium uppercase tracking-wider">Verificação do Email</p>
+                                <p className={`font-medium ${user.email_verified_at ? 'text-green-700' : 'text-amber-700'}`}>
+                                    {user.email_verified_at ? 'Email verificado' : 'Email não verificado'}
+                                </p>
+                            </div>
+                        </div>
+
+                        <div className="flex items-center gap-4 p-4 rounded-xl bg-gray-50 border border-gray-100">
                             <div className={`p-2 bg-white rounded-lg shadow-sm ${user.is_active !== false ? 'text-green-600' : 'text-red-600'}`}>
                                 {user.is_active !== false ? <CheckCircle2 size={20} /> : <XCircle size={20} />}
                             </div>

@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { User, Mail, Lock, Shield, UserPlus, Eye, EyeOff } from 'lucide-react';
+import { User, Mail, Shield, UserPlus } from 'lucide-react';
 import { usersAPI } from '../../services/api';
 import { ROLES } from '../../utils/permissions';
 import { useNavigate } from 'react-router-dom';
@@ -9,15 +9,13 @@ export default function CriarUtilizadorPage() {
     const [formData, setFormData] = useState({
         name: '',
         email: '',
-        password: '',
-        password_confirmation: '',
         role: ROLES.PROCUREMENT_TECHNICIAN,
         is_active: true,
     });
-    const [showPassword, setShowPassword] = useState(false);
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [error, setError] = useState(null);
     const [success, setSuccess] = useState(false);
+    const [successMessage, setSuccessMessage] = useState("");
 
     const handleChange = (e) => {
         const { name, value } = e.target;
@@ -30,17 +28,14 @@ export default function CriarUtilizadorPage() {
         setError(null);
         setSuccess(false);
 
-        if (formData.password !== formData.password_confirmation) {
-            setError("A palavra-passe e a confirmação não coincidem.");
-            setIsSubmitting(false);
-            return;
-        }
-
         try {
             const payload = { ...formData };
-            await usersAPI.create(payload);
+            const resp = await usersAPI.create(payload);
+            setSuccessMessage(
+                resp?.message || `Utilizador criado. Foi enviado um link para ${formData.email} para o utilizador definir a sua senha.`
+            );
             setSuccess(true);
-            setFormData({ name: '', email: '', password: '', password_confirmation: '', role: ROLES.PROCUREMENT_TECHNICIAN, is_active: true });
+            setFormData({ name: '', email: '', role: ROLES.PROCUREMENT_TECHNICIAN, is_active: true });
             setTimeout(() => {
                 navigate('/usuarios');
             }, 1500);
@@ -68,7 +63,8 @@ export default function CriarUtilizadorPage() {
                     Criar Novo Utilizador
                 </h2>
                 <p className="text-gray-500 mt-2">
-                    Preencha os dados abaixo para registar um novo utilizador no sistema.
+                    Preencha os dados abaixo para registar um novo utilizador no sistema. Será enviado um link
+                    para o email do utilizador para ele ativar a conta e definir a sua própria senha.
                 </p>
             </div>
 
@@ -77,10 +73,10 @@ export default function CriarUtilizadorPage() {
                     {error}
                 </div>
             )}
-            
+
             {success && (
                 <div className="mb-6 p-4 bg-green-50 border border-green-100 text-green-700 rounded-xl text-sm font-medium">
-                    Utilizador criado com sucesso! Redirecionando...
+                    {successMessage || "Utilizador criado com sucesso!"}
                 </div>
             )}
 
@@ -120,53 +116,6 @@ export default function CriarUtilizadorPage() {
                                 required
                                 className="w-full pl-10 pr-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl focus:bg-white focus:ring-2 focus:ring-[#44B16F]/20 focus:border-[#44B16F] transition-all outline-none"
                                 placeholder="joao.silva@exemplo.com"
-                            />
-                        </div>
-                    </div>
-
-                    {/* Senha */}
-                    <div className="space-y-2">
-                        <label className="text-sm font-semibold text-gray-700">Palavra-passe</label>
-                        <div className="relative">
-                            <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                                <Lock size={18} className="text-gray-400" />
-                            </div>
-                            <input
-                                type={showPassword ? "text" : "password"}
-                                name="password"
-                                value={formData.password}
-                                onChange={handleChange}
-                                required
-                                minLength={6}
-                                className="w-full pl-10 pr-10 py-2.5 bg-gray-50 border border-gray-200 rounded-xl focus:bg-white focus:ring-2 focus:ring-[#44B16F]/20 focus:border-[#44B16F] transition-all outline-none"
-                                placeholder="Mínimo 6 caracteres"
-                            />
-                            <button
-                                type="button"
-                                onClick={() => setShowPassword(!showPassword)}
-                                className="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-400 hover:text-gray-600 transition-colors"
-                            >
-                                {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
-                            </button>
-                        </div>
-                    </div>
-
-                    {/* Confirmar Senha */}
-                    <div className="space-y-2">
-                        <label className="text-sm font-semibold text-gray-700">Confirmar Palavra-passe</label>
-                        <div className="relative">
-                            <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                                <Lock size={18} className="text-gray-400" />
-                            </div>
-                            <input
-                                type={showPassword ? "text" : "password"}
-                                name="password_confirmation"
-                                value={formData.password_confirmation}
-                                onChange={handleChange}
-                                required
-                                minLength={6}
-                                className="w-full pl-10 pr-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl focus:bg-white focus:ring-2 focus:ring-[#44B16F]/20 focus:border-[#44B16F] transition-all outline-none"
-                                placeholder="Repita a palavra-passe"
                             />
                         </div>
                     </div>
