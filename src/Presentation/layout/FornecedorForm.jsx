@@ -1,5 +1,5 @@
 import { ArrowLeft, AlertCircle, FileText, CheckCircle, Upload, X, Eye, Plus } from "lucide-react";
-import { useState, useEffect, useRef, useCallback } from "react";
+import { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import api, { suppliersAPI, categoriesAPI } from "../../services/api";
 import Toast from "../Components/Toast";
@@ -95,7 +95,7 @@ export default function FornecedorFormWrapper() {
       try {
         setIsLoadingCategories(true);
         const response = await categoriesAPI.getAll();
-        setCategories(response || []);
+        setCategories(Array.isArray(response) ? response : (Array.isArray(response?.data) ? response.data : []));
       } catch (err) {
         console.error("Error fetching categories:", err);
         setToast({ type: "error", message: "Erro ao carregar categorias" });
@@ -310,12 +310,6 @@ export default function FornecedorFormWrapper() {
         data.append(`categories[${index}]`, id);
       });
 
-      // Debug: log the FormData keys being sent
-      console.log("Submitting FormData with keys:");
-      for (let [key, value] of data.entries()) {
-        console.log(` ${key}:`, value instanceof File ? `[File: ${value.name}]` : value);
-      }
-
       if (editingFornecedor) {
         data.append("_method", "PUT");
         await suppliersAPI.updateMultipart(editingFornecedor.id, data);
@@ -377,7 +371,10 @@ export default function FornecedorFormWrapper() {
 
 const provinces = PROVINCE_NAMES;
 
-  const municipalities = getMunicipalities(formData.province);
+  const municipalities = useMemo(
+    () => getMunicipalities(formData.province),
+    [formData.province]
+  );
 
   if (currentStep === 4) {
     return (
@@ -391,7 +388,7 @@ const provinces = PROVINCE_NAMES;
               {editingFornecedor ? "Fornecedor atualizado!" : "Fornecedor cadastrado!"}
             </h2>
             <p className="text-gray-600 text-lg mb-10 leading-relaxed">
-              O fornecedor <strong>{formData.commercial_name}</strong> foi {editingFornecedor ? "atualizado" : "adicionado"} com sucesso à sua base de dados.
+              O fornecedor <strong>{formData.company_name}</strong> foi {editingFornecedor ? "atualizado" : "adicionado"} com sucesso à sua base de dados.
             </p>
             <button
               onClick={() => navigate("/fornecedores")}

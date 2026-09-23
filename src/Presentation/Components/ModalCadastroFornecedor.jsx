@@ -131,7 +131,7 @@ export default function ModalCadastroFornecedor({ isOpen, onClose, fornecedor, o
                                 onClick={handleCadastroDireto}
                                 className="px-8 py-3 border-2 border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors font-medium"
                             >
-                                Cadastro Externo
+                                Cadastro Direto
                             </button>
                             <button
                                 onClick={() => setIsLinkExternoOpen(true)}

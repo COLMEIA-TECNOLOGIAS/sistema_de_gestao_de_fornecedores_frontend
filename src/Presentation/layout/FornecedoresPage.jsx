@@ -90,7 +90,8 @@ export default function FornecedoresPage() {
         }
 
         if (categoriesResult.status === 'fulfilled') {
-            setCategories(categoriesResult.value || []);
+            const value = categoriesResult.value;
+            setCategories(Array.isArray(value) ? value : (Array.isArray(value?.data) ? value.data : []));
         } else {
             // 403 em categorias não é um erro crítico — apenas não mostramos filtro
             console.warn('Não foi possível carregar categorias:', categoriesResult.reason?.response?.status);
