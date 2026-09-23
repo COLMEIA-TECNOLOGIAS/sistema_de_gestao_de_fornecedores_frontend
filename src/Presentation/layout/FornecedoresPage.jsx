@@ -531,8 +531,8 @@ export default function FornecedoresPage() {
                                     <input type="checkbox" className="rounded border-gray-300" />
                                 </th>
                                 <th className="px-3 py-3 text-left text-[13px] font-semibold whitespace-nowrap" style={{ color: 'var(--color-text-secondary)' }}>ID</th>
-                                <th className="px-3 py-3 text-left text-[13px] font-semibold whitespace-nowrap" style={{ color: 'var(--color-text-secondary)' }}>Fornecedor</th>
-                                <th className="px-3 py-3 text-left text-[13px] font-semibold whitespace-nowrap" style={{ color: 'var(--color-text-secondary)' }}>NIF</th>
+                                <th className="px-3 py-3 text-left text-[13px] font-semibold whitespace-nowrap w-[240px]" style={{ color: 'var(--color-text-secondary)' }}>Fornecedor</th>
+                                <th className="px-3 py-3 text-left text-[13px] font-semibold whitespace-nowrap w-[140px]" style={{ color: 'var(--color-text-secondary)' }}>NIF</th>
                                 <th className="px-3 py-3 text-left text-[13px] font-semibold whitespace-nowrap" style={{ color: 'var(--color-text-secondary)' }}>Contactos</th>
                                 <th className="px-3 py-3 text-left text-[13px] font-semibold whitespace-nowrap" style={{ color: 'var(--color-text-secondary)' }}>Avaliação</th>
                                 <th className="px-3 py-3 text-left text-[13px] font-semibold whitespace-nowrap" style={{ color: 'var(--color-text-secondary)' }}>Categoria</th>
@@ -566,20 +566,24 @@ export default function FornecedoresPage() {
                                         <td className="px-3 py-3 cursor-pointer" onClick={() => { setSelectedFornecedor(f); setIsDetalhesModalOpen(true); }}>
                                             <span className="font-medium" style={{ color: 'var(--color-text-secondary)' }}>#{f.id}</span>
                                         </td>
-                                        <td className="px-3 py-3 cursor-pointer" onClick={() => { setSelectedFornecedor(f); setIsDetalhesModalOpen(true); }}>
-                                            <div className="flex items-center gap-2">
+                                        <td className="px-3 py-3 cursor-pointer max-w-[240px]" onClick={() => { setSelectedFornecedor(f); setIsDetalhesModalOpen(true); }}>
+                                            <div className="flex items-center gap-2 min-w-0">
                                                 <img
                                                     src={`https://api.dicebear.com/7.x/initials/svg?seed=${f.company_name || f.commercial_name || 'N/A'}`}
                                                     alt={f.company_name || f.commercial_name}
                                                     className="w-10 h-10 rounded-lg flex-shrink-0"
                                                 />
-                                                <div className="flex flex-col min-w-[120px]">
-                                                    <span className="font-semibold text-[13px] line-clamp-1 truncate" style={{ color: 'var(--color-text-primary)' }}>{f.company_name || f.commercial_name || 'N/A'}</span>
-                                                </div>
+                                                <span
+                                                    className="block min-w-0 flex-1 font-semibold text-[13px] truncate"
+                                                    style={{ color: 'var(--color-text-primary)' }}
+                                                    title={f.company_name || f.commercial_name || 'N/A'}
+                                                >
+                                                    {f.company_name || f.commercial_name || 'N/A'}
+                                                </span>
                                             </div>
                                         </td>
-                                        <td className="px-3 py-3 cursor-pointer text-[13px]" style={{ color: 'var(--color-text-secondary)' }} onClick={() => { setSelectedFornecedor(f); setIsDetalhesModalOpen(true); }}>
-                                            <span className="whitespace-nowrap">{f.nif || 'N/A'}</span>
+                                        <td className="px-3 py-3 cursor-pointer text-[13px] whitespace-nowrap w-[140px]" style={{ color: 'var(--color-text-secondary)' }} onClick={() => { setSelectedFornecedor(f); setIsDetalhesModalOpen(true); }}>
+                                            <span>{f.nif || 'N/A'}</span>
                                         </td>
                                         <td className="px-3 py-3 cursor-pointer text-[13px]" style={{ color: 'var(--color-text-secondary)' }} onClick={() => { setSelectedFornecedor(f); setIsDetalhesModalOpen(true); }}>
                                             <div className="flex flex-col">
