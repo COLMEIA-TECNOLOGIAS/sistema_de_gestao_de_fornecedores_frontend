@@ -35,7 +35,6 @@ const PAGE_SUBTITLES = {
 function Navbar({ userName: propUserName, userRole: propUserRole, onItemClick, activeItem }) {
   const { isDark, toggleTheme } = useTheme();
   const [currentTime, setCurrentTime] = useState(new Date());
-  const [locationInfo, setLocationInfo] = useState({ country: 'Angola', city: 'Luanda', local: '' });
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const [isLogoutModalOpen, setIsLogoutModalOpen] = useState(false);
   const [isLoggingOut, setIsLoggingOut] = useState(false);
@@ -274,13 +273,13 @@ function Navbar({ userName: propUserName, userRole: propUserRole, onItemClick, a
         {/* Spacer */}
         <div className="flex-1" />
 
-        {/* Time and Location */}
+        {/* Time and Date */}
         <div className="hidden md:flex flex-col items-end justify-center mr-4" style={{ borderRight: '1px solid var(--color-border-light)', paddingRight: '16px' }}>
           <span className="text-sm font-semibold" style={{ color: 'var(--color-text-primary)' }}>
             {currentTime.toLocaleTimeString('pt-AO', { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
           </span>
           <span className="text-xs" style={{ color: 'var(--color-text-muted)' }}>
-            Luanda, Angola
+            {currentTime.toLocaleDateString('pt-AO', { weekday: 'long', day: '2-digit', month: 'long', year: 'numeric' })}
           </span>
         </div>
 
