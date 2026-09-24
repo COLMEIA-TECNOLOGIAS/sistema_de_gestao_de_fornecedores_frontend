@@ -121,9 +121,23 @@ export const permissionsAPI = {
 
 // Suppliers API
 export const suppliersAPI = {
-    getAll: async () => {
-        const response = await api.get('/suppliers');
-        return response.data;
+    // Busca TODOS os fornecedores, percorrendo todas as páginas da paginação
+    // do backend (default 10 por página), sem limite de registos.
+    getAll: async (perPage = 100) => {
+        const all = [];
+        let currentPage = 1;
+        let lastPage = 1;
+        do {
+            const response = await api.get(`/suppliers?page=${currentPage}&per_page=${perPage}`);
+            const payload = response.data;
+            const items = Array.isArray(payload)
+                ? payload
+                : (Array.isArray(payload?.data) ? payload.data : []);
+            all.push(...items);
+            lastPage = payload?.last_page ?? payload?.meta?.last_page ?? currentPage;
+            currentPage += 1;
+        } while (currentPage <= lastPage);
+        return all;
     },
     create: async (supplierData) => {
         // When sending FormData, do NOT set Content-Type manually.

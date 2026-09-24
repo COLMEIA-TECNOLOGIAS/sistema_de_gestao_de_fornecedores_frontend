@@ -41,8 +41,6 @@ export default function FornecedoresPage() {
     const [filteredFornecedores, setFilteredFornecedores] = useState([]); 
     const [error, setError] = useState(null);
     const [isDeleting, setIsDeleting] = useState(false);
-    const [currentPage, setCurrentPage] = useState(1);
-    const itemsPerPage = 10;
     const [activeTab, setActiveTab] = useState("fornecedores");
 
     // Approve loading state
@@ -146,21 +144,14 @@ export default function FornecedoresPage() {
         }
 
         setFilteredFornecedores(result);
-        setCurrentPage(1); 
     }, [fornecedores, searchQuery, selectedCategory, selectedProvince, selectedMunicipality, selectedStatus, activeTab]);
-
-    // Pagination logic
-    const totalPages = Math.ceil(filteredFornecedores.length / itemsPerPage);
-    const startIndex = (currentPage - 1) * itemsPerPage;
-    const endIndex = startIndex + itemsPerPage;
-    const currentFornecedores = filteredFornecedores.slice(startIndex, endIndex);
 
     // Fetch classifications for visible suppliers
     useEffect(() => {
         const fetchClassifications = async () => {
-            if (currentFornecedores.length === 0) return;
+            if (filteredFornecedores.length === 0) return;
             const scores = {};
-            await Promise.all(currentFornecedores.map(async (f) => {
+            await Promise.all(filteredFornecedores.map(async (f) => {
                 try {
                     const data = await suppliersAPI.getClassification(f.id);
                     scores[f.id] = data;
@@ -172,12 +163,12 @@ export default function FornecedoresPage() {
         };
 
         fetchClassifications();
-    }, [currentPage, filteredFornecedores]);
+    }, [filteredFornecedores]);
 
     const reloadSuppliers = async () => {
         try {
             const response = await suppliersAPI.getAll();
-            setFornecedores(response.data || []);
+            setFornecedores(Array.isArray(response) ? response : (response?.data || []));
         } catch (err) {
             console.error('Error reloading suppliers:', err);
         }
@@ -248,11 +239,6 @@ export default function FornecedoresPage() {
         }
     };
 
-    const handlePageChange = (page) => {
-        setCurrentPage(page);
-        window.scrollTo({ top: 0, behavior: 'smooth' });
-    };
-
     // Close dropdown menu when clicking outside
     useEffect(() => {
         const handleClickOutside = (event) => {
@@ -317,7 +303,7 @@ export default function FornecedoresPage() {
             {/* Tabs Section */}
             <div className="tab-bar">
                 <button
-                    onClick={() => { setActiveTab("fornecedores"); setCurrentPage(1); }}
+                    onClick={() => { setActiveTab("fornecedores"); }}
                     className={`tab-item ${activeTab === "fornecedores" ? 'active' : ''}`}
                 >
                     Fornecedores
@@ -326,7 +312,7 @@ export default function FornecedoresPage() {
                     </span>
                 </button>
                 <button
-                    onClick={() => { setActiveTab("pendentes"); setCurrentPage(1); }}
+                    onClick={() => { setActiveTab("pendentes"); }}
                     className={`tab-item ${activeTab === "pendentes" ? 'active' : ''}`}
                 >
                     Pendentes & Convidados
@@ -335,7 +321,7 @@ export default function FornecedoresPage() {
                     </span>
                 </button>
                 <button
-                    onClick={() => { setActiveTab("categorias"); setCurrentPage(1); }}
+                    onClick={() => { setActiveTab("categorias"); }}
                     className={`tab-item ${activeTab === "categorias" ? 'active' : ''}`}
                 >
                     Categorias
@@ -545,7 +531,7 @@ export default function FornecedoresPage() {
                         <tbody>
                             {isLoading ? (
                                 <FornecedorTableSkeleton rows={10} />
-                            ) : currentFornecedores.length === 0 ? (
+                            ) : filteredFornecedores.length === 0 ? (
                                 <tr>
                                     <td colSpan="15" className="px-6 py-12 text-center text-gray-500">
                                         <div className="flex flex-col items-center gap-2">
@@ -558,7 +544,7 @@ export default function FornecedoresPage() {
                                     </td>
                                 </tr>
                             ) : (
-                                currentFornecedores.map((f) => (
+                                filteredFornecedores.map((f) => (
                                     <tr key={f.id} className="transition-colors" style={{ borderBottom: '1px solid var(--color-border-light)' }} onMouseEnter={e => e.currentTarget.style.background = 'var(--color-bg)'} onMouseLeave={e => e.currentTarget.style.background = 'transparent'}>
                                         <td className="px-3 py-3">
                                             <input type="checkbox" className="rounded border-gray-300" />
@@ -749,63 +735,6 @@ export default function FornecedoresPage() {
                         </tbody>
                     </table>
                 </div>
-
-                {/* Pagination */}
-                {fornecedores.length >= 10 && (
-                    <div className="flex items-center justify-between px-6 py-3" style={{ borderTop: '1px solid var(--color-border)' }}>
-                        <button
-                            onClick={() => handlePageChange(currentPage - 1)}
-                            disabled={currentPage === 1}
-                            className={`flex items-center gap-2 px-3 py-2 rounded-lg transition-colors text-sm ${currentPage === 1
-                                ? 'cursor-not-allowed'
-                                : ''
-                                }`}
-                            style={currentPage === 1 ? { color: 'var(--color-text-muted)' } : { color: 'var(--color-text-secondary)' }}
-                            onMouseEnter={e => currentPage !== 1 && (e.currentTarget.style.background = 'var(--color-bg)')}
-                            onMouseLeave={e => currentPage !== 1 && (e.currentTarget.style.background = 'transparent')}
-                        >
-                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
-                            </svg>
-                            Anterior
-                        </button>
-
-                        <div className="flex items-center gap-1">
-                            {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
-                                <button
-                                    key={page}
-                                    onClick={() => handlePageChange(page)}
-                                    className={`px-3 py-1 rounded-lg text-sm transition-colors ${currentPage === page
-                                        ? 'bg-[#44B16F] text-white'
-                                        : ''
-                                        }`}
-                                    style={currentPage !== page ? { color: 'var(--color-text-secondary)' } : {}}
-                                    onMouseEnter={e => currentPage !== page && (e.currentTarget.style.background = 'var(--color-bg)')}
-                                    onMouseLeave={e => currentPage !== page && (e.currentTarget.style.background = 'transparent')}
-                                >
-                                    {page.toString().padStart(2, '0')}
-                                </button>
-                            ))}
-                        </div>
-
-                        <button
-                            onClick={() => handlePageChange(currentPage + 1)}
-                            disabled={currentPage === totalPages}
-                            className={`flex items-center gap-2 px-3 py-2 rounded-lg transition-colors text-sm ${currentPage === totalPages
-                                ? 'cursor-not-allowed'
-                                : ''
-                                }`}
-                            style={currentPage === totalPages ? { color: 'var(--color-text-muted)' } : { color: 'var(--color-text-secondary)' }}
-                            onMouseEnter={e => currentPage !== totalPages && (e.currentTarget.style.background = 'var(--color-bg)')}
-                            onMouseLeave={e => currentPage !== totalPages && (e.currentTarget.style.background = 'transparent')}
-                        >
-                            Próximo
-                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-                            </svg>
-                        </button>
-                    </div>
-                )}
             </div>
             )}
 
