@@ -495,7 +495,7 @@ export default function ModalRespostasPedido({
                                                                             <span className="text-gray-700">Revisar Detalhes</span>
                                                                         </button>
 
-                                                                        {!isConcluded && !isAcquisitionGenerated(resposta) && (
+                                                                        {!isConcluded && !isAcquisitionGenerated(resposta) && resposta.status !== 'rejected' && (
                                                                             <>
                                                                                 {resposta.status !== 'approved' && (
                                                                                     <>
@@ -524,14 +524,16 @@ export default function ModalRespostasPedido({
                                                                                     </>
                                                                                 )}
 
-                                                                                {/* Solicitar Revisão — sempre disponível */}
-                                                                                <button
-                                                                                    onClick={() => handleSolicitarRevisao(resposta)}
-                                                                                    className="w-full px-4 py-2.5 text-left hover:bg-gray-50 text-sm flex items-center gap-3 transition-colors"
-                                                                                >
-                                                                                    <MessageSquare size={16} className="text-gray-400" />
-                                                                                    <span className="text-gray-700">Solicitar Revisão</span>
-                                                                                </button>
+                                                                                {/* Solicitar Revisão — disponível exceto quando aprovada */}
+                                                                                {resposta.status !== 'approved' && (
+                                                                                    <button
+                                                                                        onClick={() => handleSolicitarRevisao(resposta)}
+                                                                                        className="w-full px-4 py-2.5 text-left hover:bg-gray-50 text-sm flex items-center gap-3 transition-colors"
+                                                                                    >
+                                                                                        <MessageSquare size={16} className="text-gray-400" />
+                                                                                        <span className="text-gray-700">Solicitar Revisão</span>
+                                                                                    </button>
+                                                                                )}
 
                                                                                 {/* Gerar aquisição — só disponível após aprovação */}
                                                                                 {resposta.status === 'approved' && (

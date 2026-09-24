@@ -55,6 +55,10 @@ export default function FornecedoresPage() {
     const [selectedStatus, setSelectedStatus] = useState("");
     const [isFilterOpen, setIsFilterOpen] = useState(false);
 
+    // Pagination states
+    const [pageSize, setPageSize] = useState(25);
+    const [currentPage, setCurrentPage] = useState(1);
+
     const clearFilters = () => {
         setSelectedCategory("");
         setSelectedProvince("");
@@ -146,12 +150,38 @@ export default function FornecedoresPage() {
         setFilteredFornecedores(result);
     }, [fornecedores, searchQuery, selectedCategory, selectedProvince, selectedMunicipality, selectedStatus, activeTab]);
 
+    // Pagination logic
+    const totalPages = Math.max(1, Math.ceil(filteredFornecedores.length / pageSize));
+    const safePage = Math.min(currentPage, totalPages);
+    const pageStart = filteredFornecedores.length === 0 ? 0 : (safePage - 1) * pageSize + 1;
+    const pageEnd = Math.min(safePage * pageSize, filteredFornecedores.length);
+    const paginatedFornecedores = filteredFornecedores.slice((safePage - 1) * pageSize, safePage * pageSize);
+
+    const getPageNumbers = () => {
+        const pages = [];
+        const maxVisible = 5;
+        let start = Math.max(1, safePage - Math.floor(maxVisible / 2));
+        let end = Math.min(totalPages, start + maxVisible - 1);
+        start = Math.max(1, end - maxVisible + 1);
+        for (let i = start; i <= end; i++) pages.push(i);
+        return pages;
+    };
+
+    // Reset to first page when filters/tab change or page size changes
+    useEffect(() => {
+        setCurrentPage(1);
+    }, [searchQuery, selectedCategory, selectedProvince, selectedMunicipality, selectedStatus, activeTab]);
+
+    useEffect(() => {
+        setCurrentPage(1);
+    }, [pageSize]);
+
     // Fetch classifications for visible suppliers
     useEffect(() => {
         const fetchClassifications = async () => {
-            if (filteredFornecedores.length === 0) return;
+            if (paginatedFornecedores.length === 0) return;
             const scores = {};
-            await Promise.all(filteredFornecedores.map(async (f) => {
+            await Promise.all(paginatedFornecedores.map(async (f) => {
                 try {
                     const data = await suppliersAPI.getClassification(f.id);
                     scores[f.id] = data;
@@ -163,7 +193,7 @@ export default function FornecedoresPage() {
         };
 
         fetchClassifications();
-    }, [filteredFornecedores]);
+    }, [paginatedFornecedores]);
 
     const reloadSuppliers = async () => {
         try {
@@ -544,7 +574,7 @@ export default function FornecedoresPage() {
                                     </td>
                                 </tr>
                             ) : (
-                                filteredFornecedores.map((f) => (
+                                paginatedFornecedores.map((f) => (
                                     <tr key={f.id} className="transition-colors" style={{ borderBottom: '1px solid var(--color-border-light)' }} onMouseEnter={e => e.currentTarget.style.background = 'var(--color-bg)'} onMouseLeave={e => e.currentTarget.style.background = 'transparent'}>
                                         <td className="px-3 py-3">
                                             <input type="checkbox" className="rounded border-gray-300" />
@@ -735,6 +765,66 @@ export default function FornecedoresPage() {
                         </tbody>
                     </table>
                 </div>
+
+                {/* Pagination Footer */}
+                {filteredFornecedores.length > 0 && (
+                    <div className="flex flex-col md:flex-row items-center justify-between gap-4 px-6 py-4 border-t" style={{ borderColor: 'var(--color-border-light)' }}>
+                        <div className="flex flex-wrap items-center gap-3 text-sm" style={{ color: 'var(--color-text-secondary)' }}>
+                            <span>
+                                Mostrando {pageStart}–{pageEnd} de {filteredFornecedores.length}
+                            </span>
+                            <div className="flex items-center gap-2">
+                                <span className="text-xs font-semibold whitespace-nowrap" style={{ color: 'var(--color-text-muted)' }}>Exibir por página</span>
+                                <select
+                                    value={pageSize}
+                                    onChange={(e) => setPageSize(Number(e.target.value))}
+                                    className="rounded-lg border bg-transparent outline-none text-sm px-2 py-1.5"
+                                    style={{ borderColor: 'var(--color-border-light)', color: 'var(--color-text-primary)' }}
+                                >
+                                    <option value={25}>25</option>
+                                    <option value={50}>50</option>
+                                    <option value={100}>100</option>
+                                    <option value={1000}>1000</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <div className="flex items-center gap-1.5">
+                            <button
+                                onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+                                disabled={currentPage <= 1}
+                                className="px-3 py-2 rounded-lg border text-sm font-medium disabled:opacity-40 disabled:cursor-not-allowed transition-all hover:bg-gray-50"
+                                style={{ borderColor: 'var(--color-border)', color: 'var(--color-text-secondary)' }}
+                            >
+                                Anterior
+                            </button>
+
+                            {getPageNumbers().map(pageNum => (
+                                <button
+                                    key={pageNum}
+                                    onClick={() => setCurrentPage(pageNum)}
+                                    className="w-9 h-9 rounded-lg text-sm font-semibold transition-all border"
+                                    style={
+                                        pageNum === currentPage
+                                            ? { background: 'var(--color-primary, #44B16F)', color: '#fff', borderColor: 'transparent' }
+                                            : { borderColor: 'var(--color-border)', color: 'var(--color-text-secondary)' }
+                                    }
+                                >
+                                    {pageNum}
+                                </button>
+                            ))}
+
+                            <button
+                                onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+                                disabled={currentPage >= totalPages}
+                                className="px-3 py-2 rounded-lg border text-sm font-medium disabled:opacity-40 disabled:cursor-not-allowed transition-all hover:bg-gray-50"
+                                style={{ borderColor: 'var(--color-border)', color: 'var(--color-text-secondary)' }}
+                            >
+                                Próximo
+                            </button>
+                        </div>
+                    </div>
+                )}
             </div>
             )}
 
