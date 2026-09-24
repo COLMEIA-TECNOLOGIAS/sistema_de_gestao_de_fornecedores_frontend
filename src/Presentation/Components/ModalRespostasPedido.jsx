@@ -16,7 +16,8 @@ export default function ModalRespostasPedido({
     onRejeitar,
     onSolicitarRevisao,
     onSolicitarRevisaoError,
-    onGerarAquisicao
+    onGerarAquisicao,
+    isConcluded = false
 }) {
     const [respostas, setRespostas] = useState([]);
     const [isLoading, setIsLoading] = useState(false);
@@ -494,7 +495,7 @@ export default function ModalRespostasPedido({
                                                                             <span className="text-gray-700">Revisar Detalhes</span>
                                                                         </button>
 
-                                                                        {!isAcquisitionGenerated(resposta) && (
+                                                                        {!isConcluded && !isAcquisitionGenerated(resposta) && (
                                                                             <>
                                                                                 {resposta.status !== 'approved' && (
                                                                                     <>

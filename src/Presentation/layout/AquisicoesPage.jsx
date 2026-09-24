@@ -869,6 +869,7 @@ export default function AquisicoesPage() {
                 }}
                 quotationRequestId={selectedActivity?.id}
                 quotationRequestTitle={selectedActivity?.title}
+                isConcluded={activeTab === 'concluidas'}
                 onOpenRevisarModal={(resposta) => handleOpenDetails(resposta)}
                 onAprovar={async (resposta) => {
                     try {
