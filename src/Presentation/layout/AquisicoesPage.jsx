@@ -68,7 +68,7 @@ const getStatusLabel = (status) => STATUS_CONFIG[status]?.label || status || 'De
 const getStatusBadge = (status) => {
     const config = STATUS_CONFIG[status] || { label: 'Desconhecido', class: 'bg-gray-50 text-gray-700 border-gray-100' };
     return (
-        <span className={`px-3 py-1.5 rounded-lg text-xs font-bold border ${config.class}`}>
+        <span className={`inline-flex items-center whitespace-nowrap px-3 py-1.5 rounded-lg text-xs font-bold border ${config.class}`}>
             {config.label}
         </span>
     );
@@ -733,7 +733,7 @@ export default function AquisicoesPage() {
                                                                 onClick={() => handleViewAcquisition(acq)}
                                                                 className="p-2 text-emerald-600 rounded-lg transition-all hover:bg-gray-100"
                                                                 title="Ver Detalhes"
-                                                                aria-label={`Ver detalhes da aquisição ${getAcqReference(acq)}`}
+                                                                aria-label={`Ver detalhes da aquisição ${getAcqPpReference(acq) || acq.quotation_request?.title || ''}`}
                                                             >
                                                                 <Eye size={18} />
                                                             </button>
@@ -742,7 +742,7 @@ export default function AquisicoesPage() {
                                                                     onClick={() => handleConfirmDelivery(acq)}
                                                                     className="flex items-center gap-2 p-2 2xl:px-4 2xl:py-2 rounded-xl text-xs font-bold transition-all text-orange-700 hover:bg-orange-50 border border-orange-200 whitespace-nowrap"
                                                                     title="Confirmar Entrega"
-                                                                    aria-label={`Confirmar entrega da aquisição ${getAcqReference(acq)}`}
+                                                                    aria-label={`Confirmar entrega da aquisição ${getAcqPpReference(acq) || acq.quotation_request?.title || ''}`}
                                                                 >
                                                                     <Truck size={16} />
                                                                     <span className="hidden 2xl:inline">Confirmar Entrega</span>
@@ -784,7 +784,6 @@ export default function AquisicoesPage() {
                                                         {act.title}
                                                         <div className="text-xs font-normal mt-1 space-y-0.5" style={{ color: 'var(--color-text-secondary)' }}>
                                                             <div>Ref. PP: {getActivityPpRef(act) || '—'}</div>
-                                                            <div>Ref. Sistema: {getActivitySystemRef(act) || '—'}</div>
                                                         </div>
                                                     </td>
                                                     <td className="px-6 py-6 text-sm font-medium" style={{ color: 'var(--color-text-secondary)' }}>

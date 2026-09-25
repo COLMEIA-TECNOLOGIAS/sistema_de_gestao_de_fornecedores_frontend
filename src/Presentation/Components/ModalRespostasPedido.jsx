@@ -14,7 +14,7 @@ import { ErrorState, StaleDataBanner } from "./ui/StateViews";
 import ModalGerarAquisicao from "./ModalGerarAquisicao";
 import ModalSolicitarRevisao from "./ModalSolicitarRevisao";
 import ModalConfirmarEntrega from "./ModalConfirmarEntrega";
-import { getAcquisitionReference, isAwaitingDelivery, getDeliveryDeadlineInfo, DEADLINE_TONE_CLASSES } from "../../utils/acquisitions";
+import { isAwaitingDelivery, getDeliveryDeadlineInfo, DEADLINE_TONE_CLASSES } from "../../utils/acquisitions";
 
 // Linhas de carregamento com as mesmas 8 colunas da tabela de respostas
 const RespostasTableSkeleton = ({ rows = 3 }) => (
@@ -264,8 +264,13 @@ export default function ModalRespostasPedido({
     const isConcluded = isConcludedProp || ['completed', 'cancelled'].includes(requestDetails?.status);
     // Proposta vencedora e a respectiva aquisição (vem na resposta da API)
     const winner = respostas.find(r => r.status === 'approved' && r.acquisition);
+    const requestPpRef = requestDetails?.reference || requestDetails?.activity_description || '';
     const winnerAcquisition = winner
-        ? { ...winner.acquisition, supplier: winner.acquisition.supplier || winner.supplier }
+        ? {
+            ...winner.acquisition,
+            supplier: winner.acquisition.supplier || winner.supplier,
+            quotation_request: winner.acquisition.quotation_request || requestDetails,
+        }
         : null;
     const getDisplayStatus = (resposta) =>
         hasApproved && resposta.status !== 'approved' ? 'nao_aprovada' : resposta.status;
@@ -419,11 +424,6 @@ export default function ModalRespostasPedido({
                                     <span className="block" style={{ color: 'var(--color-text-secondary)' }}>
                                         Ref. PP: {requestDetails.reference || requestDetails.activity_description || '—'}
                                     </span>
-                                    <span className="block" style={{ color: 'var(--color-text-secondary)' }}>
-                                        Ref. Sistema: {(requestDetails.reference_number && requestDetails.reference_number !== (requestDetails.reference || requestDetails.activity_description))
-                                            ? requestDetails.reference_number
-                                            : (requestDetails.id != null ? `CT-${String(requestDetails.id).padStart(3, '0')}` : '—')}
-                                    </span>
                                 </div>
                                 <div>
                                     <span className="font-semibold block" style={{ color: 'var(--color-text-primary)' }}>Título da Atividade</span>
@@ -485,7 +485,7 @@ export default function ModalRespostasPedido({
                                     </div>
                                     <div className="text-sm">
                                         <p className="font-bold text-gray-900">
-                                            Aquisição {getAcquisitionReference(winnerAcquisition)} · {getSupplierName(winner.supplier) || 'Fornecedor'}
+                                            Aquisição{requestPpRef ? ` · Ref. PP: ${requestPpRef}` : ''} · {getSupplierName(winner.supplier) || 'Fornecedor'}
                                         </p>
                                         {awaiting ? (
                                             <p className="text-gray-600 mt-0.5 flex flex-wrap items-center gap-2">
@@ -631,7 +631,7 @@ export default function ModalRespostasPedido({
                                                     )}
                                                 </td>
                                                 <td className="px-6 py-6">
-                                                    <span className={`px-4 py-2 rounded-xl text-sm font-semibold inline-flex items-center gap-2 ${getStatusColor(getDisplayStatus(resposta))}`}>
+                                                    <span className={`px-4 py-2 rounded-xl text-sm font-semibold inline-flex items-center gap-2 whitespace-nowrap ${getStatusColor(getDisplayStatus(resposta))}`}>
                                                         {getStatusLabel(getDisplayStatus(resposta))}
                                                     </span>
                                                 </td>

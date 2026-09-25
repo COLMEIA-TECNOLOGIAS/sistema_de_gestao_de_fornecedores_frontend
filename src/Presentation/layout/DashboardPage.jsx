@@ -362,16 +362,10 @@ export default function DashboardPage() {
                                         <td className="table-cell">
                                             {(() => {
                                                 const ppRef = q.reference || q.activity_description;
-                                                const systemRef = (q.reference_number && q.reference_number !== ppRef)
-                                                    ? q.reference_number
-                                                    : (q.id != null ? `CT-${String(q.id).padStart(3, '0')}` : '');
                                                 return (
                                                     <div className="space-y-0.5">
                                                         <span className="text-xs block" style={{ color: 'var(--color-text-secondary)' }}>
                                                             Ref. PP: {ppRef || '—'}
-                                                        </span>
-                                                        <span className="text-xs block" style={{ color: 'var(--color-text-secondary)' }}>
-                                                            Ref. Sistema: {systemRef || '—'}
                                                         </span>
                                                     </div>
                                                 );

@@ -22,18 +22,12 @@ export default function ModalRevisarCotacao({
 
     if (!isOpen || !cotacao) return null;
 
-    const cotacaoId = cotacao.id != null ? `CT - ${String(cotacao.id).padStart(3, '0')}` : 'N/A';
     const ppReference = cotacao.quotation_supplier?.quotation_request?.reference
         || cotacao.quotation_request?.reference
         || cotacao.quotation_supplier?.quotation_request?.activity_description
         || cotacao.reference
         || cotacao.activity_description
         || null;
-    const systemReferenceRaw = cotacao.quotation_supplier?.quotation_request?.reference_number
-        || cotacao.quotation_request?.reference_number
-        || cotacao.reference_number
-        || null;
-    const systemReference = (systemReferenceRaw && systemReferenceRaw !== ppReference) ? systemReferenceRaw : cotacaoId;
     const submissionDate = cotacao.submitted_at || cotacao.created_at
         || cotacao.quotation_supplier?.quotation_request?.submitted_at
         || cotacao.quotation_supplier?.quotation_request?.created_at
@@ -197,7 +191,6 @@ export default function ModalRevisarCotacao({
                             <div className="text-sm space-y-1" style={{ color: 'var(--color-text-secondary)' }}>
                                 {isAcquisition ? (
                                     <>
-                                        <p><span className="font-medium">Referência Aquisição:</span> {cotacao.reference_number || `ACQ-${String(cotacao.id).padStart(3, '0')}`}</p>
                                         <p><span className="font-medium">Referência PP:</span> {cotacao.quotation_request?.activity_description || cotacao.quotation_request?.reference || cotacao.quotation_supplier?.quotation_request?.activity_description || cotacao.quotation_supplier?.quotation_request?.reference || '—'}</p>
                                         <p><span className="font-medium">Estado:</span> {getAcquisitionStatusLabel(cotacao.status)}</p>
                                         <p><span className="font-medium">Data de Criação:</span> {submissionDate ? new Date(submissionDate).toLocaleDateString('pt-AO') : 'N/A'}</p>
@@ -206,9 +199,7 @@ export default function ModalRevisarCotacao({
                                     </>
                                 ) : (
                                     <>
-                                        <p><span className="font-medium">ID:</span> {cotacaoId}</p>
                                         <p><span className="font-medium">Referência PP:</span> {ppReference || '—'}</p>
-                                        <p><span className="font-medium">Referência do Sistema:</span> {systemReference}</p>
                                         <p><span className="font-medium">Data de Submissão:</span> {submissionDate ? new Date(submissionDate).toLocaleDateString('pt-AO') : 'N/A'}</p>
                                         <p><span className="font-medium">Prazo de entrega:</span> {cotacao.delivery_date || cotacao.expected_delivery_date ? new Date(cotacao.delivery_date || cotacao.expected_delivery_date).toLocaleDateString('pt-AO') : 'N/A'}</p>
                                     </>

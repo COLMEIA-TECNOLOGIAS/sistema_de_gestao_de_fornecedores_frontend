@@ -4,9 +4,8 @@ import { Truck, ArrowRight, PackageCheck } from "lucide-react";
 import { useAcquisitions } from "../../hooks/queries";
 import { getErrorMessage } from "../../utils/apiHelpers";
 import {
-    getAcquisitionReference,
     getSupplierDisplayName,
-    getRequestSystemRef,
+    getRequestPpRef,
     isAwaitingDelivery,
     daysUntilDelivery,
     getDeliveryDeadlineInfo,
@@ -97,11 +96,11 @@ export default function PendingDeliveriesCard({ refetchInterval }) {
                                     title="Abrir o pedido de cotação"
                                 >
                                     <p className="text-sm font-bold truncate" style={{ color: "var(--color-text-primary)" }}>
-                                        {acq.quotation_request?.title || getAcquisitionReference(acq)}
+                                        {acq.quotation_request?.title || getRequestPpRef(acq.quotation_request) || "Aquisição"}
                                     </p>
                                     <p className="text-xs mt-0.5 truncate" style={{ color: "var(--color-text-muted)" }}>
-                                        {getRequestSystemRef(acq.quotation_request || (requestId != null ? { id: requestId } : null)) || getAcquisitionReference(acq)}
-                                        {" · "}{getSupplierDisplayName(acq.supplier) || "Fornecedor"}
+                                        {getRequestPpRef(acq.quotation_request) ? `Ref. PP: ${getRequestPpRef(acq.quotation_request)} · ` : ""}
+                                        {getSupplierDisplayName(acq.supplier) || "Fornecedor"}
                                         {" · prevista "}{formatDate(acq.expected_delivery_date)}
                                     </p>
                                 </button>

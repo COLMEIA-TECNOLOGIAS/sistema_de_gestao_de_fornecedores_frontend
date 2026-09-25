@@ -2,19 +2,10 @@
  * Utilitários partilhados sobre aquisições e entregas.
  */
 
-const pad3 = (n) => String(n).padStart(3, '0');
-
 export const getSupplierDisplayName = (s) => s?.company_name || s?.commercial_name || s?.legal_name || s?.name || '';
 
-export const getAcquisitionReference = (acq) => acq?.reference_number || (acq?.id != null ? `ACQ-${pad3(acq.id)}` : '');
-
-/** Referência de sistema do pedido de cotação (ex.: QT-20260925-AB12, ou CT-100 se não houver). */
-export const getRequestSystemRef = (request) => {
-    if (!request) return '';
-    const ppRef = request.reference || request.activity_description || '';
-    if (request.reference_number && request.reference_number !== ppRef) return request.reference_number;
-    return request.id != null ? `CT-${pad3(request.id)}` : '';
-};
+/** Referência PP do pedido de cotação (a referência mostrada ao utilizador; nunca o id do sistema). */
+export const getRequestPpRef = (request) => request?.reference || request?.activity_description || '';
 
 /** A aquisição ainda aguarda a confirmação de entrega? */
 export const isAwaitingDelivery = (acq) =>

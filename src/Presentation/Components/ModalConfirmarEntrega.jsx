@@ -8,7 +8,7 @@ import { acquisitionsAPI } from '../../services/api';
 import { useToast } from '../../context/ToastContext';
 import { getErrorMessage } from '../../utils/apiHelpers';
 import {
-    getAcquisitionReference,
+    getRequestPpRef,
     getSupplierDisplayName,
     getDeliveryDeadlineInfo,
     DEADLINE_TONE_CLASSES,
@@ -54,6 +54,7 @@ export default function ModalConfirmarEntrega({ acquisition, activityTitle, isOp
 
     const deadline = getDeliveryDeadlineInfo(acquisition);
     const title = activityTitle || acquisition.quotation_request?.title;
+    const ppRef = getRequestPpRef(acquisition.quotation_request);
 
     const handleSubmit = async (e) => {
         e.preventDefault();
@@ -62,7 +63,7 @@ export default function ModalConfirmarEntrega({ acquisition, activityTitle, isOp
         setError(null);
         try {
             await acquisitionsAPI.confirmDelivery(acquisition.id, deliveryDate);
-            toast.success(`Entrega da aquisição ${getAcquisitionReference(acquisition)} confirmada.`);
+            toast.success(`Entrega confirmada${title ? ` — ${title}` : ''}.`);
             invalidate(
                 queryKeys.acquisitions.all,
                 queryKeys.quotationResponses.all,
@@ -108,7 +109,7 @@ export default function ModalConfirmarEntrega({ acquisition, activityTitle, isOp
                 <form onSubmit={handleSubmit} className="p-6 space-y-4">
                     <div className="rounded-xl border border-gray-100 bg-gray-50 p-4 space-y-1.5 text-sm">
                         <div className="flex items-center justify-between gap-3">
-                            <span className="font-bold text-gray-900">{getAcquisitionReference(acquisition)}</span>
+                            <span className="font-bold text-gray-900">{ppRef ? `Ref. PP: ${ppRef}` : (title || 'Aquisição')}</span>
                             <span className={`text-xs font-semibold px-2 py-0.5 rounded-full border ${DEADLINE_TONE_CLASSES[deadline.tone]}`}>
                                 {deadline.label}
                             </span>
