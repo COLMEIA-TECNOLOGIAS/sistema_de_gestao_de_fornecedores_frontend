@@ -67,26 +67,19 @@ export function AuthProvider({ children }) {
         }
     }, []);
 
-    // Load auth state from localStorage on mount
+    // Load auth state from sessionStorage on mount (faster than localStorage)
     useEffect(() => {
-        const storedToken = localStorage.getItem('token');
+        const storedToken = sessionStorage.getItem('token') || localStorage.getItem('token');
         const storedUser = localStorage.getItem('user');
 
         if (storedToken && storedUser) {
             const parsedUser = JSON.parse(storedUser);
-            
-            // Tentar restaurar permissões do cache
             const cachedPermissions = localStorage.getItem('apiPermissions');
             if (cachedPermissions) {
-                try {
-                    parsedUser.apiPermissions = JSON.parse(cachedPermissions);
-                } catch (e) { /* ignore */ }
+                try { parsedUser.apiPermissions = JSON.parse(cachedPermissions); } catch (e) { /* ignore */ }
             }
-
             setToken(storedToken);
             setUser(parsedUser);
-            
-            // Recarregar permissões da API em background (sempre frescos)
             fetchUserPermissions(parsedUser);
         } else {
             setPermissionsLoaded(true);

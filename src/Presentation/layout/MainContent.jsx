@@ -1,14 +1,25 @@
-import DashboardPage from "./DashboardPage";
-import FornecedoresPage from "./FornecedoresPage";
-import UsuariosPage from "./UsuariosPage";
-import RelatoriosPage from "./RelatoriosPage";
-import AquisicoesPage from "./AquisicoesPage";
-import MeuPerfilPage from "./MeuPerfilPage";
-import ProdutosPage from "./ProdutosPage";
-import LogsEventosPage from "./LogsEventosPage";
-import CriarUtilizadorPage from "./CriarUtilizadorPage";
-import PermissoesPage from "./PermissoesPage";
-import ConfiguracoesPage from "./ConfiguracoesPage";
+import { lazy, Suspense } from "react";
+import DashboardTableSkeleton from "../Components/DashboardTableSkeleton";
+
+const DashboardPage = lazy(() => import("./DashboardPage"));
+const FornecedoresPage = lazy(() => import("./FornecedoresPage"));
+const UsuariosPage = lazy(() => import("./UsuariosPage"));
+const RelatoriosPage = lazy(() => import("./RelatoriosPage"));
+const AquisicoesPage = lazy(() => import("./AquisicoesPage"));
+const MeuPerfilPage = lazy(() => import("./MeuPerfilPage"));
+const ProdutosPage = lazy(() => import("./ProdutosPage"));
+const LogsEventosPage = lazy(() => import("./LogsEventosPage"));
+const CriarUtilizadorPage = lazy(() => import("./CriarUtilizadorPage"));
+const PermissoesPage = lazy(() => import("./PermissoesPage"));
+const ConfiguracoesPage = lazy(() => import("./ConfiguracoesPage"));
+
+function PageLoader() {
+  return (
+    <div className="flex items-center justify-center p-8">
+      <DashboardTableSkeleton rows={5} />
+    </div>
+  );
+}
 
 export default function MainContent({ activeItem }) {
   const renderPage = () => {
@@ -28,5 +39,9 @@ export default function MainContent({ activeItem }) {
     }
   };
 
-  return renderPage();
+  return (
+    <Suspense fallback={<PageLoader />}>
+      {renderPage()}
+    </Suspense>
+  );
 }

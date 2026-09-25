@@ -74,11 +74,10 @@ function Navbar({ userName: propUserName, userRole: propUserRole, onItemClick, a
 
   useEffect(() => {
     fetchNotifications();
-    const interval = setInterval(fetchNotifications, 60000);
+    const interval = setInterval(fetchNotifications, 120000);
     return () => clearInterval(interval);
   }, []);
 
-  // Poll pending approvals count (admin only)
   useEffect(() => {
     if (!isAdmin) return;
     const fetchPendingCount = async () => {
@@ -86,21 +85,17 @@ function Navbar({ userName: propUserName, userRole: propUserRole, onItemClick, a
         const response = await pendingDeletionsAPI.getAll();
         const listData = response?.data || response || [];
         let requestsArray = Array.isArray(listData) ? listData : (listData.data || []);
-        
         requestsArray = requestsArray.filter(req => {
             const status = req.status || req.request_status || req.state;
             if (!status) return true;
             const s = String(status).toLowerCase();
             return ['pending', 'pendente', 'in_progress', 'inprogress', 'aguardando', 'requested', '0'].includes(s);
         });
-        
         setPendingApprovalsCount(requestsArray.length);
-      } catch (e) {
-        // ignore
-      }
+      } catch (e) { /* ignore */ }
     };
     fetchPendingCount();
-    const interval = setInterval(fetchPendingCount, 15000);
+    const interval = setInterval(fetchPendingCount, 60000);
     return () => clearInterval(interval);
   }, [isAdmin]);
 

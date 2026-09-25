@@ -1,81 +1,34 @@
 import { useAuth } from "../../context/AuthContext";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
-import {
-    dashboardAPI,
-    quotationRequestsAPI,
-    suppliersAPI,
-    quotationResponsesAPI
-} from "../../services/api";
+import { dashboardAPI } from "../../services/api";
 import DashboardTableSkeleton from "../Components/DashboardTableSkeleton";
 import { Package, AlertCircle, Users, FileText, ArrowUpRight, TrendingUp, ArrowRight } from "lucide-react";
 
 export default function DashboardPage() {
     const { user } = useAuth();
     const navigate = useNavigate();
-    const userName = user?.nome || user?.name || "Usuário";
     const [isLoading, setIsLoading] = useState(true);
     const [dashboardData, setDashboardData] = useState(null);
     const [error, setError] = useState(null);
 
-    useEffect(() => {
-        fetchDashboardData();
-    }, []);
-
-    const fetchDashboardData = async () => {
+    const fetchDashboardData = useCallback(async () => {
+        setIsLoading(true);
+        setError(null);
         try {
-            setIsLoading(true);
-            setError(null);
             const data = await dashboardAPI.getData();
             setDashboardData(data);
         } catch (err) {
-            console.error("Erro ao carregar dados do dashboard via API principal:", err);
-            await fetchDashboardDataFallback();
+            console.error("Erro ao carregar dados do dashboard:", err);
+            setError(err.message);
         } finally {
             setIsLoading(false);
         }
-    };
+    }, []);
 
-    const fetchDashboardDataFallback = async () => {
-        try {
-            const [quotations, suppliers, responses] = await Promise.all([
-                quotationRequestsAPI.getAll().catch(() => []),
-                suppliersAPI.getAll().catch(() => []),
-                quotationResponsesAPI.getAll().catch(() => [])
-            ]);
-            const quotationsList = Array.isArray(quotations) ? quotations : (quotations.data || []);
-            const suppliersList = Array.isArray(suppliers) ? suppliers : (suppliers.data || []);
-            const responsesList = Array.isArray(responses) ? responses : (responses.data || []);
-
-            const activeQuotationsCount = quotationsList.filter(q =>
-                ['sent', 'in_progress', 'open'].includes(q.status)
-            ).length;
-            const pendingReviewsCount = responsesList.filter(r =>
-                ['pending', 'review', 'submitted'].includes(r.status)
-            ).length;
-            const activeSuppliersCount = suppliersList.length;
-            const totalQuotationsCount = quotationsList.length;
-
-            const sortedQuotations = [...quotationsList].sort((a, b) =>
-                new Date(b.created_at) - new Date(a.created_at)
-            ).slice(0, 5);
-
-            setDashboardData({
-                counts: {
-                    active_quotations: activeQuotationsCount,
-                    pending_reviews: pendingReviewsCount,
-                    active_suppliers: activeSuppliersCount,
-                    total_quotations: totalQuotationsCount
-                },
-                recent_quotations: sortedQuotations
-            });
-        } catch (fallbackErr) {
-            setDashboardData({
-                counts: { active_quotations: 0, pending_reviews: 0, active_suppliers: 0, total_quotations: 0 },
-                recent_quotations: []
-            });
-        }
-    };
+    useEffect(() => {
+        fetchDashboardData();
+    }, [fetchDashboardData]);
 
     const formatDate = (dateString) => {
         const date = new Date(dateString);
