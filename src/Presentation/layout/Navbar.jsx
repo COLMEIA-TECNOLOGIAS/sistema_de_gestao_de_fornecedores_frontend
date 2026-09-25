@@ -1,4 +1,5 @@
 import { Bell, Trash2, Check, Loader2, User, LogOut, ChevronDown, Sun, Moon, AlertTriangle, RefreshCw } from "lucide-react";
+import Breadcrumbs from "./Breadcrumbs";
 import { isNegotiationNotification, getNegotiationLabel } from "../../utils/notifications";
 import { useState, useRef, useEffect, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
@@ -294,8 +295,8 @@ function Navbar({ userName: propUserName, userRole: propUserRole, onItemClick })
           background: 'var(--color-surface)',
         }}
       >
-        {/* Spacer */}
-        <div className="flex-1" />
+        {/* Caminho de navegação (ocupa o espaço livre à esquerda) */}
+        <Breadcrumbs />
 
         {/* Time and Date */}
         <NavbarClock />

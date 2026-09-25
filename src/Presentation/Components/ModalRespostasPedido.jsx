@@ -2,7 +2,7 @@ import { useModalLock } from '../../hooks/useModalLock';
 import { useState, useEffect, useMemo } from "react";
 import { createPortal } from "react-dom";
 import { useQuery } from "@tanstack/react-query";
-import { X, MoreVertical, FileText, Trash2, CheckCircle, MessageSquare, RefreshCw } from "lucide-react";
+import { X, MoreVertical, FileText, Trash2, CheckCircle, MessageSquare, RefreshCw, Truck, PackageCheck } from "lucide-react";
 import { quotationResponsesAPI, quotationRequestsAPI } from "../../services/api";
 import { useQuotationResponses, useSuppliers, useInvalidate } from "../../hooks/queries";
 import { queryKeys } from "../../lib/queryKeys";
@@ -13,6 +13,8 @@ import RefreshButton from "./ui/RefreshButton";
 import { ErrorState, StaleDataBanner } from "./ui/StateViews";
 import ModalGerarAquisicao from "./ModalGerarAquisicao";
 import ModalSolicitarRevisao from "./ModalSolicitarRevisao";
+import ModalConfirmarEntrega from "./ModalConfirmarEntrega";
+import { getAcquisitionReference, isAwaitingDelivery, getDeliveryDeadlineInfo, DEADLINE_TONE_CLASSES } from "../../utils/acquisitions";
 
 // Linhas de carregamento com as mesmas 8 colunas da tabela de respostas
 const RespostasTableSkeleton = ({ rows = 3 }) => (
@@ -173,7 +175,7 @@ export default function ModalRespostasPedido({
     onSolicitarRevisao,
     onSolicitarRevisaoError,
     onGerarAquisicao,
-    isConcluded = false
+    isConcluded: isConcludedProp = false
 }) {
     const toast = useToast();
     const confirm = useConfirm();
@@ -202,6 +204,7 @@ export default function ModalRespostasPedido({
     const [isSubmittingDecision, setIsSubmittingDecision] = useState(false);
     const [revisaoTarget, setRevisaoTarget] = useState(null);
     const [isSubmittingRevisao, setIsSubmittingRevisao] = useState(false);
+    const [deliveryTarget, setDeliveryTarget] = useState(null);
 
     const enabled = !!isOpen && quotationRequestId != null;
 
@@ -257,6 +260,13 @@ export default function ModalRespostasPedido({
     if (!isOpen) return null;
 
     const hasApproved = respostas.some(r => r.status === 'approved');
+    // Pedido encerrado (aquisição gerada/concluído/cancelado): já não há decisões a tomar
+    const isConcluded = isConcludedProp || ['completed', 'cancelled'].includes(requestDetails?.status);
+    // Proposta vencedora e a respectiva aquisição (vem na resposta da API)
+    const winner = respostas.find(r => r.status === 'approved' && r.acquisition);
+    const winnerAcquisition = winner
+        ? { ...winner.acquisition, supplier: winner.acquisition.supplier || winner.supplier }
+        : null;
     const getDisplayStatus = (resposta) =>
         hasApproved && resposta.status !== 'approved' ? 'nao_aprovada' : resposta.status;
     const isDimmed = (resposta) =>
@@ -463,6 +473,45 @@ export default function ModalRespostasPedido({
                             )}
                         </div>
                     )}
+
+                    {winnerAcquisition && (() => {
+                        const awaiting = isAwaitingDelivery(winnerAcquisition);
+                        const deadline = getDeliveryDeadlineInfo(winnerAcquisition);
+                        return (
+                            <div className={`mb-6 rounded-xl border p-4 flex flex-wrap items-center justify-between gap-4 ${awaiting ? 'bg-orange-50/60 border-orange-200' : 'bg-green-50 border-green-200'}`}>
+                                <div className="flex items-start gap-3">
+                                    <div className={`p-2 rounded-lg ${awaiting ? 'bg-orange-100 text-orange-600' : 'bg-green-100 text-green-600'}`}>
+                                        {awaiting ? <Truck size={20} /> : <PackageCheck size={20} />}
+                                    </div>
+                                    <div className="text-sm">
+                                        <p className="font-bold text-gray-900">
+                                            Aquisição {getAcquisitionReference(winnerAcquisition)} · {getSupplierName(winner.supplier) || 'Fornecedor'}
+                                        </p>
+                                        {awaiting ? (
+                                            <p className="text-gray-600 mt-0.5 flex flex-wrap items-center gap-2">
+                                                A aguardar entrega
+                                                {winnerAcquisition.expected_delivery_date && ` · prevista para ${new Date(`${String(winnerAcquisition.expected_delivery_date).slice(0, 10)}T00:00:00`).toLocaleDateString('pt-PT')}`}
+                                                <span className={`text-xs font-semibold px-2 py-0.5 rounded-full border ${DEADLINE_TONE_CLASSES[deadline.tone]}`}>{deadline.label}</span>
+                                            </p>
+                                        ) : (
+                                            <p className="text-green-700 mt-0.5">
+                                                Entregue{winnerAcquisition.actual_delivery_date && ` em ${new Date(`${String(winnerAcquisition.actual_delivery_date).slice(0, 10)}T00:00:00`).toLocaleDateString('pt-PT')}`}
+                                            </p>
+                                        )}
+                                    </div>
+                                </div>
+                                {awaiting && (
+                                    <button
+                                        onClick={() => setDeliveryTarget(winnerAcquisition)}
+                                        className="flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-bold text-white bg-[#44B16F] hover:bg-[#3a9d5f] transition-colors"
+                                    >
+                                        <Truck size={16} />
+                                        Confirmar entrega
+                                    </button>
+                                )}
+                            </div>
+                        );
+                    })()}
 
                     <div className="bg-white rounded-xl shadow-sm overflow-hidden border border-gray-200">
                         <div className="overflow-x-auto">
@@ -702,6 +751,13 @@ export default function ModalRespostasPedido({
                     </button>
                 </div>
             </div>
+
+            <ModalConfirmarEntrega
+                isOpen={!!deliveryTarget}
+                acquisition={deliveryTarget}
+                activityTitle={requestDetails?.title || quotationRequestTitle}
+                onClose={() => setDeliveryTarget(null)}
+            />
 
             <ModalGerarAquisicao
                 isOpen={!!decisionTarget}

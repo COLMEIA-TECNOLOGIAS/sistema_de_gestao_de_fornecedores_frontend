@@ -401,8 +401,9 @@ export const acquisitionsAPI = {
         const response = await api.get('/acquisitions/stats/products');
         return response.data;
     },
-    confirmDelivery: async (id) => {
-        const response = await api.post(`/acquisitions/${id}/confirm-delivery`);
+    // actual_delivery_date (YYYY-MM-DD, opcional): data real da entrega; por omissão, hoje
+    confirmDelivery: async (id, actual_delivery_date) => {
+        const response = await api.post(`/acquisitions/${id}/confirm-delivery`, actual_delivery_date ? { actual_delivery_date } : {});
         return response.data;
     },
 };

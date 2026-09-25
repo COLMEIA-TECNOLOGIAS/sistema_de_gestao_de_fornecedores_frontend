@@ -34,10 +34,11 @@ export default defineConfig({
   build: {
     rollupOptions: {
       output: {
-        // Bibliotecas pesadas em chunks próprios (melhor cache entre deploys)
+        // Bibliotecas estáveis em chunks próprios (melhor cache entre deploys).
+        // jsPDF NÃO entra aqui: é importado dinamicamente só ao exportar PDF.
         manualChunks: {
           react: ['react', 'react-dom', 'react-router-dom'],
-          pdf: ['jspdf', 'jspdf-autotable'],
+          query: ['@tanstack/react-query'],
         },
       },
     },

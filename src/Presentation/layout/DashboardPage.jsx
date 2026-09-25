@@ -1,6 +1,9 @@
 import { useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import DashboardTableSkeleton from "../Components/DashboardTableSkeleton";
+import PendingDeliveriesCard from "../Components/PendingDeliveriesCard";
+import { useAuth } from "../../context/AuthContext";
+import { PERMISSIONS } from "../../utils/permissions";
 import RefreshButton from "../Components/ui/RefreshButton";
 import { ErrorState, StaleDataBanner } from "../Components/ui/StateViews";
 import { useDashboard, useQuotationRequests, useSuppliers, useQuotationResponses } from "../../hooks/queries";
@@ -56,6 +59,8 @@ function resolveWidget(primaryValue, primaryPending, fallbackQuery, compute) {
 
 export default function DashboardPage() {
     const navigate = useNavigate();
+    const { canAccessMenu } = useAuth();
+    const canSeeAcquisitions = canAccessMenu(PERMISSIONS.AQUISICOES);
 
     const dashboardQuery = useDashboard({
         refetchInterval: AUTO_REFRESH_MS,
@@ -296,6 +301,8 @@ export default function DashboardPage() {
             )}
 
             {/* Recent Quotations Table */}
+            {canSeeAcquisitions && <PendingDeliveriesCard refetchInterval={AUTO_REFRESH_MS} />}
+
             <div className="card overflow-hidden">
                 <div
                     className="flex items-center justify-between px-6 py-4 border-b"

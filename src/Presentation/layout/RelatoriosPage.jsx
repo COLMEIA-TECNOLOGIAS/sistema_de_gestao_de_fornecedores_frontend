@@ -6,8 +6,6 @@ import { useReportSummary } from '../../hooks/queries';
 import { useUrlFilters } from '../../hooks/useUrlFilters';
 import { useToast } from '../../context/ToastContext';
 import { getErrorMessage } from '../../utils/apiHelpers';
-import jsPDF from 'jspdf';
-import autoTable from 'jspdf-autotable';
 
 // Formata uma data como YYYY-MM-DD no fuso horário local.
 // (toISOString() converte para UTC e, em Angola (UTC+1), recua um dia às 00:00.)
@@ -135,6 +133,12 @@ export default function RelatoriosPage() {
       const result = await refetch();
       if (result.isError) throw result.error;
       const data = result.data || {};
+
+      // Bibliotecas de PDF (~400 KB) só são descarregadas quando se exporta
+      const [{ default: jsPDF }, { default: autoTable }] = await Promise.all([
+        import('jspdf'),
+        import('jspdf-autotable'),
+      ]);
 
       const doc = new jsPDF();
 

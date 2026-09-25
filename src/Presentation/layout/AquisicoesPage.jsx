@@ -17,6 +17,8 @@ import ModalRevisarCotacao from "../Components/ModalRevisarCotacao";
 import ModalPedirCotacao from "../Components/ModalPedirCotacao";
 import ModalRespostasPedido from "../Components/ModalRespostasPedido";
 import ModalSolicitarEliminacao from "../Components/ModalSolicitarEliminacao";
+import ModalConfirmarEntrega from "../Components/ModalConfirmarEntrega";
+import { isAwaitingDelivery, getDeliveryDeadlineInfo, DEADLINE_TONE_CLASSES } from "../../utils/acquisitions";
 import SearchInput from "../Components/ui/SearchInput";
 import RefreshButton from "../Components/ui/RefreshButton";
 import FilterChips from "../Components/ui/FilterChips";
@@ -120,8 +122,8 @@ const getAcquisitionRequestId = (acq) => acq.quotation_request_id ?? acq.quotati
 // Ordenação da tabela de aquisições (a das atividades depende do estado efectivo → useMemo)
 const ACQUISITION_SORT = {
     id: (a) => Number(a.id) || 0,
-    referencia: getAcqReference,
-    ref_pp: getAcqPpReference,
+    actividade: (a) => a.quotation_request?.title || '',
+    referencia: getAcqPpReference,
     fornecedor: getAcqSupplierName,
     prevista: (a) => toTime(a.expected_delivery_date),
     real: (a) => toTime(a.actual_delivery_date),
@@ -129,6 +131,8 @@ const ACQUISITION_SORT = {
 };
 
 const thClass = "px-6 py-5 text-left text-[10px] font-black uppercase tracking-widest";
+// Tabela de aquisições tem mais colunas: espaçamento mais compacto
+const thClassCompact = "px-4 py-5 text-left text-[10px] font-black uppercase tracking-widest";
 const thStyle = { color: 'var(--color-text-muted)' };
 
 export default function AquisicoesPage() {
@@ -159,6 +163,8 @@ export default function AquisicoesPage() {
     const [isRevisarModalOpen, setIsRevisarModalOpen] = useState(false);
     const [isViewingAcquisition, setIsViewingAcquisition] = useState(false);
     const [itemToDelete, setItemToDelete] = useState(null);
+    // Aquisição cuja entrega está a ser confirmada: { acquisition, title }
+    const [deliveryTarget, setDeliveryTarget] = useState(null);
 
     // Activity modal states
     const [isActivityModalOpen, setIsActivityModalOpen] = useState(false);
@@ -239,7 +245,7 @@ export default function AquisicoesPage() {
 
     const filteredRows = useMemo(() => baseRows.filter((row) => {
         if (isAcquisitionsTab) {
-            if (!matchesSearch(filters.q, row.id, getAcqReference(row), getAcqPpReference(row), row.quotation_request?.title, getAcqSupplierName(row))) return false;
+            if (!matchesSearch(filters.q, row.id, getAcqReference(row), getAcqPpReference(row), row.quotation_request?.title, getActivitySystemRef(row.quotation_request || { id: getAcquisitionRequestId(row) }), getAcqSupplierName(row))) return false;
             if (!matchesDay(filters.entrega, row.delivery_date || row.expected_delivery_date)) return false;
             if (!matchesDay(filters.submissao, row.submitted_at, row.created_at)) return false;
             if (filters.estado && row.status !== filters.estado) return false;
@@ -420,38 +426,9 @@ export default function AquisicoesPage() {
     };
 
     // ── Acções ────────────────────────────────────────────────
-    const handleConfirmDelivery = async (acq) => {
-        const confirmed = await confirm({
-            title: "Confirmar Entrega",
-            message: (
-                <div>
-                    <p className="text-sm text-gray-600 mb-1">
-                        Pretende confirmar a entrega da aquisição <strong>{acq.reference_number || `#${acq.id}`}</strong>?
-                    </p>
-                    <p className="text-xs text-gray-500 mb-4">
-                        Fornecedor: {getAcqSupplierName(acq)}
-                        {acq.expected_delivery_date ? ` · Entrega prevista: ${formatDate(acq.expected_delivery_date)}` : ''}
-                    </p>
-                    <div className="rounded-lg p-4" style={{ background: 'rgba(245,158,11,0.08)', border: '1px solid rgba(245,158,11,0.2)' }}>
-                        <p className="text-sm font-semibold text-amber-700">Atenção</p>
-                        <p className="text-sm text-amber-700 mt-1">Ao confirmar, a atividade associada passará para as Atividades Concluídas.</p>
-                    </div>
-                </div>
-            ),
-            confirmLabel: "Sim, Confirmar",
-            runningLabel: "A confirmar...",
-            onConfirm: () => acquisitionsAPI.confirmDelivery(acq.id),
-            getErrorMessage: (err) => getErrorMessage(err, "Erro ao confirmar entrega."),
-        });
-        if (!confirmed) return;
-        toast.success("Entrega confirmada com sucesso!");
-        invalidate(
-            queryKeys.acquisitions.all,
-            queryKeys.quotationResponses.all,
-            queryKeys.quotationRequests.all,
-            queryKeys.dashboard.all,
-            queryKeys.reports.all
-        );
+    // Confirmação de entrega: formulário partilhado (data real da entrega), também usado no Painel
+    const handleConfirmDelivery = (acq, title) => {
+        setDeliveryTarget({ acquisition: acq, title: title || acq.quotation_request?.title });
     };
 
     const handleDeleteAtividade = async (e, act) => {
@@ -701,14 +678,14 @@ export default function AquisicoesPage() {
                                 <table className="w-full">
                                     <thead style={{ background: 'var(--color-bg)', borderBottom: '1px solid var(--color-border-light)' }}>
                                         <tr>
-                                            <SortableHeader label="ID" sortKey="id" sort={filters.sort} dir={filters.dir} onSort={onSort} className={thClass} style={thStyle} />
-                                            <SortableHeader label="Referência" sortKey="referencia" sort={filters.sort} dir={filters.dir} onSort={onSort} className={thClass} style={thStyle} />
-                                            <SortableHeader label="Ref. PP" sortKey="ref_pp" sort={filters.sort} dir={filters.dir} onSort={onSort} className={thClass} style={thStyle} />
-                                            <SortableHeader label="Fornecedor" sortKey="fornecedor" sort={filters.sort} dir={filters.dir} onSort={onSort} className={thClass} style={thStyle} />
-                                            <SortableHeader label="Entrega Prevista" sortKey="prevista" sort={filters.sort} dir={filters.dir} onSort={onSort} className={thClass} style={thStyle} />
-                                            <SortableHeader label="Entrega Real" sortKey="real" sort={filters.sort} dir={filters.dir} onSort={onSort} className={thClass} style={thStyle} />
-                                            <SortableHeader label="Estado" sortKey="estado" sort={filters.sort} dir={filters.dir} onSort={onSort} className={thClass} style={thStyle} />
-                                            <th className="px-6 py-5 text-center text-[10px] font-black uppercase tracking-widest" style={thStyle}>Acções</th>
+                                            <SortableHeader label="ID" sortKey="id" sort={filters.sort} dir={filters.dir} onSort={onSort} className={thClassCompact} style={thStyle} />
+                                            <SortableHeader label="Título da Actividade" sortKey="actividade" sort={filters.sort} dir={filters.dir} onSort={onSort} className={thClassCompact} style={thStyle} />
+                                            <SortableHeader label="N.º Referência" sortKey="referencia" sort={filters.sort} dir={filters.dir} onSort={onSort} className={thClassCompact} style={thStyle} />
+                                            <SortableHeader label="Fornecedor" sortKey="fornecedor" sort={filters.sort} dir={filters.dir} onSort={onSort} className={thClassCompact} style={thStyle} />
+                                            <SortableHeader label="Entrega Prevista" sortKey="prevista" sort={filters.sort} dir={filters.dir} onSort={onSort} className={thClassCompact} style={thStyle} />
+                                            <SortableHeader label="Entrega Real" sortKey="real" sort={filters.sort} dir={filters.dir} onSort={onSort} className={thClassCompact} style={thStyle} />
+                                            <SortableHeader label="Estado" sortKey="estado" sort={filters.sort} dir={filters.dir} onSort={onSort} className={thClassCompact} style={thStyle} />
+                                            <th className="px-4 py-5 text-center text-[10px] font-black uppercase tracking-widest" style={thStyle}>Acções</th>
                                         </tr>
                                     </thead>
                                     <tbody>
@@ -719,26 +696,38 @@ export default function AquisicoesPage() {
                                         ) : (
                                             pagination.pageItems.map((acq) => (
                                                 <tr key={acq.id} className="transition-colors" onMouseEnter={e => e.currentTarget.style.background = 'var(--color-bg)'} onMouseLeave={e => e.currentTarget.style.background = 'transparent'} style={{ borderBottom: '1px solid var(--color-border-light)' }}>
-                                                    <td className="px-6 py-6 text-sm font-bold" style={{ color: 'var(--color-text-primary)' }}>#{acq.id}</td>
-                                                    <td className="px-6 py-6 text-sm font-medium" style={{ color: 'var(--color-text-primary)' }}>
-                                                        {getAcqReference(acq)}
+                                                    <td className="px-4 py-5 text-sm font-bold" style={{ color: 'var(--color-text-primary)' }}>#{acq.id}</td>
+                                                    <td className="px-4 py-5 text-sm max-w-[260px]">
+                                                        <div className="font-bold truncate" style={{ color: 'var(--color-text-primary)' }} title={acq.quotation_request?.title || ''}>
+                                                            {acq.quotation_request?.title || '—'}
+                                                        </div>
                                                     </td>
-                                                    <td className="px-6 py-6 text-sm font-medium" style={{ color: 'var(--color-text-secondary)' }}>
-                                                        {getAcqPpReference(acq) || '—'}
+                                                    <td className="px-4 py-5 text-sm">
+                                                        <div className="font-semibold whitespace-nowrap" style={{ color: 'var(--color-text-primary)' }}>
+                                                            {getAcqPpReference(acq) || '—'}
+                                                        </div>
                                                     </td>
-                                                    <td className="px-6 py-6 text-sm font-semibold" style={{ color: 'var(--color-text-primary)' }}>
+                                                    <td className="px-4 py-5 text-sm font-semibold" style={{ color: 'var(--color-text-primary)' }}>
                                                         {getAcqSupplierName(acq)}
                                                     </td>
-                                                    <td className="px-6 py-6 text-sm font-medium" style={{ color: 'var(--color-text-secondary)' }}>
+                                                    <td className="px-4 py-5 text-sm font-medium" style={{ color: 'var(--color-text-secondary)' }}>
                                                         {formatDate(acq.expected_delivery_date)}
+                                                        {isAwaitingDelivery(acq) && acq.expected_delivery_date && (() => {
+                                                            const deadline = getDeliveryDeadlineInfo(acq);
+                                                            return deadline.tone !== 'neutral' ? (
+                                                                <span className={`block w-fit mt-1 text-[11px] font-semibold px-2 py-0.5 rounded-full border ${DEADLINE_TONE_CLASSES[deadline.tone]}`}>
+                                                                    {deadline.label}
+                                                                </span>
+                                                            ) : null;
+                                                        })()}
                                                     </td>
-                                                    <td className="px-6 py-6 text-sm font-medium" style={{ color: 'var(--color-text-secondary)' }}>
+                                                    <td className="px-4 py-5 text-sm font-medium" style={{ color: 'var(--color-text-secondary)' }}>
                                                         {formatDate(acq.actual_delivery_date)}
                                                     </td>
-                                                    <td className="px-6 py-6">
-                                                        {getStatusBadge(acq.status)}
+                                                    <td className="px-4 py-5">
+                                                        {getStatusBadge(isAwaitingDelivery(acq) ? 'awaiting_delivery' : acq.status)}
                                                     </td>
-                                                    <td className="px-6 py-6">
+                                                    <td className="px-4 py-5">
                                                         <div className="flex items-center justify-center gap-2">
                                                             <button
                                                                 onClick={() => handleViewAcquisition(acq)}
@@ -748,14 +737,15 @@ export default function AquisicoesPage() {
                                                             >
                                                                 <Eye size={18} />
                                                             </button>
-                                                            {!acq.actual_delivery_date && acq.status !== 'cancelled' ? (
+                                                            {isAwaitingDelivery(acq) ? (
                                                                 <button
                                                                     onClick={() => handleConfirmDelivery(acq)}
-                                                                    className="flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all text-orange-700 hover:bg-orange-50 border border-orange-200"
+                                                                    className="flex items-center gap-2 p-2 2xl:px-4 2xl:py-2 rounded-xl text-xs font-bold transition-all text-orange-700 hover:bg-orange-50 border border-orange-200 whitespace-nowrap"
                                                                     title="Confirmar Entrega"
+                                                                    aria-label={`Confirmar entrega da aquisição ${getAcqReference(acq)}`}
                                                                 >
                                                                     <Truck size={16} />
-                                                                    Confirmar Entrega
+                                                                    <span className="hidden 2xl:inline">Confirmar Entrega</span>
                                                                 </button>
                                                             ) : (
                                                                 <span className="text-xs font-semibold text-gray-400">Entregue</span>
@@ -808,6 +798,22 @@ export default function AquisicoesPage() {
                                                     </td>
                                                     <td className="px-6 py-6 font-medium">
                                                         <div className="flex items-center justify-center gap-2">
+                                                            {(() => {
+                                                                const actAcq = acquisitionByRequest.get(String(act.id));
+                                                                return isAwaitingDelivery(actAcq) ? (
+                                                                    <button
+                                                                        onClick={(e) => {
+                                                                            e.stopPropagation();
+                                                                            handleConfirmDelivery(actAcq, act.title);
+                                                                        }}
+                                                                        className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold transition-all text-orange-700 hover:bg-orange-50 border border-orange-200 whitespace-nowrap"
+                                                                        title="Confirmar entrega da aquisição"
+                                                                    >
+                                                                        <Truck size={14} />
+                                                                        Confirmar entrega
+                                                                    </button>
+                                                                ) : null;
+                                                            })()}
                                                             <button
                                                                 onClick={(e) => {
                                                                     e.stopPropagation();
@@ -945,6 +951,14 @@ export default function AquisicoesPage() {
                 onClose={() => setIsRevisarModalOpen(false)}
                 cotacao={selectedResponse}
                 isAcquisition={isViewingAcquisition}
+            />
+
+            {/* Confirmação de entrega (tab Aquisições e actividades a aguardar entrega) */}
+            <ModalConfirmarEntrega
+                isOpen={!!deliveryTarget}
+                acquisition={deliveryTarget?.acquisition}
+                activityTitle={deliveryTarget?.title}
+                onClose={() => setDeliveryTarget(null)}
             />
 
             {/* Respostas do pedido (?pedido=ID). As acções invalidam a cache no próprio modal. */}
