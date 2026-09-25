@@ -1,4 +1,4 @@
-import { useMemo } from 'react';
+import { useEffect, useMemo } from 'react';
 import { useModalLock } from '../../hooks/useModalLock';
 import { createPortal } from 'react-dom';
 import { X, Calendar, Activity, Info } from 'lucide-react';
@@ -7,11 +7,24 @@ export default function ModalDetalhesLog({ isOpen, onClose, log }) {
     // ✅ ALL HOOKS must be called BEFORE any conditional returns
     useModalLock(isOpen);
 
+    // Fechar com a tecla Escape
+    useEffect(() => {
+        if (!isOpen) return;
+        const onKeyDown = (e) => {
+            if (e.key === 'Escape') onClose?.();
+        };
+        document.addEventListener('keydown', onKeyDown);
+        return () => document.removeEventListener('keydown', onKeyDown);
+    }, [isOpen, onClose]);
+
     const parsedDetails = useMemo(() => {
         if (!log?.details) return null;
         try {
-            return typeof log.details === 'string' ? JSON.parse(log.details) : log.details;
-        } catch (e) {
+            const parsed = typeof log.details === 'string' ? JSON.parse(log.details) : log.details;
+            if (parsed === null || parsed === undefined) return null;
+            // Valores primitivos (ex.: string JSON simples) são mostrados como um único campo
+            return typeof parsed === 'object' ? parsed : { valor: parsed };
+        } catch {
             return { raw: String(log.details) };
         }
     }, [log]);
@@ -28,7 +41,7 @@ export default function ModalDetalhesLog({ isOpen, onClose, log }) {
                 day: '2-digit', month: '2-digit', year: 'numeric',
                 hour: '2-digit', minute: '2-digit', second: '2-digit'
             });
-        } catch (e) {
+        } catch {
             return String(dateString);
         }
     };
@@ -58,19 +71,19 @@ export default function ModalDetalhesLog({ isOpen, onClose, log }) {
                     let displayValue;
                     if (Array.isArray(value)) {
                         try { displayValue = value.map(v => typeof v === 'object' ? JSON.stringify(v) : String(v)).join(', '); }
-                        catch (e) { displayValue = 'Array'; }
+                        catch { displayValue = 'Array'; }
                     } else if (typeof value === 'boolean') {
                         displayValue = value ? 'Sim' : 'Não';
                     } else if (value === null || value === undefined) {
                         displayValue = '-';
                     } else if (typeof value === 'object') {
                         try { displayValue = JSON.stringify(value); }
-                        catch (e) { displayValue = 'Objeto Complexo'; }
+                        catch { displayValue = 'Objecto Complexo'; }
                     } else {
                         displayValue = String(value);
                     }
 
-                    const isUrl = typeof displayValue === 'string' && displayValue.startsWith('http');
+                    const isUrl = typeof displayValue === 'string' && /^https?:\/\//i.test(displayValue);
 
                     return (
                         <div key={key} className="flex flex-col border-b pb-2" style={{ borderColor: 'var(--color-border-light)' }}>
@@ -102,7 +115,8 @@ export default function ModalDetalhesLog({ isOpen, onClose, log }) {
 
             {/* Modal */}
             <div className="relative rounded-2xl shadow-2xl w-full max-w-2xl mx-4 animate-fadeIn flex flex-col max-h-[90vh]"
-                style={{ background: 'var(--color-surface)' }}>
+                style={{ background: 'var(--color-surface)' }}
+                role="dialog" aria-modal="true" aria-labelledby="modal-detalhes-log-title">
 
                 {/* Header */}
                 <div className="flex items-center justify-between px-6 py-4" style={{ borderBottom: '1px solid var(--color-border-light)' }}>
@@ -111,11 +125,11 @@ export default function ModalDetalhesLog({ isOpen, onClose, log }) {
                             <Info size={20} />
                         </div>
                         <div>
-                            <h2 className="text-lg font-bold" style={{ color: 'var(--color-text-primary)' }}>Detalhes do Evento</h2>
+                            <h2 id="modal-detalhes-log-title" className="text-lg font-bold" style={{ color: 'var(--color-text-primary)' }}>Detalhes do Evento</h2>
                             <p className="text-xs" style={{ color: 'var(--color-text-secondary)' }}>ID: #{log.id}</p>
                         </div>
                     </div>
-                    <button onClick={onClose} className="p-2 rounded-lg transition-colors hover:bg-gray-100"
+                    <button onClick={onClose} aria-label="Fechar" className="p-2 rounded-lg transition-colors hover:bg-gray-100"
                         style={{ color: 'var(--color-text-secondary)' }}>
                         <X size={20} />
                     </button>

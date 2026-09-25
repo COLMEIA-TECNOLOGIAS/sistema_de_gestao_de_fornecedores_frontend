@@ -3,7 +3,7 @@ export default function UsuarioTableSkeleton({ rows = 5 }) {
     return (
         <>
             {Array.from({ length: rows }).map((_, index) => (
-                <tr key={index} className="border-b border-gray-100">
+                <tr key={index} className="border-b border-gray-100" aria-hidden="true">
                     {/* ID */}
                     <td className="px-6 py-4">
                         <div className="h-4 w-8 bg-gray-200 rounded animate-pulse"></div>
@@ -25,6 +25,11 @@ export default function UsuarioTableSkeleton({ rows = 5 }) {
                     {/* Email */}
                     <td className="px-6 py-4">
                         <div className="h-4 w-48 bg-gray-200 rounded animate-pulse"></div>
+                    </td>
+
+                    {/* Verificação */}
+                    <td className="px-6 py-4">
+                        <div className="h-6 w-28 bg-gray-200 rounded-full animate-pulse"></div>
                     </td>
 
                     {/* Função */}

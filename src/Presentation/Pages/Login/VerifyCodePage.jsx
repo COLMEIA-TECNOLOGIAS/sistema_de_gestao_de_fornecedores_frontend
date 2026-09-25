@@ -1,23 +1,27 @@
 import { useState } from "react";
-import { useNavigate, useLocation, Link } from "react-router-dom";
+import { useNavigate, useLocation, Link, Navigate } from "react-router-dom";
 import { ArrowLeft, MailCheck } from "lucide-react";
 import { authAPI } from "../../../services/api";
 import OtpInput from "../../Components/Auth/OtpInput";
+import { useResendCooldown } from "../../Components/Auth/useResendCooldown";
+import { getErrorMessage } from "../../../utils/apiHelpers";
 
 export default function VerifyCodePage() {
     const navigate = useNavigate();
     const location = useLocation();
     const email = location.state?.email || "";
-    const isResetFlow = location.state?.purpose === "password";
 
     const [code, setCode] = useState("");
     const [isLoading, setIsLoading] = useState(false);
     const [isResending, setIsResending] = useState(false);
     const [error, setError] = useState("");
     const [info, setInfo] = useState("");
+    // O código acabou de ser enviado ao chegar a esta página
+    const cooldown = useResendCooldown(60, { startActive: true });
 
     const handleSubmit = async (e) => {
         e.preventDefault();
+        if (isLoading) return;
         if (code.length !== 6) {
             setError("Insira o código de 6 dígitos.");
             return;
@@ -27,38 +31,37 @@ export default function VerifyCodePage() {
 
         try {
             const resp = await authAPI.verifyPasswordCode(email, code);
-            const token = resp.token || resp.data?.token;
-            navigate("/reset-password", { state: { email, code, token, purpose: "password" } });
+            const token = resp?.token || resp?.data?.token || "";
+            navigate("/reset-password", { replace: true, state: { email, code, token, purpose: "password" } });
         } catch (err) {
-            console.error("Verify code error:", err);
-            setError(
-                err.response?.data?.message ||
-                err.response?.data?.errors?.code?.[0] ||
-                "Código inválido ou expirado. Tente novamente."
-            );
+            setError(getErrorMessage(err, "Código inválido ou expirado. Tente novamente."));
         } finally {
             setIsLoading(false);
         }
     };
 
     const handleResend = async () => {
-        if (!email) return;
+        if (!email || isResending || cooldown.isCoolingDown) return;
         setIsResending(true);
         setError("");
         setInfo("");
         try {
-            const message = isResetFlow
-                ? "Código reenviado para o seu e-mail."
-                : "Se existir uma conta por confirmar com este email, foi enviado um novo código.";
             await authAPI.forgotPassword(email);
-            setInfo(message);
+            setCode("");
+            setInfo("Se existir uma conta com este e-mail, foi enviado um novo código.");
+            cooldown.start();
         } catch (err) {
-            console.error("Resend error:", err);
-            setError(err.response?.data?.message || "Erro ao reenviar o código.");
+            if (err?.response?.status === 429) cooldown.start();
+            setError(getErrorMessage(err, "Erro ao reenviar o código."));
         } finally {
             setIsResending(false);
         }
     };
+
+    // Sem e-mail (acesso directo ou refresh da página) não é possível validar o código
+    if (!email) {
+        return <Navigate to="/forgot-password" replace />;
+    }
 
     return (
         <div className="min-h-screen grid grid-cols-1 lg:grid-cols-2">
@@ -137,7 +140,7 @@ export default function VerifyCodePage() {
                                         <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
                                         <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
                                     </svg>
-                                    Confirmar Código
+                                    A confirmar...
                                 </>
                             ) : (
                                 'Confirmar Código'
@@ -149,11 +152,12 @@ export default function VerifyCodePage() {
                         <p className="text-sm" style={{ color: 'var(--color-text-muted)' }}>
                             Não recebeu o código?{" "}
                             <button
+                                type="button"
                                 onClick={handleResend}
-                                disabled={isResending}
+                                disabled={isResending || isLoading || cooldown.isCoolingDown}
                                 className="text-[#44B16F] font-medium hover:underline disabled:opacity-50"
                             >
-                                {isResending ? "Enviando..." : "Reenviar código"}
+                                {isResending ? "A enviar..." : cooldown.isCoolingDown ? `Reenviar código (${cooldown.remaining}s)` : "Reenviar código"}
                             </button>
                         </p>
                         <Link

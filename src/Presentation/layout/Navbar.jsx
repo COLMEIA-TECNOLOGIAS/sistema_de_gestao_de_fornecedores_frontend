@@ -1,108 +1,103 @@
-import { Bell, Trash2, Check, Loader2, User, LogOut, ChevronDown, Sun, Moon, AlertTriangle } from "lucide-react";
-import { useState, useRef, useEffect } from "react";
+import { Bell, Trash2, Check, Loader2, User, LogOut, ChevronDown, Sun, Moon, AlertTriangle, RefreshCw } from "lucide-react";
+import { useState, useRef, useEffect, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
+import { useQuery } from "@tanstack/react-query";
 import { useAuth } from "../../context/AuthContext";
 import { useTheme } from "../../context/ThemeContext";
-import { notificationsAPI, pendingDeletionsAPI } from "../../services/api";
+import { useToast } from "../../context/ToastContext";
+import { useConfirm } from "../../context/ConfirmContext";
+import { notificationsAPI } from "../../services/api";
+import { useNotifications, useUnreadNotificationsCount, useDeletionRequests, useInvalidate } from "../../hooks/queries";
+import { queryKeys } from "../../lib/queryKeys";
+import { getErrorMessage } from "../../utils/apiHelpers";
 import ModalDetalhesNotificacao from "../Components/ModalDetalhesNotificacao";
-import LogoutConfirmModal from "../Components/LogoutConfirmModal";
 import ModalAprovacoesExclusao from "../Components/ModalAprovacoesExclusao";
 
-const PAGE_TITLES = {
-  dashboard:    "Painel de Controlo",
-  fornecedores: "Fornecedores",
-  cotacoes:     "Cotações",
-  usuarios:     "Gestão de Utilizadores",
-  relatorios:   "Relatórios",
-  aquisicoes:   "Aquisições",
-  categorias:   "Categorias",
-  produtos:     "Produtos",
-  "meu-perfil": "Meu Perfil",
-};
+// Actualização periódica (o TanStack Query pausa-a quando o separador não está visível)
+const NOTIFICATIONS_POLL_MS = 30000;
+const PENDING_APPROVALS_POLL_MS = 30000;
+const PENDING_STATUSES = ['pending', 'pendente', 'in_progress', 'inprogress', 'aguardando', 'requested', '0'];
 
-const PAGE_SUBTITLES = {
-  dashboard:    "Visão geral do sistema.",
-  fornecedores: "Gerencie os fornecedores cadastrados.",
-  cotacoes:     "Consulte e gerencie as cotações.",
-  usuarios:     "Gerencie os utilizadores do sistema.",
-  relatorios:   "Análise detalhada e métricas de desempenho.",
-  aquisicoes:   "Gerencie as aquisições e respostas.",
-  categorias:   "Organize as categorias de produtos.",
-  produtos:     "Gerencie o catálogo de produtos.",
-  "meu-perfil": "Gerencie as suas informações pessoais.",
-};
-
-function Navbar({ userName: propUserName, userRole: propUserRole, onItemClick, activeItem }) {
-  const { isDark, toggleTheme } = useTheme();
-  const [currentTime, setCurrentTime] = useState(new Date());
-  const [isDropdownOpen, setIsDropdownOpen] = useState(false);
-  const [isLogoutModalOpen, setIsLogoutModalOpen] = useState(false);
-  const [isLoggingOut, setIsLoggingOut] = useState(false);
-  const [isNotificationsOpen, setIsNotificationsOpen] = useState(false);
-  const [notifications, setNotifications] = useState([]);
-  const [unreadCount, setUnreadCount] = useState(0);
-  const [isLoadingNotifications, setIsLoadingNotifications] = useState(false);
-  const [selectedNotification, setSelectedNotification] = useState(null);
-  const [isAprovacoesModalOpen, setIsAprovacoesModalOpen] = useState(false);
-  const [pendingApprovalsCount, setPendingApprovalsCount] = useState(0);
-
-  const dropdownRef = useRef(null);
-  const notificationsRef = useRef(null);
-  const navigate = useNavigate();
-  const { user, logout, isAdmin } = useAuth();
+// Relógio isolado num componente próprio para que o tick de 1s não
+// re-renderize toda a barra (lista de notificações, dropdowns, etc.).
+function NavbarClock() {
+  const [currentTime, setCurrentTime] = useState(() => new Date());
 
   useEffect(() => {
     const timer = setInterval(() => setCurrentTime(new Date()), 1000);
     return () => clearInterval(timer);
   }, []);
 
-  const fetchNotifications = async () => {
-    try {
-      const [countData, listData] = await Promise.all([
-        notificationsAPI.getUnreadCount(),
-        notificationsAPI.getAll()
-      ]);
-      setUnreadCount(typeof countData === 'object' ? (countData.count || 0) : countData);
-      let notifArray = [];
-      if (Array.isArray(listData)) notifArray = listData;
-      else if (listData && Array.isArray(listData.data)) notifArray = listData.data;
-      setNotifications(notifArray);
-    } catch (error) {
-      setNotifications([]);
-    }
-  };
+  return (
+    <div className="hidden md:flex flex-col items-end justify-center mr-4" style={{ borderRight: '1px solid var(--color-border-light)', paddingRight: '16px' }}>
+      <span className="text-sm font-semibold" style={{ color: 'var(--color-text-primary)' }}>
+        {currentTime.toLocaleTimeString('pt-AO', { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
+      </span>
+      <span className="text-xs" style={{ color: 'var(--color-text-muted)' }}>
+        {currentTime.toLocaleDateString('pt-AO', { weekday: 'long', day: '2-digit', month: 'long', year: 'numeric' })}
+      </span>
+    </div>
+  );
+}
 
-  useEffect(() => {
-    fetchNotifications();
-    const interval = setInterval(fetchNotifications, 60000);
-    return () => clearInterval(interval);
-  }, []);
+const isPendingDeletion = (req) => {
+  const status = req.status || req.request_status || req.state;
+  if (!status) return true;
+  return PENDING_STATUSES.includes(String(status).toLowerCase());
+};
 
-  // Poll pending approvals count (admin only)
-  useEffect(() => {
-    if (!isAdmin) return;
-    const fetchPendingCount = async () => {
-      try {
-        const response = await pendingDeletionsAPI.getAll();
-        const listData = response?.data || response || [];
-        let requestsArray = Array.isArray(listData) ? listData : (listData.data || []);
-        
-        requestsArray = requestsArray.filter(req => {
-            const status = req.status || req.request_status || req.state;
-            if (!status) return true;
-            const s = String(status).toLowerCase();
-            return ['pending', 'pendente', 'in_progress', 'inprogress', 'aguardando', 'requested', '0'].includes(s);
-        });
-        
-        setPendingApprovalsCount(requestsArray.length);
-      } catch (e) {
-        // ignore
-      }
-    };
-    fetchPendingCount();
-    const interval = setInterval(fetchPendingCount, 15000);
-    return () => clearInterval(interval);
-  }, [isAdmin]);
+// A API pode devolver a notificação directamente ou embrulhada em { data: {...} }
+const unwrapNotification = (details) => {
+  const unwrapped = details && details.id === undefined && details.data?.id !== undefined ? details.data : details;
+  return unwrapped && typeof unwrapped === 'object' ? unwrapped : null;
+};
+
+function Navbar({ userName: propUserName, userRole: propUserRole, onItemClick }) {
+  const { isDark, toggleTheme } = useTheme();
+  const toast = useToast();
+  const confirm = useConfirm();
+  const invalidate = useInvalidate();
+  const [isDropdownOpen, setIsDropdownOpen] = useState(false);
+  const [isNotificationsOpen, setIsNotificationsOpen] = useState(false);
+  const [selectedNotification, setSelectedNotification] = useState(null);
+  const [isAprovacoesModalOpen, setIsAprovacoesModalOpen] = useState(false);
+  const [isMarkingAll, setIsMarkingAll] = useState(false);
+  const [deletingId, setDeletingId] = useState(null);
+
+  const dropdownRef = useRef(null);
+  const notificationsRef = useRef(null);
+  const navigate = useNavigate();
+  const { user, logout, isAdmin } = useAuth();
+
+  const pollOptions = { refetchInterval: NOTIFICATIONS_POLL_MS, enabled: !!user };
+  const notificationsQuery = useNotifications(pollOptions);
+  const unreadQuery = useUnreadNotificationsCount(pollOptions);
+  const notifications = useMemo(() => notificationsQuery.data ?? [], [notificationsQuery.data]);
+  const unreadCount = unreadQuery.data ?? 0;
+
+  // Contador de aprovações pendentes (apenas administradores)
+  const deletionRequestsQuery = useDeletionRequests({ enabled: !!isAdmin, refetchInterval: PENDING_APPROVALS_POLL_MS });
+  const pendingApprovalsCount = useMemo(
+    () => (isAdmin ? (deletionRequestsQuery.data ?? []).filter(isPendingDeletion).length : 0),
+    [isAdmin, deletionRequestsQuery.data]
+  );
+
+  // Detalhes completos da notificação seleccionada (a lista pode trazer só um resumo)
+  const selectedId = selectedNotification?.id;
+  const notificationDetailQuery = useQuery({
+    queryKey: [...queryKeys.notifications.all, 'detail', selectedId],
+    queryFn: async () => unwrapNotification(await notificationsAPI.getById(selectedId)),
+    enabled: selectedId !== undefined && selectedId !== null,
+    staleTime: 5 * 60 * 1000,
+    retry: false,
+  });
+  const selectedNotificationDetails = useMemo(() => {
+    if (!selectedNotification) return null;
+    const details = notificationDetailQuery.data;
+    return details ? { ...selectedNotification, ...details } : selectedNotification;
+  }, [selectedNotification, notificationDetailQuery.data]);
+
+  const refreshNotifications = () => invalidate(queryKeys.notifications.all);
 
   useEffect(() => {
     function handleClickOutside(event) {
@@ -113,74 +108,92 @@ function Navbar({ userName: propUserName, userRole: propUserRole, onItemClick, a
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
-  const handleLogoutConfirm = async () => {
-    setIsLoggingOut(true);
-    try {
-      await logout();
-      navigate("/login");
-    } finally {
-      setIsLoggingOut(false);
-      setIsLogoutModalOpen(false);
-    }
+  const handleLogout = async () => {
+    setIsDropdownOpen(false);
+    const confirmed = await confirm({
+      title: "Terminar Sessão",
+      message: (
+        <div className="text-center">
+          <p className="text-gray-600">Tem a certeza de que deseja terminar a sessão?</p>
+          <p className="text-gray-500 text-sm mt-2">Será redireccionado para a página de início de sessão.</p>
+        </div>
+      ),
+      confirmLabel: "Sim, terminar sessão",
+      runningLabel: "A terminar sessão...",
+      variant: "danger",
+      // O logout limpa sempre a sessão local, mesmo que o pedido à API falhe
+      onConfirm: () => logout(),
+    });
+    if (confirmed) navigate("/login", { replace: true });
   };
 
   const handleMarkAsRead = async (id) => {
     try {
       await notificationsAPI.markAsRead(id);
-      setNotifications(prev => prev.map(n => n.id === id ? { ...n, read_at: new Date().toISOString() } : n));
-      setUnreadCount(prev => Math.max(0, prev - 1));
-    } catch (error) { console.error("Error marking as read", error); }
+    } catch (error) {
+      console.warn("Não foi possível marcar a notificação como lida:", error);
+    } finally {
+      refreshNotifications();
+    }
   };
 
   const handleMarkAllAsRead = async () => {
+    if (isMarkingAll) return;
+    setIsMarkingAll(true);
     try {
-      setIsLoadingNotifications(true);
       await notificationsAPI.markAllAsRead();
-      setNotifications(prev => prev.map(n => ({ ...n, read_at: new Date().toISOString() })));
-      setUnreadCount(0);
-    } catch (error) { console.error("Error marking all as read", error); }
-    finally { setIsLoadingNotifications(false); }
+      await refreshNotifications();
+    } catch (error) {
+      toast.error(getErrorMessage(error, "Não foi possível marcar as notificações como lidas."));
+    } finally {
+      setIsMarkingAll(false);
+    }
   };
 
+  // Devolve true em caso de sucesso (usado pelo modal de detalhes para fechar)
   const handleDeleteNotification = async (id, e) => {
     if (e) e.stopPropagation();
+    if (deletingId !== null) return false;
+    setDeletingId(id);
     try {
       await notificationsAPI.delete(id);
-      setNotifications(prev => prev.filter(n => n.id !== id));
-      fetchNotifications();
-    } catch (error) { console.error("Error deleting notification", error); }
+      await refreshNotifications();
+      return true;
+    } catch (error) {
+      toast.error(getErrorMessage(error, "Não foi possível eliminar a notificação."));
+      return false;
+    } finally {
+      setDeletingId(null);
+    }
   };
 
   const toggleNotifications = () => {
-    if (!isNotificationsOpen) fetchNotifications();
+    // Ao abrir, pedir dados frescos (a lista antiga continua visível entretanto)
+    if (!isNotificationsOpen) refreshNotifications();
     setIsNotificationsOpen(!isNotificationsOpen);
     setIsDropdownOpen(false);
   };
 
-  const handleNotificationClick = async (notification) => {
-    try {
-      if (!notification.read_at) handleMarkAsRead(notification.id);
-      const details = await notificationsAPI.getById(notification.id);
-      setSelectedNotification(details);
-    } catch (e) { setSelectedNotification(notification); }
-    finally { setIsNotificationsOpen(false); }
+  const handleNotificationClick = (notification) => {
+    setIsNotificationsOpen(false);
+    if (!notification.read_at) handleMarkAsRead(notification.id);
+    setSelectedNotification(notification);
   };
 
   const userName = propUserName || user?.name || "Utilizador";
-  const userRole = propUserRole || user?.role || "Utilizador";
-  const userInitials = userName.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2);
+  const rawRole = propUserRole || user?.role;
+  const userRole = (typeof rawRole === 'string' ? rawRole : rawRole?.name) || "Utilizador";
+  const userInitials = userName.trim().split(/\s+/).map(n => n[0] || '').join('').toUpperCase().slice(0, 2) || 'U';
 
   const getNotificationContent = (notification) => {
     const sv = notification.data || {};
     let timeDisplay = 'Data desconhecida';
-    try {
-      if (notification.created_at) {
-        const date = new Date(notification.created_at);
-        if (!isNaN(date.getTime())) timeDisplay = date.toLocaleString('pt-AO');
-      }
-    } catch (e) {}
+    if (notification.created_at) {
+      const date = new Date(notification.created_at);
+      if (!isNaN(date.getTime())) timeDisplay = date.toLocaleString('pt-AO');
+    }
 
-    const rawType = notification.type || sv.type || '';
+    const rawType = String(notification.type || sv.type || '');
     const type = (rawType || '').toLowerCase();
 
     const techName = sv.technician_name || sv.technicianName || sv.user?.name || sv.user_name || sv.requested_by || sv.requested_by_name || sv.nome || sv.name || 'Técnico';
@@ -274,14 +287,7 @@ function Navbar({ userName: propUserName, userRole: propUserRole, onItemClick, a
         <div className="flex-1" />
 
         {/* Time and Date */}
-        <div className="hidden md:flex flex-col items-end justify-center mr-4" style={{ borderRight: '1px solid var(--color-border-light)', paddingRight: '16px' }}>
-          <span className="text-sm font-semibold" style={{ color: 'var(--color-text-primary)' }}>
-            {currentTime.toLocaleTimeString('pt-AO', { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
-          </span>
-          <span className="text-xs" style={{ color: 'var(--color-text-muted)' }}>
-            {currentTime.toLocaleDateString('pt-AO', { weekday: 'long', day: '2-digit', month: 'long', year: 'numeric' })}
-          </span>
-        </div>
+        <NavbarClock />
 
         {/* Right: Dark mode + Notifications + User */}
         <div className="flex items-center gap-2">
@@ -305,7 +311,8 @@ function Navbar({ userName: propUserName, userRole: propUserRole, onItemClick, a
             <button
               onClick={() => {
                 setIsAprovacoesModalOpen(true);
-                setPendingApprovalsCount(0); // Reset badge when opened
+                setIsDropdownOpen(false);
+                setIsNotificationsOpen(false);
               }}
               className="relative p-2.5 rounded-xl transition-colors"
               style={{ color: pendingApprovalsCount > 0 ? '#F97316' : 'var(--color-text-secondary)' }}
@@ -364,21 +371,58 @@ function Navbar({ userName: propUserName, userRole: propUserRole, onItemClick, a
                       <span className="badge badge-error text-xs px-2 py-0.5">{unreadCount} novas</span>
                     )}
                   </div>
-                  {unreadCount > 0 && (
-                    <button
-                      onClick={handleMarkAllAsRead}
-                      disabled={isLoadingNotifications}
-                      className="text-xs font-semibold flex items-center gap-1 transition-colors"
-                      style={{ color: 'var(--color-primary)' }}
-                    >
-                      {isLoadingNotifications ? <Loader2 size={11} className="animate-spin" /> : <Check size={11} />}
-                      Marcar todas
-                    </button>
-                  )}
+                  <div className="flex items-center gap-2">
+                    {notificationsQuery.isFetching && (
+                      <Loader2 size={12} className="animate-spin" style={{ color: 'var(--color-text-muted)' }} aria-label="A actualizar" />
+                    )}
+                    {unreadCount > 0 && (
+                      <button
+                        onClick={handleMarkAllAsRead}
+                        disabled={isMarkingAll}
+                        className="text-xs font-semibold flex items-center gap-1 transition-colors disabled:opacity-60"
+                        style={{ color: 'var(--color-primary)' }}
+                      >
+                        {isMarkingAll ? <Loader2 size={11} className="animate-spin" /> : <Check size={11} />}
+                        Marcar todas
+                      </button>
+                    )}
+                  </div>
                 </div>
 
                 <div style={{ maxHeight: '360px', overflowY: 'auto' }}>
-                  {notifications.length === 0 ? (
+                  {notificationsQuery.isError && notificationsQuery.data !== undefined && (
+                    <div className="flex items-center justify-between gap-2 px-4 py-2 text-xs bg-amber-50 text-amber-800 border-b border-amber-200">
+                      <span>Não foi possível actualizar as notificações.</span>
+                      <button
+                        onClick={() => notificationsQuery.refetch()}
+                        disabled={notificationsQuery.isFetching}
+                        className="font-semibold hover:underline disabled:opacity-60"
+                      >
+                        Tentar novamente
+                      </button>
+                    </div>
+                  )}
+                  {notificationsQuery.isLoading ? (
+                    <div className="flex items-center justify-center gap-2 py-10 text-sm" style={{ color: 'var(--color-text-muted)' }}>
+                      <Loader2 size={16} className="animate-spin" />
+                      A carregar notificações...
+                    </div>
+                  ) : notificationsQuery.isError && notificationsQuery.data === undefined ? (
+                    <div className="flex flex-col items-center gap-3 py-10 px-4 text-center">
+                      <p className="text-sm" style={{ color: 'var(--color-text-secondary)' }}>
+                        {getErrorMessage(notificationsQuery.error, "Não foi possível carregar as notificações.")}
+                      </p>
+                      <button
+                        onClick={() => notificationsQuery.refetch()}
+                        disabled={notificationsQuery.isFetching}
+                        className="inline-flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-lg border disabled:opacity-60"
+                        style={{ borderColor: 'var(--color-border)', color: 'var(--color-text-primary)' }}
+                      >
+                        <RefreshCw size={12} className={notificationsQuery.isFetching ? "animate-spin" : ""} />
+                        Tentar novamente
+                      </button>
+                    </div>
+                  ) : notifications.length === 0 ? (
                     <div className="empty-state py-10">
                       <div className="empty-state-icon">
                         <Bell size={24} style={{ color: 'var(--color-text-muted)' }} />
@@ -432,12 +476,15 @@ function Navbar({ userName: propUserName, userRole: propUserRole, onItemClick, a
                             </div>
                             <button
                               onClick={(e) => handleDeleteNotification(notification.id, e)}
-                              className="p-1 rounded-lg opacity-0 group-hover:opacity-100 transition-all"
+                              disabled={deletingId !== null}
+                              title="Eliminar notificação"
+                              aria-label="Eliminar notificação"
+                              className={`p-1 rounded-lg transition-all disabled:cursor-wait ${deletingId === notification.id ? 'opacity-100' : 'opacity-0 group-hover:opacity-100 focus:opacity-100'}`}
                               style={{ color: 'var(--color-text-muted)' }}
                               onMouseEnter={e => { e.currentTarget.style.background = '#FEE2E2'; e.currentTarget.style.color = '#DC2626'; }}
                               onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = 'var(--color-text-muted)'; }}
                             >
-                              <Trash2 size={13} />
+                              {deletingId === notification.id ? <Loader2 size={13} className="animate-spin" /> : <Trash2 size={13} />}
                             </button>
                           </div>
                         );
@@ -497,7 +544,7 @@ function Navbar({ userName: propUserName, userRole: propUserRole, onItemClick, a
                 </div>
                 <div className="py-1">
                   <button
-                    onClick={() => { setIsDropdownOpen(false); onItemClick('meu-perfil'); }}
+                    onClick={() => { setIsDropdownOpen(false); onItemClick?.('meu-perfil'); }}
                     className="w-full flex items-center gap-3 px-4 py-2.5 text-sm transition-colors"
                     style={{ color: 'var(--color-text-secondary)' }}
                     onMouseEnter={e => e.currentTarget.style.background = 'var(--color-bg)'}
@@ -508,7 +555,7 @@ function Navbar({ userName: propUserName, userRole: propUserRole, onItemClick, a
                   </button>
                   <div className="mx-3 my-1" style={{ height: '1px', background: 'var(--color-border-light)' }} />
                   <button
-                    onClick={() => { setIsDropdownOpen(false); setIsLogoutModalOpen(true); }}
+                    onClick={handleLogout}
                     className="w-full flex items-center gap-3 px-4 py-2.5 text-sm transition-colors"
                     style={{ color: '#DC2626' }}
                     onMouseEnter={e => e.currentTarget.style.background = '#FEF2F2'}
@@ -524,13 +571,8 @@ function Navbar({ userName: propUserName, userRole: propUserRole, onItemClick, a
         </div>
       </header>
 
-      <LogoutConfirmModal
-        isOpen={isLogoutModalOpen}
-        onClose={() => setIsLogoutModalOpen(false)}
-        onConfirm={handleLogoutConfirm}
-        isLoading={isLoggingOut}
-      />
       {/* Modals */}
+      {/* O contador de pendentes actualiza-se sozinho: o modal invalida 'deletion-requests' ao aprovar/recusar */}
       <ModalAprovacoesExclusao
         isOpen={isAprovacoesModalOpen}
         onClose={() => setIsAprovacoesModalOpen(false)}
@@ -539,8 +581,9 @@ function Navbar({ userName: propUserName, userRole: propUserRole, onItemClick, a
       <ModalDetalhesNotificacao
         isOpen={!!selectedNotification}
         onClose={() => setSelectedNotification(null)}
-        notification={selectedNotification}
+        notification={selectedNotificationDetails}
         onDelete={handleDeleteNotification}
+        isDeleting={selectedId !== undefined && deletingId === selectedId}
       />
     </>
   );

@@ -1,9 +1,10 @@
 import React from 'react';
+import { AlertTriangle } from 'lucide-react';
 
 export default class ErrorBoundary extends React.Component {
     constructor(props) {
         super(props);
-        this.state = { hasError: false, error: null, errorInfo: null };
+        this.state = { hasError: false, error: null };
     }
 
     static getDerivedStateFromError(error) {
@@ -12,22 +13,43 @@ export default class ErrorBoundary extends React.Component {
 
     componentDidCatch(error, errorInfo) {
         console.error("ErrorBoundary caught an error", error, errorInfo);
-        this.setState({ errorInfo });
     }
 
     render() {
         if (this.state.hasError) {
             return (
-                <div style={{ padding: 20, background: '#f8d7da', color: '#721c24', position: 'fixed', zIndex: 100000, top: 0, left: 0, right: 0, bottom: 0, overflow: 'auto' }}>
-                    <h1 style={{ fontSize: '24px', fontWeight: 'bold' }}>Algo correu mal no Modal!</h1>
-                    <pre style={{ marginTop: 20, whiteSpace: 'pre-wrap', fontWeight: 'bold' }}>{this.state.error && this.state.error.toString()}</pre>
-                    <pre style={{ marginTop: 20, whiteSpace: 'pre-wrap', fontSize: '12px' }}>{this.state.errorInfo && this.state.errorInfo.componentStack}</pre>
-                    <button 
-                        onClick={() => this.setState({ hasError: false, error: null, errorInfo: null })}
-                        style={{ marginTop: 20, padding: '10px 20px', background: '#dc3545', color: '#fff', border: 'none', borderRadius: '4px', cursor: 'pointer' }}
-                    >
-                        Tentar Novamente
-                    </button>
+                <div
+                    className="flex flex-col items-center justify-center text-center p-8 rounded-2xl"
+                    style={{ background: 'var(--color-surface)', border: '1px solid var(--color-border-light)' }}
+                >
+                    <AlertTriangle size={36} className="text-red-500 mb-3" />
+                    <h2 className="text-lg font-semibold" style={{ color: 'var(--color-text-primary)' }}>
+                        Algo correu mal
+                    </h2>
+                    <p className="text-sm mt-1 max-w-md" style={{ color: 'var(--color-text-secondary)' }}>
+                        Ocorreu um erro inesperado ao apresentar este conteúdo.
+                    </p>
+                    {import.meta.env.DEV && this.state.error && (
+                        <pre className="mt-4 text-xs text-left whitespace-pre-wrap text-red-600 max-w-2xl overflow-auto">
+                            {this.state.error.toString()}
+                        </pre>
+                    )}
+                    <div className="flex gap-3 mt-5">
+                        <button
+                            onClick={() => this.setState({ hasError: false, error: null })}
+                            className="px-4 py-2 rounded-lg text-sm font-medium border"
+                            style={{ borderColor: 'var(--color-border)', color: 'var(--color-text-primary)' }}
+                        >
+                            Tentar novamente
+                        </button>
+                        <button
+                            onClick={() => window.location.reload()}
+                            className="px-4 py-2 rounded-lg text-sm font-medium text-white"
+                            style={{ background: 'var(--color-primary)' }}
+                        >
+                            Recarregar página
+                        </button>
+                    </div>
                 </div>
             );
         }

@@ -1,6 +1,8 @@
 import { useState } from "react";
 import { authAPI, usersAPI } from "../../../services/api";
 import OtpInput from "./OtpInput";
+import { useResendCooldown } from "./useResendCooldown";
+import { getErrorMessage } from "../../../utils/apiHelpers";
 
 export default function EmailVerificationStep({ email, userId, onVerified, message }) {
     const [code, setCode] = useState("");
@@ -8,9 +10,11 @@ export default function EmailVerificationStep({ email, userId, onVerified, messa
     const [isResending, setIsResending] = useState(false);
     const [error, setError] = useState("");
     const [info, setInfo] = useState("");
+    const cooldown = useResendCooldown(60);
 
     const handleSubmit = async (e) => {
         e.preventDefault();
+        if (isLoading) return;
         if (code.length !== 6) {
             setError("Insira o código de 6 dígitos.");
             return;
@@ -21,18 +25,14 @@ export default function EmailVerificationStep({ email, userId, onVerified, messa
             await authAPI.verifyEmail(email, code);
             onVerified?.();
         } catch (err) {
-            console.error("Email verify error:", err);
-            setError(
-                err.response?.data?.message ||
-                err.response?.data?.errors?.code?.[0] ||
-                "Código inválido ou expirado. Tente novamente."
-            );
+            setError(getErrorMessage(err, "Código inválido ou expirado. Tente novamente."));
         } finally {
             setIsLoading(false);
         }
     };
 
     const handleResend = async () => {
+        if (isResending || cooldown.isCoolingDown) return;
         setIsResending(true);
         setError("");
         setInfo("");
@@ -43,9 +43,10 @@ export default function EmailVerificationStep({ email, userId, onVerified, messa
                 await authAPI.resendEmailVerification();
             }
             setInfo("Se existir uma conta por confirmar com este email, foi enviado um novo código.");
+            cooldown.start();
         } catch (err) {
-            console.error("Resend verification error:", err);
-            setError(err.response?.data?.message || "Erro ao reenviar o código.");
+            if (err?.response?.status === 429) cooldown.start();
+            setError(getErrorMessage(err, "Erro ao reenviar o código."));
         } finally {
             setIsResending(false);
         }
@@ -103,11 +104,12 @@ export default function EmailVerificationStep({ email, userId, onVerified, messa
                 <p className="text-sm" style={{ color: 'var(--color-text-muted)' }}>
                     Não recebeu o código?{" "}
                     <button
+                        type="button"
                         onClick={handleResend}
-                        disabled={isResending}
+                        disabled={isResending || isLoading || cooldown.isCoolingDown}
                         className="text-[#44B16F] font-medium hover:underline disabled:opacity-50"
                     >
-                        {isResending ? "Enviando..." : "Reenviar código"}
+                        {isResending ? "A enviar..." : cooldown.isCoolingDown ? `Reenviar código (${cooldown.remaining}s)` : "Reenviar código"}
                     </button>
                 </p>
             </div>

@@ -3,6 +3,8 @@ import { useNavigate, useLocation, Link } from "react-router-dom";
 import { ArrowLeft, MailCheck, Mail } from "lucide-react";
 import { authAPI } from "../../../services/api";
 import OtpInput from "../../Components/Auth/OtpInput";
+import { useResendCooldown } from "../../Components/Auth/useResendCooldown";
+import { getErrorMessage } from "../../../utils/apiHelpers";
 
 export default function EmailVerificationPage() {
     const navigate = useNavigate();
@@ -16,10 +18,12 @@ export default function EmailVerificationPage() {
     const [error, setError] = useState("");
     const [info, setInfo] = useState("");
     const [isVerified, setIsVerified] = useState(false);
+    const cooldown = useResendCooldown(60);
 
     const handleSubmit = async (e) => {
         e.preventDefault();
-        if (!email) {
+        if (isLoading) return;
+        if (!email.trim()) {
             setError("Indique o seu e-mail.");
             return;
         }
@@ -34,28 +38,30 @@ export default function EmailVerificationPage() {
             await authAPI.verifyEmail(email.trim(), code);
             setIsVerified(true);
         } catch (err) {
-            console.error("Email verify error:", err);
-            setError(
-                err.response?.data?.message ||
-                err.response?.data?.errors?.code?.[0] ||
-                "Código inválido ou expirado. Tente novamente."
-            );
+            setError(getErrorMessage(err, "Código inválido ou expirado. Tente novamente."));
         } finally {
             setIsLoading(false);
         }
     };
 
     const handleResend = async () => {
-        if (!email) return;
+        if (isResending || cooldown.isCoolingDown) return;
+        if (!email.trim()) {
+            setError("Indique o seu e-mail para receber um novo código.");
+            return;
+        }
         setIsResending(true);
         setError("");
         setInfo("");
         try {
-            await authAPI.resendEmailVerification();
+            // O e-mail é necessário porque o utilizador ainda não tem sessão iniciada
+            await authAPI.resendEmailVerification(email.trim());
+            setCode("");
             setInfo("Se existir uma conta por confirmar com este email, foi enviado um novo código.");
+            cooldown.start();
         } catch (err) {
-            console.error("Resend verification error:", err);
-            setError(err.response?.data?.message || "Erro ao reenviar o código.");
+            if (err?.response?.status === 429) cooldown.start();
+            setError(getErrorMessage(err, "Erro ao reenviar o código."));
         } finally {
             setIsResending(false);
         }
@@ -116,7 +122,7 @@ export default function EmailVerificationPage() {
                                 O seu endereço de email foi verificado com sucesso.
                             </p>
                             <button
-                                onClick={() => navigate("/login")}
+                                onClick={() => navigate("/login", { replace: true })}
                                 className="w-full bg-[#44B16F] text-white py-3 px-4 rounded-lg font-medium hover:bg-[#3a9860] transition-colors shadow-sm"
                             >
                                 Entrar no Sistema
@@ -162,7 +168,7 @@ export default function EmailVerificationPage() {
                                         />
                                         <input
                                             type="email"
-                                            placeholder="seu.email@exemplo.com"
+                                            placeholder="o.seu.email@exemplo.com"
                                             value={email}
                                             onChange={(e) => setEmail(e.target.value)}
                                             className="w-full pl-12 pr-4 py-3 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#44B16F]/30 focus:border-[#44B16F] transition-all"
@@ -190,7 +196,7 @@ export default function EmailVerificationPage() {
                                                 <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
                                                 <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
                                             </svg>
-                                            Confirmar Email
+                                            A confirmar...
                                         </>
                                     ) : (
                                         'Confirmar Email'
@@ -202,11 +208,12 @@ export default function EmailVerificationPage() {
                                 <p className="text-sm" style={{ color: 'var(--color-text-muted)' }}>
                                     Não recebeu o código?{" "}
                                     <button
+                                        type="button"
                                         onClick={handleResend}
-                                        disabled={isResending}
+                                        disabled={isResending || isLoading || cooldown.isCoolingDown}
                                         className="text-[#44B16F] font-medium hover:underline disabled:opacity-50"
                                     >
-                                        {isResending ? "Enviando..." : "Reenviar código"}
+                                        {isResending ? "A enviar..." : cooldown.isCoolingDown ? `Reenviar código (${cooldown.remaining}s)` : "Reenviar código"}
                                     </button>
                                 </p>
                                 <Link

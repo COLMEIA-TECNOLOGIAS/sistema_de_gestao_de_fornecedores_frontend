@@ -2,6 +2,22 @@ import { Eye, EyeOff } from "lucide-react";
 import { useState } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import { useAuth } from "../../../context/AuthContext";
+import { getErrorMessage, getFieldErrors } from "../../../utils/apiHelpers";
+
+// Traduz a resposta de erro do backend numa mensagem legível para o utilizador.
+// No login, 401/422 sem detalhe significam credenciais erradas (não "sessão expirada").
+function getLoginErrorMessage(err) {
+  const status = err?.response?.status;
+  const data = err?.response?.data;
+  const hasServerDetail = Object.keys(getFieldErrors(err)).length > 0 ||
+    (data && typeof data === "object" && (data.message || data.error));
+  if (!hasServerDetail) {
+    if (status === 401 || status === 422) return "E-mail ou senha incorrectos.";
+    if (status === 403) return "A sua conta não tem permissão para aceder ao sistema.";
+    if (status === 429) return "Demasiadas tentativas. Aguarde alguns instantes e tente novamente.";
+  }
+  return getErrorMessage(err, "Erro ao iniciar sessão. Verifique as suas credenciais.");
+}
 
 export default function LoginPage() {
   const [showPassword, setShowPassword] = useState(false);
@@ -17,19 +33,15 @@ export default function LoginPage() {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    if (isLoading) return;
     setError("");
     setIsLoading(true);
 
     try {
       await login(formData.email.trim(), formData.password);
-      navigate("/dashboard");
+      navigate("/dashboard", { replace: true });
     } catch (err) {
-      console.error("Login error:", err);
-      setError(
-        err.response?.data?.message ||
-        "Erro ao fazer login. Verifique suas credenciais."
-      );
-    } finally {
+      setError(getLoginErrorMessage(err));
       setIsLoading(false);
     }
   };
@@ -78,13 +90,13 @@ export default function LoginPage() {
               Entrar
             </h1>
             <p className="text-base" style={{ color: 'var(--color-text-secondary)' }}>
-              Insira as suas credenciais para acessar o sistema
+              Insira as suas credenciais para aceder ao sistema
             </p>
           </div>
 
           {/* Error Message */}
           {error && (
-            <div className="mb-4 p-4 bg-red-50 border border-red-200 rounded-lg">
+            <div role="alert" className="mb-4 p-4 bg-red-50 border border-red-200 rounded-lg">
               <p className="text-red-600 text-sm">{error}</p>
             </div>
           )}
@@ -97,9 +109,10 @@ export default function LoginPage() {
               </label>
               <input
                 type="email"
-                placeholder="seu.email@exemplo.com"
+                placeholder="o.seu.email@exemplo.com"
+                autoComplete="username"
                 value={formData.email}
-                onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                onChange={(e) => setFormData(prev => ({ ...prev, email: e.target.value }))}
                 className="w-full px-4 py-3 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#44B16F]/30 focus:border-[#44B16F] transition-all"
                 style={{
                   background: 'var(--color-bg)',
@@ -119,9 +132,10 @@ export default function LoginPage() {
               <div className="relative">
                 <input
                   type={showPassword ? "text" : "password"}
-                  placeholder="Sua senha"
+                  placeholder="A sua senha"
+                  autoComplete="current-password"
                   value={formData.password}
-                  onChange={(e) => setFormData({ ...formData, password: e.target.value })}
+                  onChange={(e) => setFormData(prev => ({ ...prev, password: e.target.value }))}
                   className="w-full px-4 py-3 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#44B16F]/30 focus:border-[#44B16F] transition-all pr-12"
                   style={{
                     background: 'var(--color-bg)',
@@ -134,6 +148,7 @@ export default function LoginPage() {
                 <button
                   type="button"
                   onClick={() => setShowPassword(!showPassword)}
+                  aria-label={showPassword ? "Esconder senha" : "Mostrar senha"}
                   className="absolute right-4 top-1/2 -translate-y-1/2 transition-colors"
                   style={{ color: 'var(--color-text-muted)' }}
                 >
@@ -163,10 +178,10 @@ export default function LoginPage() {
                       <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
                       <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
                     </svg>
-                    Entrando...
+                    A entrar...
                   </>
                 ) : (
-                  'Fazer Login'
+                  'Entrar'
                 )}
               </button>
             </div>

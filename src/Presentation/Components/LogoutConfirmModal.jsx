@@ -4,7 +4,10 @@ export default function LogoutConfirmModal({ isOpen, onClose, onConfirm, isLoadi
     if (!isOpen) return null;
 
     return (
-        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50">
+        <div
+            className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50"
+            onClick={(e) => { if (e.target === e.currentTarget && !isLoading) onClose(); }}
+        >
             <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md mx-4 overflow-hidden animate-fadeIn">
                 {/* Header */}
                 <div className="flex items-center justify-between p-6 border-b border-gray-200">
@@ -26,10 +29,10 @@ export default function LogoutConfirmModal({ isOpen, onClose, onConfirm, isLoadi
                 {/* Content */}
                 <div className="p-6">
                     <p className="text-gray-600 text-center">
-                        Tem certeza que deseja terminar a sessão?
+                        Tem a certeza de que deseja terminar a sessão?
                     </p>
                     <p className="text-gray-500 text-sm text-center mt-2">
-                        Você será redirecionado para a página de login.
+                        Será redireccionado para a página de início de sessão.
                     </p>
                 </div>
 

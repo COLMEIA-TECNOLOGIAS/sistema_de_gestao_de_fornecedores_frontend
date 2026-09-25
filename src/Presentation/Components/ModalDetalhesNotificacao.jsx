@@ -1,16 +1,45 @@
+import { useEffect, useState } from 'react';
 import { useModalLock } from '../../hooks/useModalLock';
-import React from 'react';
-import { X, Bell, Calendar, Trash2, User, FileText, AlertTriangle, Activity } from 'lucide-react';
+import { X, Bell, Calendar, Trash2, User, FileText, AlertTriangle, Activity, Loader2 } from 'lucide-react';
 
-export default function ModalDetalhesNotificacao({ isOpen, onClose, notification, onDelete }) {
+export default function ModalDetalhesNotificacao({ isOpen, onClose, notification, onDelete, isDeleting: isDeletingProp = false }) {
     useModalLock(isOpen);
+    const [isDeletingLocal, setIsDeletingLocal] = useState(false);
+    const isDeleting = isDeletingProp || isDeletingLocal;
+
+    // Fechar com Escape (excepto durante a eliminação)
+    useEffect(() => {
+        if (!isOpen) return;
+        const onKeyDown = (e) => {
+            if (e.key === 'Escape' && !isDeleting) onClose?.();
+        };
+        document.addEventListener('keydown', onKeyDown);
+        return () => document.removeEventListener('keydown', onKeyDown);
+    }, [isOpen, onClose, isDeleting]);
+
     if (!isOpen || !notification) return null;
+
+    const handleDelete = async () => {
+        if (isDeleting) return;
+        if (!onDelete) {
+            onClose();
+            return;
+        }
+        setIsDeletingLocal(true);
+        try {
+            // onDelete pode ser assíncrono e devolver false em caso de erro (o erro é mostrado por quem chama)
+            const result = await onDelete(notification.id);
+            if (result !== false) onClose();
+        } finally {
+            setIsDeletingLocal(false);
+        }
+    };
 
     const getContent = () => {
         const sv = notification.data || {};
 
-        const rawType = notification.type || sv.type || '';
-        const type = (rawType || '').toLowerCase();
+        const rawType = String(notification.type || sv.type || '');
+        const type = rawType.toLowerCase();
 
         const techName = sv.technician_name || sv.technicianName || sv.user?.name || sv.user_name || sv.requested_by || sv.requested_by_name || sv.nome || sv.name || 'Técnico';
 
@@ -42,24 +71,23 @@ export default function ModalDetalhesNotificacao({ isOpen, onClose, notification
         );
 
         let timeDisplay = 'Data desconhecida';
-        try {
-            if (notification.created_at) {
-                const date = new Date(notification.created_at);
-                if (!isNaN(date.getTime())) timeDisplay = date.toLocaleString('pt-AO');
-            }
-        } catch (e) {}
+        if (notification.created_at) {
+            const date = new Date(notification.created_at);
+            if (!isNaN(date.getTime())) timeDisplay = date.toLocaleString('pt-AO');
+        }
 
-        return { sv, techName, isDeletionRequest, isQuotationRequest, isActivity, timeDisplay, rawType };
+        return { sv, techName, type, isDeletionRequest, isQuotationRequest, isActivity, timeDisplay };
     };
 
-    const { sv, techName, isDeletionRequest, isQuotationRequest, isActivity, timeDisplay, rawType } = getContent();
+    const { sv, techName, type, isDeletionRequest, isQuotationRequest, isActivity, timeDisplay } = getContent();
 
     const renderContent = () => {
         if (isDeletionRequest) {
             const itemName = sv.item_name || sv.itemName || sv.deletable?.company_name || sv.deletable?.commercial_name || sv.deletable?.title || sv.deletable?.name || 'Item';
             const isSupplier =
                 (sv.deletable_type && (sv.deletable_type.includes('Supplier') || sv.deletable_type === 'supplier')) ||
-                (sv.item_type && (sv.item_type.includes('Supplier') || sv.item_type === 'supplier'));
+                (sv.item_type && (sv.item_type.includes('Supplier') || sv.item_type === 'supplier')) ||
+                type.includes('supplier');
             const itemType = isSupplier ? 'Fornecedor' : 'Pedido de Cotação';
             const reason = sv.reason || '';
 
@@ -196,18 +224,25 @@ export default function ModalDetalhesNotificacao({ isOpen, onClose, notification
 
     return (
         <div className="fixed inset-0 z-[60] flex items-center justify-center">
-            <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={onClose} />
+            <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={() => { if (!isDeleting) onClose(); }} />
 
-            <div className="relative bg-white rounded-2xl shadow-2xl w-full max-w-lg mx-4 animate-fadeIn flex flex-col overflow-hidden">
+            <div
+                className="relative bg-white rounded-2xl shadow-2xl w-full max-w-lg mx-4 animate-fadeIn flex flex-col overflow-hidden"
+                role="dialog"
+                aria-modal="true"
+                aria-labelledby="modal-detalhes-notificacao-title"
+            >
                 <div className="px-6 py-4 border-b border-gray-100 bg-gray-50/50 flex items-center justify-between">
                     <div className="flex items-center gap-3">
                         <div className="bg-blue-50 p-2 rounded-lg text-blue-600">
                             <Bell size={20} />
                         </div>
-                        <h3 className="font-bold text-gray-900 text-lg">Detalhes da Notificação</h3>
+                        <h3 id="modal-detalhes-notificacao-title" className="font-bold text-gray-900 text-lg">Detalhes da Notificação</h3>
                     </div>
                     <button
                         onClick={onClose}
+                        disabled={isDeleting}
+                        aria-label="Fechar"
                         className="p-2 hover:bg-gray-100 rounded-full transition-colors text-gray-400 hover:text-gray-600"
                     >
                         <X size={20} />
@@ -225,18 +260,17 @@ export default function ModalDetalhesNotificacao({ isOpen, onClose, notification
 
                 <div className="px-6 py-4 border-t border-gray-100 bg-gray-50/50 flex justify-between items-center">
                     <button
-                        onClick={() => {
-                            if (onDelete) onDelete(notification.id);
-                            onClose();
-                        }}
-                        className="text-red-500 hover:text-red-600 text-sm font-medium flex items-center gap-2 px-3 py-2 hover:bg-red-50 rounded-lg transition-colors"
+                        onClick={handleDelete}
+                        disabled={isDeleting}
+                        className="text-red-500 hover:text-red-600 text-sm font-medium flex items-center gap-2 px-3 py-2 hover:bg-red-50 rounded-lg transition-colors disabled:opacity-60 disabled:cursor-wait"
                     >
-                        <Trash2 size={16} />
-                        Excluir notificação
+                        {isDeleting ? <Loader2 size={16} className="animate-spin" /> : <Trash2 size={16} />}
+                        {isDeleting ? 'A eliminar...' : 'Excluir notificação'}
                     </button>
 
                     <button
                         onClick={onClose}
+                        disabled={isDeleting}
                         className="px-6 py-2 bg-gray-900 text-white rounded-lg hover:bg-gray-800 transition-colors font-medium shadow-sm"
                     >
                         Fechar

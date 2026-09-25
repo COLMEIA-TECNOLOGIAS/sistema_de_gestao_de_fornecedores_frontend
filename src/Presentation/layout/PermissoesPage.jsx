@@ -1,7 +1,17 @@
-import React, { useState, useEffect, useRef } from 'react';
-import { Shield, Search, Loader2, Save, AlertCircle, RefreshCw, Eye, Pencil } from 'lucide-react';
-import { usersAPI, permissionsAPI, menusAPI } from '../../services/api';
-import Toast from '../Components/Toast';
+import { Fragment, useEffect, useMemo, useState } from 'react';
+import { Shield, Loader2, Save, AlertCircle, RefreshCw, Eye, Pencil, UserX } from 'lucide-react';
+import { permissionsAPI } from '../../services/api';
+import SearchInput from '../Components/ui/SearchInput';
+import RefreshButton from '../Components/ui/RefreshButton';
+import FilterChips from '../Components/ui/FilterChips';
+import { EmptyState, ErrorState, StaleDataBanner } from '../Components/ui/StateViews';
+import { useUsers, useUserPermissions, useMenus, useInvalidate } from '../../hooks/queries';
+import { useUrlFilters } from '../../hooks/useUrlFilters';
+import { queryKeys } from '../../lib/queryKeys';
+import { useToast } from '../../context/ToastContext';
+import { useConfirm } from '../../context/ConfirmContext';
+import { useAuth } from '../../context/AuthContext';
+import { getErrorMessage, matchesSearch } from '../../utils/apiHelpers';
 
 const MENU_TRANSLATIONS = {
     dashboard: 'Painel de Controlo',
@@ -25,161 +35,172 @@ const translateMenu = (menu) => {
     return MENU_TRANSLATIONS[slug] || menu.name || menu.slug || slug;
 };
 
-export default function PermissoesPage() {
-    const [users, setUsers] = useState([]);
-    const [isLoading, setIsLoading] = useState(true);
-    const [searchTerm, setSearchTerm] = useState('');
-    const [selectedUser, setSelectedUser] = useState(null);
-    const [userPermissions, setUserPermissions] = useState([]);
-    const [originalPermissions, setOriginalPermissions] = useState([]);
-    const [isLoadingPermissions, setIsLoadingPermissions] = useState(false);
-    const [isSaving, setIsSaving] = useState(false);
-    const [toast, setToast] = useState(null);
-    const systemMenusRef = useRef([]);
-    const [systemMenus, setSystemMenus] = useState([]);
-
-    useEffect(() => {
-        fetchInitialData();
-    }, []);
-
-    const fetchInitialData = async () => {
-        setIsLoading(true);
-        try {
-            const [usersData, menusData] = await Promise.all([
-                usersAPI.getAll(),
-                menusAPI.getAll().catch(() => [])
-            ]);
-
-            const usersList = Array.isArray(usersData) ? usersData : (usersData.data || []);
-            const nonAdmins = usersList.filter(u =>
-                (u.role || '').toLowerCase() !== 'admin'
-            );
-            setUsers(nonAdmins);
-
-            const rawMenus = Array.isArray(menusData) ? menusData : (menusData.data || []);
-            const menuMap = {};
-            rawMenus.forEach(m => { menuMap[m.id] = { ...m, children: [] }; });
-            const menuTree = [];
-            rawMenus.forEach(m => {
-                if (m.parent_id && menuMap[m.parent_id]) {
-                    menuMap[m.parent_id].children.push(menuMap[m.id]);
-                } else {
-                    menuTree.push(menuMap[m.id]);
-                }
-            });
-
-            systemMenusRef.current = menuTree;
-            setSystemMenus(menuTree);
-
-        } catch (error) {
-            console.error('Error fetching initial data:', error);
-            showToast('error', 'Erro ao carregar dados iniciais.');
-        } finally {
-            setIsLoading(false);
+// Converte a lista plana de menus da API numa árvore (pai -> filhos)
+const buildMenuTree = (rawMenus) => {
+    const menuMap = {};
+    rawMenus.forEach(m => { menuMap[m.id] = { ...m, children: [] }; });
+    const menuTree = [];
+    rawMenus.forEach(m => {
+        if (m.parent_id && menuMap[m.parent_id]) {
+            menuMap[m.parent_id].children.push(menuMap[m.id]);
+        } else {
+            menuTree.push(menuMap[m.id]);
         }
+    });
+    return menuTree;
+};
+
+// Normaliza a resposta de permissões da API para uma lista
+const toPermissionList = (apiData) => {
+    let rawPerms = apiData?.data || apiData || [];
+    if (rawPerms && !Array.isArray(rawPerms) && Array.isArray(rawPerms.permissions)) {
+        rawPerms = rawPerms.permissions;
+    }
+    return Array.isArray(rawPerms) ? rawPerms : [];
+};
+
+// Cruza a árvore de menus com as permissões do utilizador
+const buildPermissionItems = (menuTree, apiData) => {
+    const permByMenuId = {};
+    toPermissionList(apiData).forEach(p => {
+        const id = p.menu_id ?? p.id;
+        if (id != null) permByMenuId[String(id)] = p;
+    });
+
+    const buildItem = (menu, withChildren) => {
+        const perm = permByMenuId[String(menu.id)] || null;
+        const hasAccess = perm !== null;
+        return {
+            menu_id: menu.id,
+            slug: menu.slug || menu.name,
+            label: translateMenu(menu),
+            icon: menu.icon,
+            access: hasAccess,
+            level: hasAccess ? (perm.level || 'read') : 'read',
+            children: withChildren ? (menu.children || []).map(child => buildItem(child, false)) : [],
+        };
     };
 
-    const showToast = (type, message) => {
-        setToast({ type, message });
-    };
+    return menuTree.map(menu => buildItem(menu, true));
+};
+
+const ROLE_LABELS = {
+    admin: 'Administrador',
+    procurement_technician: 'Técnico de Procurement',
+    manager: 'Gestor',
+    viewer: 'Visualizador',
+};
+const getRoleLabel = (role) => ROLE_LABELS[(role || '').toLowerCase()] || role || 'N/A';
+
+const FILTER_DEFAULTS = { q: '', funcao: '', utilizador: '' };
+
+const selectClass = "w-full px-3 py-2 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#44B16F]";
+const selectStyle = { background: 'var(--color-bg)', border: '1px solid var(--color-border)', color: 'var(--color-text-primary)' };
+
+export default function PermissoesPage() {
+    const toast = useToast();
+    const confirm = useConfirm();
+    const invalidate = useInvalidate();
+    const { user: currentUser, refreshPermissions } = useAuth();
+
+    const { filters, setFilter, setFilters, countActive } = useUrlFilters(FILTER_DEFAULTS);
+    const selectedId = filters.utilizador;
+
+    const usersQuery = useUsers();
+    const menusQuery = useMenus();
+    const permsQuery = useUserPermissions(selectedId || null);
+
+    // Edições locais ainda não guardadas (associadas ao utilizador a que pertencem)
+    const [draft, setDraft] = useState(null);
+    const [isSaving, setIsSaving] = useState(false);
+
+    const allUsers = usersQuery.data;
+    const users = useMemo(
+        () => (allUsers || []).filter(u => (u.role || '').toLowerCase() !== 'admin'),
+        [allUsers]
+    );
+    const roleOptions = useMemo(
+        () => [...new Set(users.map(u => u.role).filter(Boolean))].sort(),
+        [users]
+    );
+    const filteredUsers = useMemo(() => users.filter(u => {
+        if (!matchesSearch(filters.q, u.name, u.email, getRoleLabel(u.role))) return false;
+        if (filters.funcao && u.role !== filters.funcao) return false;
+        return true;
+    }), [users, filters.q, filters.funcao]);
+
+    const selectedUser = useMemo(
+        () => (selectedId ? users.find(u => String(u.id) === selectedId) || null : null),
+        [users, selectedId]
+    );
+
+    const menusData = menusQuery.data;
+    const menuTree = useMemo(() => buildMenuTree(menusData || []), [menusData]);
+    const permsData = permsQuery.data;
+    const originalPermissions = useMemo(
+        () => (permsData !== undefined ? buildPermissionItems(menuTree, permsData) : []),
+        [menuTree, permsData]
+    );
+
+    const hasDraft = !!draft && draft.userId === selectedId;
+    const userPermissions = hasDraft ? draft.perms : originalPermissions;
+    const isDirty = hasDraft && JSON.stringify(draft.perms) !== JSON.stringify(originalPermissions);
+
+    // Avisar ao fechar/recarregar o separador com alterações por guardar
+    useEffect(() => {
+        if (!isDirty) return;
+        const onBeforeUnload = (e) => {
+            e.preventDefault();
+            e.returnValue = '';
+        };
+        window.addEventListener('beforeunload', onBeforeUnload);
+        return () => window.removeEventListener('beforeunload', onBeforeUnload);
+    }, [isDirty]);
+
+    const confirmDiscard = () => confirm({
+        title: 'Alterações por guardar',
+        message: selectedUser
+            ? `As alterações às permissões de ${selectedUser.name} ainda não foram guardadas. Pretende descartá-las?`
+            : 'Existem alterações por guardar. Pretende descartá-las?',
+        confirmLabel: 'Descartar alterações',
+        cancelLabel: 'Continuar a editar',
+        variant: 'danger',
+    });
 
     const handleSelectUser = async (user) => {
-        setSelectedUser(user);
-        setIsLoadingPermissions(true);
+        if (isSaving || String(user.id) === selectedId) return;
+        if (isDirty && !(await confirmDiscard())) return;
+        setDraft(null);
+        setFilter('utilizador', String(user.id));
+    };
 
-        let menus = systemMenusRef.current;
-        if (!menus || menus.length === 0) {
-            try {
-                const menusData = await menusAPI.getAll();
-                const rawMenus = Array.isArray(menusData) ? menusData : (menusData.data || []);
-                const menuMap = {};
-                rawMenus.forEach(m => { menuMap[m.id] = { ...m, children: [] }; });
-                const menuTree = [];
-                rawMenus.forEach(m => {
-                    if (m.parent_id && menuMap[m.parent_id]) {
-                        menuMap[m.parent_id].children.push(menuMap[m.id]);
-                    } else {
-                        menuTree.push(menuMap[m.id]);
-                    }
-                });
-                systemMenusRef.current = menuTree;
-                setSystemMenus(menuTree);
-                menus = menuTree;
-            } catch (e) {
-                console.error('Erro ao recarregar menus:', e);
-            }
-        }
+    const handleReloadPermissions = async () => {
+        if (isSaving) return;
+        if (isDirty && !(await confirmDiscard())) return;
+        setDraft(null);
+        permsQuery.refetch();
+    };
 
-        try {
-            const apiData = await permissionsAPI.getUserPermissions(user.id);
-            let rawPerms = apiData?.data || apiData || [];
-
-            if (rawPerms && !Array.isArray(rawPerms) && Array.isArray(rawPerms.permissions)) {
-                rawPerms = rawPerms.permissions;
-            }
-
-            const permsList = Array.isArray(rawPerms) ? rawPerms : [];
-
-            const permByMenuId = {};
-            permsList.forEach(p => {
-                const id = p.menu_id ?? p.id;
-                if (id != null) permByMenuId[String(id)] = p;
-            });
-
-            const buildItem = (menu) => {
-                const perm = permByMenuId[String(menu.id)] || null;
-                const hasAccess = perm !== null;
-                const level = perm?.level || 'read';
-
-                return {
-                    menu_id: menu.id,
-                    slug: menu.slug || menu.name,
-                    label: translateMenu(menu),
-                    icon: menu.icon,
-                    access: hasAccess,
-                    level: hasAccess ? level : 'read',
-                    children: (menu.children || []).map(child => {
-                        const cPerm = permByMenuId[String(child.id)] || null;
-                        const cHasAccess = cPerm !== null;
-                        const cLevel = cPerm?.level || 'read';
-                        return {
-                            menu_id: child.id,
-                            slug: child.slug || child.name,
-                            label: translateMenu(child),
-                            icon: child.icon,
-                            access: cHasAccess,
-                            level: cHasAccess ? cLevel : 'read',
-                            children: [],
-                        };
-                    }),
-                };
-            };
-
-            const mapped = menus.map(buildItem);
-            setUserPermissions(mapped);
-            setOriginalPermissions(JSON.parse(JSON.stringify(mapped)));
-
-        } catch (error) {
-            console.error('Erro ao carregar permissões:', error);
-            const status = error.response?.status;
-            if (status === 403) {
-                showToast('error', 'Sem permissão para ver as permissões deste utilizador.');
-            } else {
-                showToast('error', 'Erro ao carregar permissões deste utilizador.');
-            }
-            setUserPermissions([]);
-            setOriginalPermissions([]);
-        } finally {
-            setIsLoadingPermissions(false);
-        }
+    // Aplica uma alteração às permissões (partindo do rascunho actual ou do original)
+    const updatePermissions = (updater) => {
+        setDraft(prev => {
+            const base = prev && prev.userId === selectedId ? prev.perms : originalPermissions;
+            return { userId: selectedId, perms: updater(base) };
+        });
     };
 
     const handleReadToggle = (index) => {
-        setUserPermissions(prev => {
+        updatePermissions(prev => {
             const updated = [...prev];
             const perm = updated[index];
             if (perm.access) {
-                updated[index] = { ...perm, access: false, level: 'read' };
+                // Sem acesso ao menu pai, os submenus também deixam de estar acessíveis
+                updated[index] = {
+                    ...perm,
+                    access: false,
+                    level: 'read',
+                    children: (perm.children || []).map(c => ({ ...c, access: false, level: 'read' })),
+                };
             } else {
                 updated[index] = { ...perm, access: true, level: 'read' };
             }
@@ -188,7 +209,7 @@ export default function PermissoesPage() {
     };
 
     const handleWriteToggle = (index) => {
-        setUserPermissions(prev => {
+        updatePermissions(prev => {
             const updated = [...prev];
             const perm = updated[index];
             if (perm.access && perm.level === 'write') {
@@ -201,22 +222,18 @@ export default function PermissoesPage() {
     };
 
     const handleChildReadToggle = (parentIndex, childIndex) => {
-        setUserPermissions(prev => {
+        updatePermissions(prev => {
             const updated = [...prev];
             const children = [...updated[parentIndex].children];
             const child = children[childIndex];
-            if (child.access) {
-                children[childIndex] = { ...child, access: false, level: 'read' };
-            } else {
-                children[childIndex] = { ...child, access: true, level: 'read' };
-            }
+            children[childIndex] = { ...child, access: !child.access, level: 'read' };
             updated[parentIndex] = { ...updated[parentIndex], children };
             return updated;
         });
     };
 
     const handleChildWriteToggle = (parentIndex, childIndex) => {
-        setUserPermissions(prev => {
+        updatePermissions(prev => {
             const updated = [...prev];
             const children = [...updated[parentIndex].children];
             const child = children[childIndex];
@@ -230,122 +247,145 @@ export default function PermissoesPage() {
         });
     };
 
-    const hasChanges = () =>
-        JSON.stringify(userPermissions) !== JSON.stringify(originalPermissions);
-
     const handleSavePermissions = async () => {
-        if (!selectedUser) return;
+        if (!selectedUser || isSaving || !isDirty) return;
         setIsSaving(true);
 
-        try {
-            const permissions = [];
-
-            userPermissions.forEach(perm => {
-                if (perm.access) {
-                    permissions.push({ menu_id: perm.menu_id, level: perm.level });
+        const savedUser = selectedUser;
+        const savedUserId = selectedId;
+        const permissions = [];
+        userPermissions.forEach(perm => {
+            if (!perm.access) return;
+            permissions.push({ menu_id: perm.menu_id, level: perm.level });
+            (perm.children || []).forEach(child => {
+                if (child.access) {
+                    permissions.push({ menu_id: child.menu_id, level: child.level });
                 }
-                (perm.children || []).forEach(child => {
-                    if (child.access) {
-                        permissions.push({ menu_id: child.menu_id, level: child.level });
-                    }
-                });
             });
+        });
 
-            await permissionsAPI.updateUserPermissions(selectedUser.id, { permissions });
-            showToast('success', `Permissões de ${selectedUser.name} actualizadas com sucesso!`);
-            setOriginalPermissions(JSON.parse(JSON.stringify(userPermissions)));
+        try {
+            await permissionsAPI.updateUserPermissions(savedUser.id, { permissions });
+            toast.success(`Permissões de ${savedUser.name} actualizadas com sucesso!`);
 
-        } catch (error) {
-            console.error('Erro ao gravar permissões:', error);
-            const status = error.response?.status;
-            if (status === 403) {
-                showToast('error', 'Sem permissão para alterar as permissões deste utilizador.');
-            } else {
-                const msg = error.response?.data?.message || 'Ocorreu um erro ao gravar as permissões.';
-                showToast('error', msg);
+            // Recarregar do servidor antes de descartar o rascunho (evita mostrar valores antigos)
+            try {
+                await invalidate(queryKeys.users.permissions(savedUserId), queryKeys.users.all);
+            } catch {
+                // A falha no refresh é mostrada pelo estado da query
             }
+            setDraft(prev => (prev && prev.userId === savedUserId ? null : prev));
+
+            // Se o administrador alterou as suas próprias permissões, aplicá-las já à sessão
+            if (currentUser && String(currentUser.id) === savedUserId) {
+                refreshPermissions();
+            }
+        } catch (error) {
+            toast.error(getErrorMessage(error, 'Ocorreu um erro ao gravar as permissões.'));
         } finally {
             setIsSaving(false);
         }
     };
 
-    const filteredUsers = users.filter(u =>
-        (u.name || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
-        (u.email || '').toLowerCase().includes(searchTerm.toLowerCase())
-    );
+    const chips = [
+        filters.q && { key: 'q', label: `"${filters.q}"`, onRemove: () => setFilter('q', '') },
+        filters.funcao && { key: 'funcao', label: `Função: ${getRoleLabel(filters.funcao)}`, onRemove: () => setFilter('funcao', '') },
+    ];
+    const activeFilterCount = countActive(['utilizador']);
+    const clearFilters = () => setFilters({ q: '', funcao: '' });
 
-    const getRoleLabel = (role) => {
-        const roles = {
-            admin: 'Administrador',
-            procurement_technician: 'Técnico de Procurement',
-            manager: 'Gestor',
-            viewer: 'Visualizador',
-        };
-        return roles[(role || '').toLowerCase()] || role || 'N/A';
-    };
+    const hasUsers = users.length > 0;
+    const isLoadingPermissions = !!selectedId && (permsQuery.isLoading || menusQuery.isLoading);
+    const permissionsError = permsQuery.isError && permsData === undefined;
+    const menusError = menusQuery.isError && !(menusData?.length);
 
     return (
         <div className="flex gap-6 h-[calc(100vh-120px)]">
-            {toast && <Toast type={toast.type} message={toast.message} onClose={() => setToast(null)} />}
-
             <div className="w-1/3 rounded-2xl shadow-sm flex flex-col overflow-hidden"
                 style={{ background: 'var(--color-surface)', border: '1px solid var(--color-border-light)' }}>
-                <div className="p-4" style={{ borderBottom: '1px solid var(--color-border-light)' }}>
-                    <h3 className="font-bold mb-3 flex items-center gap-2" style={{ color: 'var(--color-text-primary)' }}>
-                        <Shield size={18} className="text-[#44B16F]" />
-                        Selecione um Utilizador
-                    </h3>
-                    <div className="relative">
-                        <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2"
-                            style={{ color: 'var(--color-text-muted)' }} />
-                        <input
-                            type="text"
-                            placeholder="Procurar utilizador..."
-                            value={searchTerm}
-                            onChange={e => setSearchTerm(e.target.value)}
-                            className="input-field w-full"
-                            style={{ paddingLeft: '36px' }}
+                <div className="p-4 space-y-3" style={{ borderBottom: '1px solid var(--color-border-light)' }}>
+                    <div className="flex items-center justify-between gap-2">
+                        <h3 className="font-bold flex items-center gap-2" style={{ color: 'var(--color-text-primary)' }}>
+                            <Shield size={18} className="text-[#44B16F]" />
+                            Seleccione um Utilizador
+                        </h3>
+                        <RefreshButton
+                            onClick={usersQuery.refetch}
+                            isFetching={usersQuery.isFetching}
+                            updatedAt={usersQuery.dataUpdatedAt}
+                            showLabel={false}
                         />
                     </div>
+                    <SearchInput
+                        value={filters.q}
+                        onChange={(q) => setFilter('q', q)}
+                        placeholder="Procurar utilizador..."
+                        className="w-full"
+                    />
+                    {roleOptions.length > 1 && (
+                        <select value={filters.funcao} onChange={(e) => setFilter('funcao', e.target.value)} className={selectClass} style={selectStyle} aria-label="Filtrar por função">
+                            <option value="">Todas as funções</option>
+                            {roleOptions.map((role) => <option key={role} value={role}>{getRoleLabel(role)}</option>)}
+                        </select>
+                    )}
+                    <FilterChips chips={chips} onClearAll={clearFilters} resultCount={activeFilterCount > 0 ? filteredUsers.length : undefined} />
+                    {usersQuery.isError && hasUsers && (
+                        <StaleDataBanner message="Não foi possível actualizar a lista." onRetry={usersQuery.refetch} isRetrying={usersQuery.isFetching} />
+                    )}
                 </div>
 
                 <div className="flex-1 overflow-y-auto p-2 space-y-1">
-                    {isLoading ? (
+                    {usersQuery.isLoading ? (
                         <div className="flex justify-center p-8">
                             <Loader2 className="animate-spin" style={{ color: 'var(--color-text-muted)' }} />
                         </div>
+                    ) : usersQuery.isError && !hasUsers ? (
+                        <ErrorState
+                            message={getErrorMessage(usersQuery.error, 'Erro ao carregar utilizadores.')}
+                            onRetry={usersQuery.refetch}
+                            isRetrying={usersQuery.isFetching}
+                        />
                     ) : filteredUsers.length === 0 ? (
-                        <div className="p-4 text-center text-sm"
-                            style={{ color: 'var(--color-text-secondary)' }}>
-                            Nenhum utilizador encontrado.
-                        </div>
+                        hasUsers ? (
+                            <EmptyState filtered onClearFilters={clearFilters} />
+                        ) : (
+                            <EmptyState icon={UserX} title="Nenhum utilizador encontrado" description="Não existem utilizadores (não administradores) para configurar." />
+                        )
                     ) : (
-                        filteredUsers.map(user => (
-                            <button
-                                key={user.id}
-                                onClick={() => handleSelectUser(user)}
-                                className="w-full text-left p-3 rounded-xl transition-all"
-                                style={{
-                                    background: selectedUser?.id === user.id ? 'rgba(68,177,111,0.1)' : 'transparent',
-                                    border: selectedUser?.id === user.id ? '1px solid rgba(68,177,111,0.3)' : '1px solid transparent',
-                                }}
-                                onMouseEnter={e => { if (selectedUser?.id !== user.id) e.currentTarget.style.background = 'var(--color-bg)'; }}
-                                onMouseLeave={e => { if (selectedUser?.id !== user.id) e.currentTarget.style.background = 'transparent'; }}
-                            >
-                                <div className="font-semibold text-sm" style={{ color: 'var(--color-text-primary)' }}>
-                                    {user.name}
-                                </div>
-                                <div className="text-xs mt-0.5" style={{ color: 'var(--color-text-secondary)' }}>
-                                    {user.email}
-                                </div>
-                                <div className="mt-2 inline-flex items-center gap-1.5">
-                                    <span className="inline-block px-2 py-0.5 rounded-full text-[10px] font-medium"
-                                        style={{ background: 'var(--color-bg)', color: 'var(--color-text-secondary)', border: '1px solid var(--color-border-light)' }}>
-                                        {getRoleLabel(user.role)}
-                                    </span>
-                                </div>
-                            </button>
-                        ))
+                        filteredUsers.map(user => {
+                            const isSelected = String(user.id) === selectedId;
+                            return (
+                                <button
+                                    key={user.id}
+                                    onClick={() => handleSelectUser(user)}
+                                    disabled={isSaving && !isSelected}
+                                    aria-current={isSelected ? 'true' : undefined}
+                                    className="w-full text-left p-3 rounded-xl transition-all disabled:opacity-60 disabled:cursor-not-allowed"
+                                    style={{
+                                        background: isSelected ? 'rgba(68,177,111,0.1)' : 'transparent',
+                                        border: isSelected ? '1px solid rgba(68,177,111,0.3)' : '1px solid transparent',
+                                    }}
+                                    onMouseEnter={e => { if (!isSelected) e.currentTarget.style.background = 'var(--color-bg)'; }}
+                                    onMouseLeave={e => { if (!isSelected) e.currentTarget.style.background = 'transparent'; }}
+                                >
+                                    <div className="font-semibold text-sm" style={{ color: 'var(--color-text-primary)' }}>
+                                        {user.name}
+                                        {isSelected && isDirty && (
+                                            <span className="ml-2 text-[10px] font-medium text-amber-700" title="Alterações por guardar">● por guardar</span>
+                                        )}
+                                    </div>
+                                    <div className="text-xs mt-0.5" style={{ color: 'var(--color-text-secondary)' }}>
+                                        {user.email}
+                                    </div>
+                                    <div className="mt-2 inline-flex items-center gap-1.5">
+                                        <span className="inline-block px-2 py-0.5 rounded-full text-[10px] font-medium"
+                                            style={{ background: 'var(--color-bg)', color: 'var(--color-text-secondary)', border: '1px solid var(--color-border-light)' }}>
+                                            {getRoleLabel(user.role)}
+                                        </span>
+                                    </div>
+                                </button>
+                            );
+                        })
                     )}
                 </div>
             </div>
@@ -371,26 +411,28 @@ export default function PermissoesPage() {
                             </div>
                             <div className="flex items-center gap-2">
                                 <button
-                                    onClick={() => handleSelectUser(selectedUser)}
-                                    className="p-2.5 rounded-xl transition-all"
+                                    onClick={handleReloadPermissions}
+                                    disabled={isLoadingPermissions || isSaving || permsQuery.isFetching}
+                                    className="p-2.5 rounded-xl transition-all disabled:opacity-50 disabled:cursor-not-allowed"
                                     style={{ color: 'var(--color-text-secondary)', border: '1px solid var(--color-border-light)' }}
                                     onMouseEnter={e => e.currentTarget.style.background = 'var(--color-bg)'}
                                     onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
                                     title="Recarregar permissões"
                                 >
-                                    <RefreshCw size={16} />
+                                    <RefreshCw size={16} className={permsQuery.isFetching && !isLoadingPermissions ? 'animate-spin' : ''} />
                                 </button>
                                 <button
                                     onClick={handleSavePermissions}
-                                    disabled={isSaving || !hasChanges()}
+                                    disabled={isSaving || isLoadingPermissions || !isDirty}
+                                    aria-busy={isSaving}
                                     className="px-5 py-2.5 text-sm font-semibold text-white rounded-xl transition-all shadow-sm flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
                                     style={{
-                                        background: hasChanges() ? '#44B16F' : 'var(--color-text-muted)',
-                                        boxShadow: hasChanges() ? '0 2px 8px rgba(68,177,111,0.3)' : 'none',
+                                        background: isDirty ? '#44B16F' : 'var(--color-text-muted)',
+                                        boxShadow: isDirty ? '0 2px 8px rgba(68,177,111,0.3)' : 'none',
                                     }}
                                 >
                                     {isSaving ? <Loader2 size={16} className="animate-spin" /> : <Save size={16} />}
-                                    Guardar Alterações
+                                    {isSaving ? 'A guardar...' : 'Guardar Alterações'}
                                 </button>
                             </div>
                         </div>
@@ -403,6 +445,13 @@ export default function PermissoesPage() {
                                         A carregar permissões...
                                     </p>
                                 </div>
+                            ) : permissionsError ? (
+                                <ErrorState
+                                    title="Não foi possível carregar as permissões"
+                                    message={getErrorMessage(permsQuery.error, 'Erro ao carregar permissões deste utilizador.')}
+                                    onRetry={permsQuery.refetch}
+                                    isRetrying={permsQuery.isFetching}
+                                />
                             ) : userPermissions.length === 0 ? (
                                 <div className="flex flex-col items-center justify-center py-16">
                                     <div className="w-16 h-16 rounded-full flex items-center justify-center mb-4"
@@ -414,11 +463,26 @@ export default function PermissoesPage() {
                                     </h4>
                                     <p className="text-sm text-center max-w-sm"
                                         style={{ color: 'var(--color-text-secondary)' }}>
-                                        Não foi possível carregar os menus do sistema.
-                                        Verifique a sua ligação ou as configurações do sistema.
+                                        {menusError
+                                            ? getErrorMessage(menusQuery.error, 'Não foi possível carregar os menus do sistema.')
+                                            : 'Não foi possível carregar os menus do sistema. Verifique a sua ligação ou as configurações do sistema.'}
                                     </p>
+                                    <button
+                                        type="button"
+                                        onClick={() => menusQuery.refetch()}
+                                        disabled={menusQuery.isFetching}
+                                        className="mt-4 inline-flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium text-white disabled:opacity-60"
+                                        style={{ background: 'var(--color-primary)' }}
+                                    >
+                                        <RefreshCw size={15} className={menusQuery.isFetching ? 'animate-spin' : ''} />
+                                        Tentar novamente
+                                    </button>
                                 </div>
                             ) : (
+                                <div className="space-y-3">
+                                {permsQuery.isError && (
+                                    <StaleDataBanner onRetry={permsQuery.refetch} isRetrying={permsQuery.isFetching} />
+                                )}
                                 <div className="rounded-xl overflow-hidden shadow-sm"
                                     style={{ background: 'var(--color-surface)', border: '1px solid var(--color-border-light)' }}>
                                     <table className="w-full text-sm text-left">
@@ -443,13 +507,13 @@ export default function PermissoesPage() {
                                         </thead>
                                         <tbody>
                                             {userPermissions.map((perm, index) => (
-                                                <React.Fragment key={`menu-${perm.menu_id}-${index}`}>
+                                                <Fragment key={`menu-${perm.menu_id}-${index}`}>
                                                     <tr
                                                         style={{ borderBottom: '1px solid var(--color-border-light)', transition: 'background 0.15s' }}
                                                         onMouseEnter={e => e.currentTarget.style.background = 'var(--color-bg)'}
                                                         onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
                                                     >
-                                                        <td className="px-6 py-4 font-semibold flex items-center gap-2"
+                                                        <td className="px-6 py-4 font-semibold"
                                                             style={{ color: 'var(--color-text-primary)' }}>
                                                             {perm.label}
                                                         </td>
@@ -503,14 +567,37 @@ export default function PermissoesPage() {
                                                             </td>
                                                         </tr>
                                                     ))}
-                                                </React.Fragment>
+                                                </Fragment>
                                             ))}
                                         </tbody>
                                     </table>
                                 </div>
+                                </div>
                             )}
                         </div>
                     </>
+                ) : selectedId && usersQuery.isLoading ? (
+                    <div className="flex-1 flex items-center justify-center">
+                        <Loader2 size={32} className="animate-spin" style={{ color: '#44B16F' }} />
+                    </div>
+                ) : selectedId && hasUsers ? (
+                    <div className="flex-1 flex items-center justify-center">
+                        <EmptyState
+                            icon={UserX}
+                            title="Utilizador não encontrado"
+                            description="O utilizador seleccionado já não existe ou não pode ter permissões configuradas."
+                            action={(
+                                <button
+                                    type="button"
+                                    onClick={() => setFilter('utilizador', '')}
+                                    className="px-4 py-2 rounded-lg text-sm font-medium border hover:bg-gray-50"
+                                    style={{ borderColor: 'var(--color-border)', color: 'var(--color-text-primary)' }}
+                                >
+                                    Limpar selecção
+                                </button>
+                            )}
+                        />
+                    </div>
                 ) : (
                     <div className="flex-1 flex flex-col items-center justify-center text-center p-8">
                         <div className="w-16 h-16 rounded-full flex items-center justify-center mb-4"
@@ -518,10 +605,10 @@ export default function PermissoesPage() {
                             <Shield size={32} />
                         </div>
                         <h3 className="text-lg font-bold" style={{ color: 'var(--color-text-primary)' }}>
-                            Nenhum utilizador selecionado
+                            Nenhum utilizador seleccionado
                         </h3>
                         <p className="text-sm mt-2 max-w-sm" style={{ color: 'var(--color-text-secondary)' }}>
-                            Selecione um utilizador na lista à esquerda para configurar as suas permissões de acesso ao sistema.
+                            Seleccione um utilizador na lista à esquerda para configurar as suas permissões de acesso ao sistema.
                         </p>
                     </div>
                 )}

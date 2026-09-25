@@ -1,5 +1,6 @@
-import { createContext, useContext, useState, useEffect, useCallback, useMemo } from 'react';
+import { createContext, useContext, useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { authAPI, permissionsAPI, menusAPI } from '../services/api';
+import { queryClient } from '../lib/queryClient';
 import {
     hasPermission as checkPermission,
     hasWritePermission as checkWritePermission,
@@ -54,11 +55,16 @@ export function AuthProvider({ children }) {
             }
 
             const normalized = normalizePermissions(apiData);
-            
-            // Actualizar o user com as permissões da API
-            const updatedUser = { ...currentUser, apiPermissions: normalized };
-            setUser(updatedUser);
-            localStorage.setItem('user', JSON.stringify(updatedUser));
+
+            // Actualizar o user com as permissões da API. Usa o estado mais recente
+            // para não perder alterações feitas entretanto (ex.: updateUser) e para
+            // não "ressuscitar" a sessão se o utilizador fez logout durante o pedido.
+            setUser(prev => {
+                if (!prev || prev.id !== currentUser.id) return prev;
+                const updatedUser = { ...prev, apiPermissions: normalized };
+                localStorage.setItem('user', JSON.stringify(updatedUser));
+                return updatedUser;
+            });
             localStorage.setItem('apiPermissions', JSON.stringify(normalized));
             setPermissionsLoaded(true);
         } catch (error) {
@@ -72,15 +78,25 @@ export function AuthProvider({ children }) {
         const storedToken = localStorage.getItem('token');
         const storedUser = localStorage.getItem('user');
 
+        let parsedUser = null;
         if (storedToken && storedUser) {
-            const parsedUser = JSON.parse(storedUser);
-            
+            try {
+                parsedUser = JSON.parse(storedUser);
+            } catch {
+                // Dados corrompidos no localStorage — tratar como sessão inexistente
+                localStorage.removeItem('token');
+                localStorage.removeItem('user');
+                localStorage.removeItem('apiPermissions');
+            }
+        }
+
+        if (storedToken && parsedUser) {
             // Tentar restaurar permissões do cache
             const cachedPermissions = localStorage.getItem('apiPermissions');
             if (cachedPermissions) {
                 try {
                     parsedUser.apiPermissions = JSON.parse(cachedPermissions);
-                } catch (e) { /* ignore */ }
+                } catch { /* ignore */ }
             }
 
             setToken(storedToken);
@@ -102,6 +118,8 @@ export function AuthProvider({ children }) {
         // Limpar permissões antigas imediatamente para evitar que o novo utilizador
         // veja os menus do utilizador anterior enquanto as novas permissões carregam
         localStorage.removeItem('apiPermissions');
+        // Descartar dados em cache da sessão anterior
+        queryClient.clear();
 
         // Store in localStorage
         localStorage.setItem('token', newToken);
@@ -110,6 +128,7 @@ export function AuthProvider({ children }) {
         // Update state — sem apiPermissions para garantir sidebar limpa
         setToken(newToken);
         setUser({ ...newUser, apiPermissions: undefined });
+        setPermissionsLoaded(false);
 
         // Carregar permissões do utilizador após login
         await fetchUserPermissions(newUser);
@@ -127,6 +146,7 @@ export function AuthProvider({ children }) {
             localStorage.removeItem('token');
             localStorage.removeItem('user');
             localStorage.removeItem('apiPermissions');
+            queryClient.clear();
             setToken(null);
             setUser(null);
             setPermissionsLoaded(false);
@@ -194,11 +214,64 @@ export function AuthProvider({ children }) {
         }
     }, [user, fetchUserPermissions]);
 
-    const updateUser = useCallback((newData) => {
-        const updatedUser = { ...user, ...newData };
-        setUser(updatedUser);
-        localStorage.setItem('user', JSON.stringify(updatedUser));
+    // Sincronizar sessão entre separadores: logout/login noutro separador
+    useEffect(() => {
+        const onStorage = (e) => {
+            if (e.key !== 'token') return;
+            if (!e.newValue) {
+                queryClient.clear();
+                setToken(null);
+                setUser(null);
+                setPermissionsLoaded(false);
+            } else if (e.newValue !== token) {
+                // Outro utilizador iniciou sessão noutro separador: recarregar para evitar estado misto
+                window.location.reload();
+            }
+        };
+        window.addEventListener('storage', onStorage);
+        return () => window.removeEventListener('storage', onStorage);
+    }, [token]);
+
+    // Recarregar permissões ao voltar ao separador (no máximo 1x por minuto),
+    // para que alterações feitas pelo administrador se apliquem sem novo login.
+    const lastPermissionsRefresh = useRef(0);
+    const userRef = useRef(user);
+    useEffect(() => {
+        userRef.current = user;
     }, [user]);
+    const hasSession = !!token && !!user;
+    useEffect(() => {
+        if (!hasSession) return;
+        lastPermissionsRefresh.current = Date.now();
+        const onVisible = () => {
+            if (document.visibilityState !== 'visible' || !userRef.current) return;
+            if (Date.now() - lastPermissionsRefresh.current < 60 * 1000) return;
+            lastPermissionsRefresh.current = Date.now();
+            fetchUserPermissions(userRef.current);
+        };
+        document.addEventListener('visibilitychange', onVisible);
+        return () => document.removeEventListener('visibilitychange', onVisible);
+    }, [hasSession, fetchUserPermissions]);
+
+    const updateUser = useCallback((newData) => {
+        setUser(prev => {
+            const updatedUser = { ...prev, ...newData };
+            localStorage.setItem('user', JSON.stringify(updatedUser));
+            return updatedUser;
+        });
+    }, []);
+
+    // Verifica se o utilizador pode aceder a um menu/página.
+    // Admin: sempre. Restantes: estritamente segundo as permissões da API
+    // (enquanto não carregarem, o acesso é negado por segurança).
+    const canAccessMenu = useCallback((permission) => {
+        if (isAdmin) return true;
+        if (!permission) return false;
+        const map = user?.apiPermissions?.permissionsMap;
+        if (!map) return false;
+        const perm = map[permission];
+        return !!(perm && perm.access !== false);
+    }, [isAdmin, user?.apiPermissions]);
 
     const value = {
         user,
@@ -213,6 +286,7 @@ export function AuthProvider({ children }) {
         // Funções de permissão
         hasPermission,
         hasWritePermission,
+        canAccessMenu,
         isAdmin,
         canManageUsers,
         canDeleteRecords,
@@ -229,6 +303,7 @@ export function AuthProvider({ children }) {
     );
 }
 
+// eslint-disable-next-line react-refresh/only-export-components
 export function useAuth() {
     const context = useContext(AuthContext);
     if (!context) {

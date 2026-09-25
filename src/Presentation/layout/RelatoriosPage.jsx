@@ -1,101 +1,140 @@
-
-import { useState, useEffect, useCallback, useRef } from 'react';
-import { Package, Zap, Users, FileText, Calendar, Download, TrendingUp, AlertCircle, ShoppingCart, RefreshCw } from 'lucide-react';
-import { reportsAPI } from '../../services/api';
+import { useMemo, useState } from 'react';
+import { Zap, Users, FileText, Calendar, Download, AlertCircle, ShoppingCart, RefreshCw } from 'lucide-react';
+import RefreshButton from '../Components/ui/RefreshButton';
+import { ErrorState, StaleDataBanner } from '../Components/ui/StateViews';
+import { useReportSummary } from '../../hooks/queries';
+import { useUrlFilters } from '../../hooks/useUrlFilters';
+import { useToast } from '../../context/ToastContext';
+import { getErrorMessage } from '../../utils/apiHelpers';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 
+// Formata uma data como YYYY-MM-DD no fuso horário local.
+// (toISOString() converte para UTC e, em Angola (UTC+1), recua um dia às 00:00.)
+const toLocalISODate = (date) => {
+  const y = date.getFullYear();
+  const m = String(date.getMonth() + 1).padStart(2, '0');
+  const d = String(date.getDate()).padStart(2, '0');
+  return `${y}-${m}-${d}`;
+};
+
+// Converte YYYY-MM-DD para dd/mm/aaaa sem passar por UTC
+const formatISODate = (iso) => {
+  if (!iso) return '-';
+  const [y, m, d] = String(iso).split('-');
+  return y && m && d ? `${d}/${m}/${y}` : String(iso);
+};
+
+const PERIOD_LABELS = {
+  weekly: 'Semanal',
+  monthly: 'Mensal',
+  yearly: 'Anual',
+  custom: 'Personalizado',
+};
+
+const PERIODS = ['weekly', 'monthly', 'yearly', 'custom'];
+
+// Período e intervalo personalizado guardados no URL (?periodo=custom&de=2026-01-01&ate=2026-01-31)
+const FILTER_DEFAULTS = { periodo: 'monthly', de: '', ate: '' };
+
+const ISO_DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
+const isISODate = (value) => ISO_DATE_RE.test(value) && !Number.isNaN(new Date(`${value}T00:00:00`).getTime());
+
+const getPeriodRange = (p) => {
+  const today = new Date();
+  let start = new Date(today);
+  let end = new Date(today);
+
+  if (p === 'weekly') {
+    const day = today.getDay();
+    const diff = day === 0 ? -6 : 1 - day; // Semana começa à segunda-feira
+    start = new Date(today.getFullYear(), today.getMonth(), today.getDate() + diff);
+    end = new Date(start.getFullYear(), start.getMonth(), start.getDate() + 6);
+  } else if (p === 'monthly') {
+    start = new Date(today.getFullYear(), today.getMonth(), 1);
+    end = new Date(today.getFullYear(), today.getMonth() + 1, 0);
+  } else if (p === 'yearly') {
+    start = new Date(today.getFullYear(), 0, 1);
+    end = new Date(today.getFullYear(), 11, 31);
+  }
+
+  return {
+    start: toLocalISODate(start),
+    end: toLocalISODate(end)
+  };
+};
+
+// Desenha o título do cabeçalho do PDF (usado quando o logótipo não pode ser carregado)
+const drawHeaderTitle = (doc, x, titleY, subtitleY) => {
+  doc.setFontSize(22);
+  doc.setTextColor(255, 255, 255);
+  doc.setFont('helvetica', 'bold');
+  doc.text("MOSAP3", x, titleY);
+
+  doc.setFontSize(10);
+  doc.setFont('helvetica', 'normal');
+  doc.setTextColor(200, 200, 200);
+  doc.text("Sistema de Gestão de Fornecedores", x, subtitleY);
+};
+
 export default function RelatoriosPage() {
-  const [period, setPeriod] = useState('monthly');
-  const [dateRange, setDateRange] = useState({
-    start: new Date().toISOString().split('T')[0],
-    end: new Date().toISOString().split('T')[0]
-  });
-  const [reportData, setReportData] = useState(null);
-  const [isLoading, setIsLoading] = useState(false);
-  const [error, setError] = useState(null);
+  const toast = useToast();
+  const { filters, setFilters } = useUrlFilters(FILTER_DEFAULTS);
+  const [isExporting, setIsExporting] = useState(false);
 
-  // Initialize dates based on period
-  const getPeriodRange = useCallback((p) => {
-    const today = new Date();
-    const start = new Date(today);
-    let end = new Date(today);
+  const period = PERIODS.includes(filters.periodo) ? filters.periodo : FILTER_DEFAULTS.periodo;
 
-    if (p === 'weekly') {
-      const day = start.getDay();
-      const diff = start.getDate() - day + (day === 0 ? -6 : 1); // Adjust when day is sunday
-      start.setDate(diff);
-      end.setDate(start.getDate() + 6);
-    } else if (p === 'monthly') {
-      start.setDate(1);
-      end = new Date(today.getFullYear(), today.getMonth() + 1, 0);
-    } else if (p === 'yearly') {
-      start.setMonth(0, 1);
-      end.setMonth(11, 31);
-    }
+  // Para períodos pré-definidos o intervalo é calculado; no personalizado usa as datas do URL
+  const presetRange = getPeriodRange(period === 'custom' ? 'monthly' : period);
+  const effectiveRange = period === 'custom'
+    ? { start: filters.de || presetRange.start, end: filters.ate || presetRange.end }
+    : presetRange;
+  const isRangeInvalid = !isISODate(effectiveRange.start) || !isISODate(effectiveRange.end) || effectiveRange.start > effectiveRange.end;
+  const rangeError = isRangeInvalid
+    ? (effectiveRange.start > effectiveRange.end
+      ? "A data de início não pode ser posterior à data de fim."
+      : "Seleccione um intervalo de datas válido.")
+    : null;
 
-    return {
-      start: start.toISOString().split('T')[0],
-      end: end.toISOString().split('T')[0]
-    };
-  }, []);
+  const params = useMemo(() => ({
+    ...(period === 'custom' ? {} : { period }),
+    start_date: effectiveRange.start,
+    end_date: effectiveRange.end,
+  }), [period, effectiveRange.start, effectiveRange.end]);
 
-  const getEffectiveRange = useCallback((p) => {
+  const {
+    data: reportData,
+    isLoading,
+    isFetching,
+    isError,
+    error,
+    refetch,
+    dataUpdatedAt,
+    isPlaceholderData,
+  } = useReportSummary(params, { enabled: !isRangeInvalid });
+
+  const handleSelectPeriod = (p) => {
+    if (p === period) return;
     if (p === 'custom') {
-      return { start: dateRange.start, end: dateRange.end };
+      // Ao mudar para personalizado, parte do intervalo actualmente visível
+      setFilters({ periodo: 'custom', de: effectiveRange.start, ate: effectiveRange.end });
+    } else {
+      setFilters({ periodo: p, de: '', ate: '' });
     }
-    return getPeriodRange(p);
-  }, [dateRange.start, dateRange.end, getPeriodRange]);
-
-  const buildParams = useCallback((p) => {
-    const range = getEffectiveRange(p);
-    return {
-      period: p === 'custom' ? undefined : p,
-      start_date: range.start,
-      end_date: range.end
-    };
-  }, [getEffectiveRange]);
-
-  const lastFetchedKey = useRef('');
-
-  // Fetch report data
-  const fetchReport = useCallback(async () => {
-    const params = buildParams(period);
-    const key = `${period}:${params.start_date}:${params.end_date}`;
-    if (lastFetchedKey.current === key) return;
-
-    setIsLoading(true);
-    setError(null);
-    try {
-      const data = await reportsAPI.getSummary(params);
-      lastFetchedKey.current = key;
-      setReportData(data);
-    } catch (err) {
-      console.error("Erro ao carregar relatório:", err);
-      setError("Falha ao carregar os dados do relatório.");
-    } finally {
-      setIsLoading(false);
-    }
-  }, [buildParams, period]);
-
-  // Keep the date range inputs in sync with the selected period
-  useEffect(() => {
-    if (period === 'custom') return;
-    const range = getPeriodRange(period);
-    setDateRange(range);
-  }, [period, getPeriodRange]);
-
-  useEffect(() => {
-    fetchReport();
-  }, [fetchReport, dateRange.start, dateRange.end]);
+  };
 
   const handleExportPDF = async () => {
-    setIsLoading(true);
+    if (isExporting) return;
+    if (isRangeInvalid) {
+      toast.error(rangeError);
+      return;
+    }
+    setIsExporting(true);
     try {
-      // Buscar dados actualizados do reporte para o período/filtros actualmente seleccionados
-      const params = buildParams(period);
-      const data = await reportsAPI.getSummary(params);
-      setReportData(data);
+      // Buscar dados actualizados do relatório para o período/filtros actualmente seleccionados
+      const result = await refetch();
+      if (result.isError) throw result.error;
+      const data = result.data || {};
 
       const doc = new jsPDF();
 
@@ -109,83 +148,43 @@ export default function RelatoriosPage() {
       doc.rect(0, 0, 210, 40, 'F');
 
       // Logo Loading
-      try {
-        const logoUrl = '/login1.svg';
-        await new Promise((resolve) => {
-          const img = new Image();
-          img.src = logoUrl;
-          img.crossOrigin = 'Anonymous';
-          img.onload = () => {
-            try {
-              const canvas = document.createElement('canvas');
-              canvas.width = 500;
-              canvas.height = 500;
-              const ctx = canvas.getContext('2d');
-              ctx.drawImage(img, 0, 0, 500, 500);
-              const dataUrl = canvas.toDataURL('image/png');
-              doc.addImage(dataUrl, 'PNG', 14, 8, 24, 24);
+      await new Promise((resolve) => {
+        const img = new Image();
+        img.crossOrigin = 'Anonymous';
+        img.onload = () => {
+          try {
+            const canvas = document.createElement('canvas');
+            canvas.width = 500;
+            canvas.height = 500;
+            const ctx = canvas.getContext('2d');
+            ctx.drawImage(img, 0, 0, 500, 500);
+            const dataUrl = canvas.toDataURL('image/png');
+            doc.addImage(dataUrl, 'PNG', 14, 8, 24, 24);
 
-              // Text drawn next to logo
-              doc.setFontSize(22);
-              doc.setTextColor(255, 255, 255);
-              doc.setFont('helvetica', 'bold');
-              doc.text("MOSAP3", 42, 19);
-
-              doc.setFontSize(10);
-              doc.setFont('helvetica', 'normal');
-              doc.setTextColor(200, 200, 200);
-              doc.text("Sistema de Gestão de Fornecedores", 42, 26);
-            } catch (err) {
-              // Fallback
-              doc.setFontSize(22);
-              doc.setTextColor(255, 255, 255);
-              doc.setFont('helvetica', 'bold');
-              doc.text("MOSAP3", 14, 20);
-
-              doc.setFontSize(10);
-              doc.setFont('helvetica', 'normal');
-              doc.setTextColor(200, 200, 200);
-              doc.text("Sistema de Gestão de Fornecedores", 14, 28);
-            }
-            resolve();
-          };
-          img.onerror = () => {
-            // Fallback
-            doc.setFontSize(22);
-            doc.setTextColor(255, 255, 255);
-            doc.setFont('helvetica', 'bold');
-            doc.text("MOSAP3", 14, 20);
-
-            doc.setFontSize(10);
-            doc.setFont('helvetica', 'normal');
-            doc.setTextColor(200, 200, 200);
-            doc.text("Sistema de Gestão de Fornecedores", 14, 28);
-            resolve();
-          };
-        });
-      } catch (e) {
-        // Fallback
-        doc.setFontSize(22);
-        doc.setTextColor(255, 255, 255);
-        doc.setFont('helvetica', 'bold');
-        doc.text("MOSAP3", 14, 20);
-
-        doc.setFontSize(10);
-        doc.setFont('helvetica', 'normal');
-        doc.setTextColor(200, 200, 200);
-        doc.text("Sistema de Gestão de Fornecedores", 14, 28);
-      }
+            // Text drawn next to logo
+            drawHeaderTitle(doc, 42, 19, 26);
+          } catch {
+            drawHeaderTitle(doc, 14, 20, 28);
+          }
+          resolve();
+        };
+        img.onerror = () => {
+          drawHeaderTitle(doc, 14, 20, 28);
+          resolve();
+        };
+        img.src = '/login1.svg';
+      });
 
       // Report Info
       doc.setFontSize(10);
       doc.setTextColor(255, 255, 255);
       doc.text("Relatório Executivo", 196, 20, { align: 'right' });
 
-      const periodLabel = period === 'weekly' ? 'Semanal' : period === 'monthly' ? 'Mensal' : period === 'yearly' ? 'Anual' : 'Personalizado';
+      const periodLabel = PERIOD_LABELS[period] || 'Personalizado';
       doc.setTextColor(brandGreen);
       doc.text(periodLabel.toUpperCase(), 196, 26, { align: 'right' });
 
-      const dateStr = `${new Date(params.start_date).toLocaleDateString('pt-AO')} - ${new Date(params.end_date).toLocaleDateString('pt-AO')}`;
+      const dateStr = `${formatISODate(params.start_date)} - ${formatISODate(params.end_date)}`;
       doc.setTextColor(156, 163, 175);
       doc.text(dateStr, 196, 32, { align: 'right' });
 
@@ -201,7 +200,7 @@ export default function RelatoriosPage() {
       const metricsData = [
         ['Total de Cotações', data.metrics?.total_quotations || 0],
         ['Cotações Enviadas', data.metrics?.sent_quotations || 0],
-        ['Licitantes Registrados', data.metrics?.total_suppliers || 0],
+        ['Licitantes Registados', data.metrics?.total_suppliers || 0],
         ['Total Aquisições', data.metrics?.total_acquisitions || 0],
         ['Pendentes', data.metrics?.pending_count || 0],
         ['Concluídas', data.metrics?.completed_count || 0]
@@ -222,42 +221,6 @@ export default function RelatoriosPage() {
 
       currentY = doc.lastAutoTable.finalY + 15;
 
-      // --- Top Products Table hidden to match screen layout ---
-      /*
-      doc.setFontSize(14);
-      doc.setTextColor(brandDark);
-      doc.text("Top Produtos Adquiridos", 14, currentY);
-      currentY += 5;
-
-      const productsData = reportData.top_products?.map(p => [
-        p.name,
-        p.quantity,
-        formatCurrency(p.total)
-      ]) || [];
-
-      if (productsData.length > 0) {
-        autoTable(doc, {
-          startY: currentY,
-          head: [['Produto', 'Qtd', 'Total']],
-          body: productsData,
-          theme: 'striped',
-          headStyles: { fillColor: [17, 24, 39], textColor: 255 }, // Dark
-          styles: { fontSize: 10, cellPadding: 3 },
-          columnStyles: {
-            1: { halign: 'center' },
-            2: { halign: 'right' }
-          }
-        });
-        currentY = doc.lastAutoTable.finalY + 10;
-      } else {
-        doc.setFontSize(10);
-        doc.setFont('helvetica', 'italic');
-        doc.setTextColor(100, 100, 100);
-        doc.text("Nenhum produto registrado neste período.", 14, currentY + 10);
-        currentY += 20;
-      }
-      */
-
       // --- Footer ---
       const pageHeight = doc.internal.pageSize.height;
       doc.setFontSize(8);
@@ -265,28 +228,26 @@ export default function RelatoriosPage() {
       doc.text(`Gerado em ${new Date().toLocaleString('pt-AO')} - MOSAP3`, 105, pageHeight - 10, { align: 'center' });
 
       doc.save(`relatorio_${period}_${params.start_date}.pdf`);
+      toast.success("Relatório PDF gerado com sucesso.");
     } catch (err) {
       console.error("Erro ao gerar PDF:", err);
-      setError("Erro ao gerar PDF");
+      toast.error(err?.isAxiosError || err?.response ? getErrorMessage(err, "Erro ao gerar o PDF.") : "Erro ao gerar o PDF.");
     } finally {
-      setIsLoading(false);
+      setIsExporting(false);
     }
   };
 
   const handleDateChange = (e) => {
     const { name, value } = e.target;
-    setDateRange(prev => ({ ...prev, [name]: value }));
-    if (period !== 'custom') setPeriod('custom');
+    setFilters({
+      periodo: 'custom',
+      de: name === 'start' ? value : effectiveRange.start,
+      ate: name === 'end' ? value : effectiveRange.end,
+    });
   };
 
-  // Helper for currency formatting
-  const formatCurrency = (value) => {
-    return new Intl.NumberFormat('pt-AO', {
-      style: 'currency',
-      currency: 'AOA',
-      minimumFractionDigits: 2
-    }).format(value || 0);
-  };
+  const hasData = !!reportData;
+  const busy = isFetching || isExporting;
 
   return (
     <div className="space-y-8 animate-fadeIn relative">
@@ -300,31 +261,28 @@ export default function RelatoriosPage() {
 
           <button
             onClick={handleExportPDF}
-            disabled={isLoading}
-            className="lg:hidden flex items-center gap-2 px-4 py-2 bg-gray-900 text-white rounded-xl hover:bg-gray-800 transition-colors shadow-sm font-medium text-sm"
+            disabled={busy || isRangeInvalid}
+            className="lg:hidden flex items-center gap-2 px-4 py-2 bg-gray-900 text-white rounded-xl hover:bg-gray-800 transition-colors shadow-sm font-medium text-sm disabled:opacity-60"
           >
-            {isLoading ? '...' : <Download size={16} />}
+            {isExporting ? '...' : <Download size={16} />}
             PDF
           </button>
         </div>
 
 
         <div className="flex flex-wrap items-center gap-3">
-          <button
-            onClick={fetchReport}
-            disabled={isLoading}
-            className="flex items-center gap-2 px-4 py-3 bg-white border border-gray-200 text-gray-700 rounded-xl hover:bg-gray-50 transition-colors shadow-sm font-medium"
-          >
-            <RefreshCw size={18} className={isLoading ? "animate-spin" : ""} />
-            <span className="hidden sm:inline">Atualizar</span>
-          </button>
+          <RefreshButton
+            onClick={() => { if (!isRangeInvalid && !isExporting) refetch(); }}
+            isFetching={isFetching}
+            updatedAt={isRangeInvalid ? undefined : dataUpdatedAt}
+          />
 
           <button
             onClick={handleExportPDF}
-            disabled={isLoading}
-            className="hidden lg:flex items-center gap-2 px-5 py-3 bg-gray-900 text-white rounded-xl hover:bg-gray-800 transition-colors shadow-sm font-medium"
+            disabled={busy || isRangeInvalid}
+            className="hidden lg:flex items-center gap-2 px-5 py-3 bg-gray-900 text-white rounded-xl hover:bg-gray-800 transition-colors shadow-sm font-medium disabled:opacity-60"
           >
-            {isLoading ? 'Gerando...' : (
+            {isExporting ? 'A gerar...' : (
               <>
                 <Download size={18} />
                 Exportar PDF
@@ -338,15 +296,13 @@ export default function RelatoriosPage() {
             {['weekly', 'monthly', 'yearly', 'custom'].map((p) => (
               <button
                 key={p}
-                onClick={() => setPeriod(p)}
+                onClick={() => handleSelectPeriod(p)}
                 className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${period === p
                   ? 'bg-[#44B16F] text-white shadow-sm'
                   : 'text-gray-600 hover:bg-gray-50'
                   }`}
               >
-                {p === 'weekly' ? 'Semanal' :
-                  p === 'monthly' ? 'Mensal' :
-                    p === 'yearly' ? 'Anual' : 'Personalizado'}
+                {PERIOD_LABELS[p]}
               </button>
             ))}
           </div>
@@ -356,7 +312,9 @@ export default function RelatoriosPage() {
               <input
                 type="date"
                 name="start"
-                value={dateRange.start}
+                value={effectiveRange.start}
+                max={effectiveRange.end || undefined}
+                aria-label="Data de início"
                 onChange={handleDateChange}
                 className="border-none bg-transparent text-sm text-gray-700 focus:ring-0"
               />
@@ -364,7 +322,9 @@ export default function RelatoriosPage() {
               <input
                 type="date"
                 name="end"
-                value={dateRange.end}
+                value={effectiveRange.end}
+                min={effectiveRange.start || undefined}
+                aria-label="Data de fim"
                 onChange={handleDateChange}
                 className="border-none bg-transparent text-sm text-gray-700 focus:ring-0"
               />
@@ -373,16 +333,28 @@ export default function RelatoriosPage() {
         </div>
       </div>
 
-      {/* ERROR STATE */}
-      {error && (
-        <div className="bg-red-50 p-4 rounded-xl border border-red-100 flex items-center gap-3 text-red-700">
+      {/* Intervalo de datas inválido */}
+      {rangeError && (
+        <div role="alert" className="bg-red-50 p-4 rounded-xl border border-red-100 flex items-center gap-3 text-red-700">
           <AlertCircle size={20} />
-          {error}
+          {rangeError}
+        </div>
+      )}
+
+      {/* Falha numa actualização com dados antigos em ecrã */}
+      {!isRangeInvalid && isError && hasData && (
+        <StaleDataBanner onRetry={refetch} isRetrying={isFetching} />
+      )}
+
+      {/* Falha sem dados para mostrar */}
+      {!isRangeInvalid && isError && !hasData && (
+        <div className="bg-white rounded-2xl shadow-sm border border-gray-100">
+          <ErrorState message={getErrorMessage(error, "Falha ao carregar os dados do relatório.")} onRetry={refetch} isRetrying={isFetching} />
         </div>
       )}
 
       {/* LOADING STATE */}
-      {isLoading && (
+      {!isRangeInvalid && isLoading && (
         <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
           {[1, 2, 3, 4].map(i => (
             <div key={i} className="h-32 bg-gray-100 rounded-2xl animate-pulse" />
@@ -393,8 +365,11 @@ export default function RelatoriosPage() {
       )}
 
       {/* REPORT CONTENT */}
-      {!isLoading && reportData && (
-        <div className="space-y-8 bg-transparent">
+      {!isRangeInvalid && !isLoading && reportData && (
+        <div
+          className={`space-y-8 bg-transparent transition-opacity ${isPlaceholderData ? 'opacity-60' : ''}`}
+          aria-busy={isPlaceholderData || undefined}
+        >
           {/* Metrics Grid */}
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             
@@ -424,14 +399,14 @@ export default function RelatoriosPage() {
               </h3>
             </div>
 
-            {/* Licitantes Registrados */}
+            {/* Licitantes Registados */}
             <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
               <div className="flex items-start justify-between mb-4">
                 <div className="p-3 bg-emerald-50 text-emerald-600 rounded-xl">
                   <Users size={24} />
                 </div>
               </div>
-              <p className="text-sm text-gray-500 font-medium">Licitantes Registrados</p>
+              <p className="text-sm text-gray-500 font-medium">Licitantes Registados</p>
               <h3 className="text-2xl font-bold text-gray-900 mt-1">
                 {reportData.metrics?.total_suppliers || 0}
               </h3>
@@ -478,57 +453,6 @@ export default function RelatoriosPage() {
 
           </div>
 
-          {/* Evolução de Gastos and Top Produtos hidden as requested */}
-          {/* <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
-              <h3 className="text-lg font-bold text-gray-900 mb-6">Evolução de Gastos</h3>
-              {reportData.charts?.spending_over_time?.length > 0 ? (
-                <div className="h-64 flex items-end justify-center gap-4">
-                  {reportData.charts.spending_over_time.map((item, idx) => (
-                    <div key={idx} className="flex flex-col items-center">
-                      <div
-                        className="w-12 bg-blue-500 rounded-t-lg hover:bg-blue-600 transition-colors"
-                        style={{ height: `${((item.value || 0) / (Math.max(...reportData.charts.spending_over_time.map(i => i.value || 0)) || 1)) * 100}%` }}
-                      ></div>
-                      <span className="text-xs text-gray-500 mt-2">{item.date}</span>
-                    </div>
-                  ))}
-                </div>
-              ) : (
-                <div className="h-64 flex items-center justify-center text-gray-400 bg-gray-50 rounded-xl border border-dashed border-gray-200">
-                  Sem dados para o período
-                </div>
-              )}
-            </div>
-
-            <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
-              <h3 className="text-lg font-bold text-gray-900 mb-6">Top Produtos</h3>
-              <div className="space-y-4">
-                {reportData.top_products?.length > 0 ? (
-                  reportData.top_products.map((prod, idx) => (
-                    <div key={idx} className="flex items-center justify-between p-3 hover:bg-gray-50 rounded-xl transition-colors">
-                      <div className="flex items-center gap-3">
-                        <div className="w-8 h-8 rounded-lg bg-emerald-100 text-emerald-600 flex items-center justify-center font-bold text-xs">
-                          #{idx + 1}
-                        </div>
-                        <div>
-                          <p className="font-medium text-gray-900">{prod.name}</p>
-                          <p className="text-xs text-gray-500">{prod.quantity} unidades</p>
-                        </div>
-                      </div>
-                      <span className="font-bold text-gray-900">
-                        {formatCurrency(prod.total)}
-                      </span>
-                    </div>
-                  ))
-                ) : (
-                  <div className="text-center py-10 text-gray-400">
-                    Nenhum produto encontrado
-                  </div>
-                )}
-              </div>
-            </div>
-          </div> */}
         </div>
       )}
     </div>

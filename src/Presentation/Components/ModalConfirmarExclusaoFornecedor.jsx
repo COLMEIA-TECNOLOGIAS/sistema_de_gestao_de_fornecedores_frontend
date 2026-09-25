@@ -34,8 +34,8 @@ export default function ModalConfirmarExclusaoFornecedor({ isOpen, onClose, onCo
                 {/* Content */}
                 <div className="p-6">
                     <p className="text-gray-600 text-center text-lg">
-                        {isAdmin ? 'Tens certeza que quer eliminar' : 'Solicitar ao administrador a eliminação de'}{' '}
-                        <span className="font-bold text-gray-900">{fornecedor.commercial_name || fornecedor.legal_name}</span>?
+                        {isAdmin ? 'Tem a certeza de que pretende eliminar' : 'Solicitar ao administrador a eliminação de'}{' '}
+                        <span className="font-bold text-gray-900">{fornecedor.company_name || fornecedor.commercial_name || fornecedor.legal_name || 'este fornecedor'}</span>?
                     </p>
                     <p className="text-gray-500 text-sm text-center mt-2">
                         {isAdmin
@@ -64,7 +64,7 @@ export default function ModalConfirmarExclusaoFornecedor({ isOpen, onClose, onCo
                                     <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
                                     <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
                                 </svg>
-                                {isAdmin ? 'Eliminando...' : 'Enviando pedido...'}
+                                {isAdmin ? 'A eliminar...' : 'A enviar pedido...'}
                             </>
                         ) : (
                             isAdmin ? 'Sim, eliminar' : 'Enviar pedido'

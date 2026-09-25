@@ -3,22 +3,24 @@ import { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { X, ShoppingCart, Loader2, Calendar } from 'lucide-react';
 
+const getResponseDate = (res) => {
+    const raw = res?.delivery_date || res?.expected_delivery_date;
+    return raw ? String(raw).slice(0, 10) : '';
+};
+
+// Data mínima (amanhã) no fuso horário local, no formato YYYY-MM-DD
+const getMinDate = () => {
+    const d = new Date();
+    d.setDate(d.getDate() + 1);
+    const pad = (n) => String(n).padStart(2, '0');
+    return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+};
+
 export default function ModalGerarAquisicao({ isOpen, onClose, onSubmit, isLoading, response }) {
     const [expectedDeliveryDate, setExpectedDeliveryDate] = useState('');
     const [justification, setJustification] = useState('');
 
-    const minDate = (() => {
-        const d = new Date();
-        d.setDate(d.getDate() + 1);
-        return d.toISOString().slice(0, 10);
-    })();
-
     useModalLock(isOpen);
-
-    const getResponseDate = (res) => {
-        const raw = res?.delivery_date || res?.expected_delivery_date;
-        return raw ? String(raw).slice(0, 10) : '';
-    };
 
     useEffect(() => {
         if (isOpen) {
@@ -29,10 +31,19 @@ export default function ModalGerarAquisicao({ isOpen, onClose, onSubmit, isLoadi
 
     if (!isOpen) return null;
 
+    // Não fechar a meio de um pedido (evita perder o resultado / duplo envio)
+    const handleClose = () => {
+        if (!isLoading) onClose();
+    };
+
+    // A data vem da proposta do fornecedor; se não vier, o utilizador tem de a indicar
+    const supplierDate = getResponseDate(response);
+    const minDate = getMinDate();
+
     const handleSubmit = (e) => {
         e.preventDefault();
-        if (!expectedDeliveryDate) return;
-        onSubmit({ expected_delivery_date: expectedDeliveryDate, justification });
+        if (!expectedDeliveryDate || isLoading) return;
+        onSubmit({ expected_delivery_date: expectedDeliveryDate, justification: justification.trim() });
     };
 
     const supplierName = response?.supplier?.company_name
@@ -46,7 +57,7 @@ export default function ModalGerarAquisicao({ isOpen, onClose, onSubmit, isLoadi
             {/* Backdrop */}
             <div
                 className="absolute inset-0 bg-black/70 backdrop-blur-sm"
-                onClick={onClose}
+                onClick={handleClose}
             />
 
             {/* Modal */}
@@ -57,7 +68,9 @@ export default function ModalGerarAquisicao({ isOpen, onClose, onSubmit, isLoadi
                         Gerar Aquisição
                     </h3>
                     <button
-                        onClick={onClose}
+                        onClick={handleClose}
+                        disabled={isLoading}
+                        aria-label="Fechar"
                         className="p-2 hover:bg-gray-100 rounded-full transition-colors text-gray-500"
                     >
                         <X size={20} />
@@ -86,12 +99,19 @@ export default function ModalGerarAquisicao({ isOpen, onClose, onSubmit, isLoadi
                         <input
                             type="date"
                             value={expectedDeliveryDate}
-                            min={expectedDeliveryDate || minDate}
+                            min={supplierDate ? undefined : minDate}
+                            onChange={(e) => setExpectedDeliveryDate(e.target.value)}
                             required
-                            readOnly
-                            className="w-full px-4 py-2.5 bg-gray-100 border border-gray-200 rounded-xl focus:outline-none text-gray-700 cursor-not-allowed"
+                            readOnly={!!supplierDate}
+                            className={supplierDate
+                                ? "w-full px-4 py-2.5 bg-gray-100 border border-gray-200 rounded-xl focus:outline-none text-gray-700 cursor-not-allowed"
+                                : "w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#44B16F]/20 focus:border-[#44B16F] text-gray-700"}
                         />
-                        <p className="text-xs text-gray-500 px-1">Data definida pelo fornecedor na proposta.</p>
+                        <p className="text-xs text-gray-500 px-1">
+                            {supplierDate
+                                ? 'Data definida pelo fornecedor na proposta.'
+                                : 'A proposta não indica data de entrega. Indique a data prevista.'}
+                        </p>
                     </div>
 
                     <div className="space-y-1.5">
@@ -108,15 +128,16 @@ export default function ModalGerarAquisicao({ isOpen, onClose, onSubmit, isLoadi
                     <div className="pt-4 flex gap-3">
                         <button
                             type="button"
-                            onClick={onClose}
+                            onClick={handleClose}
+                            disabled={isLoading}
                             className="flex-1 px-4 py-2.5 border border-gray-200 text-gray-600 font-bold rounded-xl hover:bg-gray-50 transition-colors"
                         >
                             Cancelar
                         </button>
                         <button
                             type="submit"
-                            disabled={isLoading}
-                            className="flex-1 px-4 py-2.5 bg-[#44B16F] text-white font-bold rounded-xl hover:bg-[#368d58] transition-all shadow-lg shadow-[#44B16F]/20 flex items-center justify-center gap-2"
+                            disabled={isLoading || !expectedDeliveryDate}
+                            className="flex-1 px-4 py-2.5 bg-[#44B16F] disabled:opacity-60 disabled:cursor-not-allowed text-white font-bold rounded-xl hover:bg-[#368d58] transition-all shadow-lg shadow-[#44B16F]/20 flex items-center justify-center gap-2"
                         >
                             {isLoading ? (
                                 <Loader2 size={18} className="animate-spin" />

@@ -1,35 +1,40 @@
-import { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
-import { X, TrendingUp, DollarSign, BarChart2 } from 'lucide-react';
+import { useQuery } from '@tanstack/react-query';
+import { X, TrendingUp, BarChart2 } from 'lucide-react';
 import { productsAPI } from '../../services/api';
+import { useModalLock } from '../../hooks/useModalLock';
+import { queryKeys } from '../../lib/queryKeys';
+import { getErrorMessage, unwrap } from '../../utils/apiHelpers';
+
+const formatPrice = (value, options) => {
+    const number = parseFloat(value);
+    return Number.isNaN(number) ? '---' : `${number.toLocaleString('pt-AO', options)} AOA`;
+};
+
+const formatDate = (value) => {
+    if (!value) return '—';
+    const date = new Date(value);
+    return Number.isNaN(date.getTime()) ? '—' : date.toLocaleDateString('pt-AO');
+};
 
 export default function ModalProdutoAnalytics({ isOpen, onClose, product }) {
-    const [isLoading, setIsLoading] = useState(false);
-    const [analytics, setAnalytics] = useState(null);
-    const [error, setError] = useState(null);
+    const productId = product?.id;
 
-    useEffect(() => {
-        if (isOpen && product) {
-            fetchAnalytics();
-        } else {
-            setAnalytics(null);
-            setError(null);
-        }
-    }, [isOpen, product]);
+    useModalLock(isOpen);
 
-    const fetchAnalytics = async () => {
-        try {
-            setIsLoading(true);
-            setError(null);
-            const data = await productsAPI.getAnalytics(product.id);
-            setAnalytics(data);
-        } catch (err) {
-            console.error("Failed to fetch analytics", err);
-            setError("Não foi possível carregar os dados de análise.");
-        } finally {
-            setIsLoading(false);
-        }
-    };
+    const {
+        data: analytics,
+        isLoading,
+        isError,
+        error,
+        refetch,
+        isFetching,
+    } = useQuery({
+        queryKey: queryKeys.products.analytics(productId),
+        // Aceita tanto o objecto directo como envolvido em { data: {...} }
+        queryFn: async () => unwrap(await productsAPI.getAnalytics(productId)) ?? null,
+        enabled: isOpen && productId != null,
+    });
 
     if (!isOpen) return null;
 
@@ -51,6 +56,7 @@ export default function ModalProdutoAnalytics({ isOpen, onClose, product }) {
                     </div>
                     <button
                         onClick={onClose}
+                        aria-label="Fechar"
                         className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-full transition-colors"
                     >
                         <X size={20} />
@@ -62,16 +68,17 @@ export default function ModalProdutoAnalytics({ isOpen, onClose, product }) {
                     {isLoading ? (
                         <div className="flex flex-col items-center justify-center py-8">
                             <TrendingUp className="text-[#44B16F] animate-bounce mb-3" size={32} />
-                            <p className="text-gray-500 text-sm">Carregando análise...</p>
+                            <p className="text-gray-500 text-sm">A carregar análise...</p>
                         </div>
-                    ) : error ? (
-                        <div className="text-center py-6">
-                            <p className="text-red-500 mb-2">{error}</p>
+                    ) : isError && !analytics ? (
+                        <div className="text-center py-6" role="alert">
+                            <p className="text-red-500 mb-2">{getErrorMessage(error, "Não foi possível carregar os dados de análise.")}</p>
                             <button
-                                onClick={fetchAnalytics}
-                                className="text-sm font-medium text-blue-600 hover:underline"
+                                onClick={() => refetch()}
+                                disabled={isFetching}
+                                className="text-sm font-medium text-blue-600 hover:underline disabled:opacity-50"
                             >
-                                Tentar novamente
+                                {isFetching ? 'A tentar...' : 'Tentar novamente'}
                             </button>
                         </div>
                     ) : (
@@ -94,7 +101,7 @@ export default function ModalProdutoAnalytics({ isOpen, onClose, product }) {
                                     </div>
                                     <p className="text-2xl font-black text-emerald-700">
                                         {analytics?.best_price
-                                            ? `${parseFloat(analytics.best_price).toLocaleString('pt-AO', { minimumFractionDigits: 2 })} AOA`
+                                            ? formatPrice(analytics.best_price, { minimumFractionDigits: 2 })
                                             : '---'}
                                     </p>
                                 </div>
@@ -108,21 +115,21 @@ export default function ModalProdutoAnalytics({ isOpen, onClose, product }) {
                                     </div>
                                     <p className="text-2xl font-black text-blue-700">
                                         {analytics?.average_price
-                                            ? `${parseFloat(analytics.average_price).toLocaleString('pt-AO', { minimumFractionDigits: 2 })} AOA`
+                                            ? formatPrice(analytics.average_price, { minimumFractionDigits: 2 })
                                             : '---'}
                                     </p>
                                 </div>
                             </div>
 
                             {/* Recent History or Additional Info could go here if available */}
-                            {analytics?.history && analytics.history.length > 0 && (
+                            {Array.isArray(analytics?.history) && analytics.history.length > 0 && (
                                 <div>
                                     <h4 className="text-sm font-bold text-gray-900 mb-3">Histórico Recente</h4>
                                     <div className="space-y-2">
                                         {analytics.history.slice(0, 5).map((h, i) => (
                                             <div key={i} className="flex justify-between items-center text-sm p-2 bg-gray-50 rounded-lg">
-                                                <span className="text-gray-600">{new Date(h.date).toLocaleDateString()}</span>
-                                                <span className="font-medium text-gray-900">{parseFloat(h.price).toLocaleString('pt-AO')} AOA</span>
+                                                <span className="text-gray-600">{formatDate(h.date)}</span>
+                                                <span className="font-medium text-gray-900">{formatPrice(h.price)}</span>
                                             </div>
                                         ))}
                                     </div>

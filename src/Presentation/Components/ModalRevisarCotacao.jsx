@@ -1,8 +1,10 @@
 import { useState } from 'react';
 import { createPortal } from 'react-dom';
-import { X, CheckCircle, XCircle, MessageSquare, ShoppingCart, FileText } from 'lucide-react';
+import { CheckCircle, XCircle, MessageSquare, ShoppingCart, FileText } from 'lucide-react';
 import api from '../../services/api';
 import { useModalLock } from '../../hooks/useModalLock';
+import { useToast } from '../../context/ToastContext';
+import { getErrorMessage } from '../../utils/apiHelpers';
 
 export default function ModalRevisarCotacao({
     isOpen,
@@ -15,6 +17,7 @@ export default function ModalRevisarCotacao({
     isAcquisition
 }) {
     const [viewingDoc, setViewingDoc] = useState(false);
+    const toast = useToast();
     useModalLock(isOpen);
 
     if (!isOpen || !cotacao) return null;
@@ -68,6 +71,62 @@ export default function ModalRevisarCotacao({
     const handleGerarAquisicao = () => {
         if (onGerarAquisicao) {
             onGerarAquisicao(cotacao);
+        }
+    };
+
+    const handleViewDocument = async () => {
+        const responseId = cotacao.quotation_response_id
+            || cotacao.response_id
+            || cotacao.quotation_supplier?.quotation_response_id
+            || cotacao.id
+            || cotacao.quotation_supplier?.id
+            || null;
+
+        if (viewingDoc) return;
+        if (!responseId) {
+            toast.error('ID da resposta de cotação não encontrado. Verifique se esta proposta tem um documento associado.');
+            return;
+        }
+
+        // Abre a janela já no clique (antes do pedido assíncrono) para não ser bloqueada pelo navegador
+        const newWindow = window.open('', '_blank');
+        setViewingDoc(true);
+        try {
+            const response = await api.get(`/quotation-responses/${responseId}/document`, {
+                responseType: 'blob',
+                headers: {
+                    'Accept': 'application/pdf, image/*',
+                }
+            });
+
+            const blob = new Blob([response.data], { type: response.headers['content-type'] });
+            const objectUrl = window.URL.createObjectURL(blob);
+
+            if (newWindow && !newWindow.closed) {
+                newWindow.location.href = objectUrl;
+            } else {
+                window.open(objectUrl, '_blank');
+            }
+            setTimeout(() => window.URL.revokeObjectURL(objectUrl), 60000);
+        } catch (error) {
+            console.error("Erro ao abrir documento:", error);
+            if (newWindow && !newWindow.closed) newWindow.close();
+
+            // Pedido em blob: a mensagem do servidor não é legível, usar mensagens específicas
+            const status = error.response?.status;
+            let msg;
+            if (status === 404) {
+                msg = `Documento não encontrado (ID da resposta: ${responseId}).`;
+            } else if (status === 400) {
+                msg = `Pedido inválido (ID usado: ${responseId}).`;
+            } else if (status === 403 || status === 401) {
+                msg = "Sem permissão para visualizar este documento.";
+            } else {
+                msg = getErrorMessage(error.response ? { response: { status } } : error, "Erro ao carregar o documento.");
+            }
+            toast.error(msg);
+        } finally {
+            setViewingDoc(false);
         }
     };
 
@@ -182,107 +241,13 @@ export default function ModalRevisarCotacao({
                     <div className="mb-6 pb-6" style={{ borderBottom: '1px solid var(--color-border)' }}>
                         <h3 className="font-semibold mb-4" style={{ color: 'var(--color-text-primary)' }}>Documento da Proposta:</h3>
                         <button
-                            onClick={async () => {
-                                try {
-                                    setViewingDoc(true);
-
-                                    console.group('📄 Documento da Proposta - Debug Info');
-                                    console.log('1. Cotacao object:', cotacao);
-                                    console.log('2. Is Acquisition?', isAcquisition);
-
-                                    const idSources = {
-                                        direct_qr_id: cotacao.quotation_response_id,
-                                        qs_qr_id: cotacao.quotation_supplier?.quotation_response_id,
-                                        qs_pivot_id: cotacao.quotation_supplier?.id,
-                                        root_id: cotacao.id,
-                                        response_id: cotacao.response_id
-                                    };
-
-                                    console.log('3. Available ID sources:', idSources);
-
-                                    let responseId = null;
-                                    let idSource = null;
-
-                                    if (cotacao.quotation_response_id) {
-                                        responseId = cotacao.quotation_response_id;
-                                        idSource = 'quotation_response_id';
-                                    } else if (cotacao.response_id) {
-                                        responseId = cotacao.response_id;
-                                        idSource = 'response_id';
-                                    } else if (cotacao.quotation_supplier?.quotation_response_id) {
-                                        responseId = cotacao.quotation_supplier.quotation_response_id;
-                                        idSource = 'quotation_supplier.quotation_response_id';
-                                    } else if (cotacao.id) {
-                                        responseId = cotacao.id;
-                                        idSource = 'cotacao.id (fallback)';
-                                    } else if (cotacao.quotation_supplier?.id) {
-                                        responseId = cotacao.quotation_supplier.id;
-                                        idSource = 'quotation_supplier.id (pivot - risky)';
-                                    }
-
-                                    console.log('4. Resolved ID:', responseId);
-                                    console.log('5. ID Source:', idSource);
-
-                                    if (!responseId) {
-                                        console.error('❌ No valid response ID found!');
-                                        console.groupEnd();
-                                        alert("Erro: ID da resposta de cotação não encontrado. Verifique se esta proposta tem um documento associado.");
-                                        setViewingDoc(false);
-                                        return;
-                                    }
-
-                                    const url = `/quotation-responses/${responseId}/document`;
-                                    console.log('6. API URL:', url);
-
-                                    const response = await api.get(url, {
-                                        responseType: 'blob',
-                                        headers: {
-                                            'Accept': 'application/pdf, image/*',
-                                        }
-                                    });
-
-                                    console.log('7. Response received:', {
-                                        status: response.status,
-                                        contentType: response.headers['content-type'],
-                                        size: response.data.size
-                                    });
-
-                                    const blob = new Blob([response.data], { type: response.headers['content-type'] });
-                                    const objectUrl = window.URL.createObjectURL(blob);
-
-                                    console.log('8. Opening document in new tab...');
-                                    console.groupEnd();
-
-                                    window.open(objectUrl, '_blank');
-                                    setTimeout(() => window.URL.revokeObjectURL(objectUrl), 10000);
-                                } catch (error) {
-                                    console.error("❌ Erro ao abrir documento:", error);
-                                    console.groupEnd();
-
-                                    let msg = "Erro ao carregar o documento.";
-                                    const responseId = cotacao.quotation_response_id || cotacao.response_id || cotacao.id;
-
-                                    if (error.response?.status === 404) {
-                                        msg = `Documento não encontrado.\n\nID da Resposta: ${responseId}`;
-                                    } else if (error.response?.status === 400) {
-                                        msg = `Requisição inválida.\n\nID usado: ${responseId}`;
-                                    } else if (error.response?.status === 403 || error.response?.status === 401) {
-                                        msg = "Sem permissão para visualizar este documento.";
-                                    } else if (error.code === 'ERR_NETWORK') {
-                                        msg = "Erro de conexão com o servidor.";
-                                    }
-
-                                    alert(msg);
-                                } finally {
-                                    setViewingDoc(false);
-                                }
-                            }}
+                            onClick={handleViewDocument}
                             disabled={viewingDoc}
-                            className="flex items-center gap-2 px-4 py-2 rounded-lg transition-colors font-medium border"
+                            className="flex items-center gap-2 px-4 py-2 rounded-lg transition-colors font-medium border disabled:opacity-60"
                             style={{ background: 'rgba(59,130,246,0.08)', color: '#3b82f6', borderColor: 'rgba(59,130,246,0.2)' }}
                         >
                             <FileText size={18} />
-                            {viewingDoc ? 'Carregando...' : 'Visualizar Proposta (PDF/Imagem)'}
+                            {viewingDoc ? 'A carregar...' : 'Visualizar Proposta (PDF/Imagem)'}
                         </button>
                     </div>
 
@@ -345,6 +310,7 @@ export default function ModalRevisarCotacao({
                     )}
                 </div>
             </div>
+
         </div>,
         document.body
     );

@@ -16,7 +16,10 @@ export default function ModalDetalhesUsuario({ isOpen, onClose, user }) {
     };
 
     return (
-        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50">
+        <div
+            className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50"
+            onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
+        >
             <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg mx-4 overflow-hidden animate-fadeIn relative">
 
                 {/* Close Button Absolute */}
@@ -43,7 +46,7 @@ export default function ModalDetalhesUsuario({ isOpen, onClose, user }) {
                     </div>
 
                     <div className="text-center mb-8">
-                        <h2 className="text-2xl font-bold text-gray-900">{user.name || user.nome}</h2>
+                        <h2 className="text-2xl font-bold text-gray-900">{user.name || user.nome || 'Sem nome'}</h2>
                         <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-gray-100 text-gray-600 mt-2">
                             <Shield size={12} />
                             {getRoleLabel(user.role)}
@@ -57,7 +60,7 @@ export default function ModalDetalhesUsuario({ isOpen, onClose, user }) {
                             </div>
                             <div>
                                 <p className="text-xs text-gray-400 font-medium uppercase tracking-wider">Email</p>
-                                <p className="text-gray-900 font-medium">{user.email}</p>
+                                <p className="text-gray-900 font-medium break-all">{user.email || '-'}</p>
                             </div>
                         </div>
 
@@ -66,7 +69,7 @@ export default function ModalDetalhesUsuario({ isOpen, onClose, user }) {
                                 <User size={20} />
                             </div>
                             <div>
-                                <p className="text-xs text-gray-400 font-medium uppercase tracking-wider">ID do Usuário</p>
+                                <p className="text-xs text-gray-400 font-medium uppercase tracking-wider">ID do Utilizador</p>
                                 <p className="text-gray-900 font-medium">#{user.id}</p>
                             </div>
                         </div>
@@ -88,9 +91,9 @@ export default function ModalDetalhesUsuario({ isOpen, onClose, user }) {
                                 {user.is_active !== false ? <CheckCircle2 size={20} /> : <XCircle size={20} />}
                             </div>
                             <div>
-                                <p className="text-xs text-gray-400 font-medium uppercase tracking-wider">Status da Conta</p>
+                                <p className="text-xs text-gray-400 font-medium uppercase tracking-wider">Estado da Conta</p>
                                 <p className={`font-medium ${user.is_active !== false ? 'text-green-700' : 'text-red-700'}`}>
-                                    {user.is_active !== false ? 'Ativa' : 'Inativa'}
+                                    {user.is_active !== false ? 'Activa' : 'Inactiva'}
                                 </p>
                             </div>
                         </div>

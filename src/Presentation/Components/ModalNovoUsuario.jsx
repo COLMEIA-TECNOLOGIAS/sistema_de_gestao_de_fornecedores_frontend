@@ -3,10 +3,17 @@ import { X, UserPlus, Edit, Save } from "lucide-react";
 import { useState, useEffect } from "react";
 import { createPortal } from "react-dom";
 import { usersAPI } from "../../services/api";
+import { getErrorMessage, getFieldErrors } from "../../utils/apiHelpers";
+
+function FieldError({ message }) {
+    if (!message) return null;
+    return <p className="mt-1 text-xs text-red-600">{message}</p>;
+}
 
 export default function ModalNovoUsuario({ isOpen, onClose, onSuccess, userToEdit }) {
     const [isLoading, setIsLoading] = useState(false);
     const [error, setError] = useState("");
+    const [fieldErrors, setFieldErrors] = useState({});
     const [formData, setFormData] = useState({
         name: "",
         email: "",
@@ -31,6 +38,7 @@ export default function ModalNovoUsuario({ isOpen, onClose, onSuccess, userToEdi
             });
         }
         setError("");
+        setFieldErrors({});
     }, [isOpen, userToEdit]);
 
     const handleChange = (e) => {
@@ -39,32 +47,36 @@ export default function ModalNovoUsuario({ isOpen, onClose, onSuccess, userToEdi
             ...prev,
             [name]: type === 'checkbox' ? checked : value
         }));
+        if (fieldErrors[name]) setFieldErrors(prev => ({ ...prev, [name]: undefined }));
     };
 
     const handleSubmit = async (e) => {
         e.preventDefault();
+        if (isLoading) return;
         setError("");
+        setFieldErrors({});
         setIsLoading(true);
+
+        const payload = { ...formData, name: formData.name.trim(), email: formData.email.trim() };
 
         try {
             if (userToEdit) {
-                await usersAPI.update(userToEdit.id, formData);
-                onSuccess?.();
+                const resp = await usersAPI.update(userToEdit.id, payload);
+                onSuccess?.({
+                    message: resp?.message || "Utilizador actualizado com sucesso.",
+                });
                 return;
             }
 
-            // Criação: o utilizador ativa a conta e define a senha através do email recebido
-            const resp = await usersAPI.create(formData);
+            // Criação: o utilizador activa a conta e define a senha através do email recebido
+            const resp = await usersAPI.create(payload);
             onSuccess?.({
-                message: resp?.message || `Utilizador criado. Foi enviado um link para ${formData.email} para o utilizador definir a sua senha.`,
-                email: formData.email,
+                message: resp?.message || `Utilizador criado. Foi enviado um link para ${payload.email} para o utilizador definir a sua senha.`,
+                email: payload.email,
             });
         } catch (err) {
-            console.error("Error saving user:", err);
-            setError(
-                err.response?.data?.message ||
-                "Erro ao salvar usuário. Verifique os dados e tente novamente."
-            );
+            setFieldErrors(getFieldErrors(err));
+            setError(getErrorMessage(err, "Erro ao guardar o utilizador. Verifique os dados e tente novamente."));
         } finally {
             setIsLoading(false);
         }
@@ -88,7 +100,7 @@ export default function ModalNovoUsuario({ isOpen, onClose, onSuccess, userToEdi
                         <div className="p-2 bg-[#44B16F]/10 rounded-lg">
                             {userToEdit ? <Edit className="w-5 h-5 text-[#44B16F]" /> : <UserPlus className="w-5 h-5 text-[#44B16F]" />}
                         </div>
-                        <h2 className="text-xl font-bold text-gray-900">{userToEdit ? "Editar Usuário" : "Adicionar Novo Usuário"}</h2>
+                        <h2 className="text-xl font-bold text-gray-900">{userToEdit ? "Editar Utilizador" : "Adicionar Novo Utilizador"}</h2>
                     </div>
                     <button
                         onClick={handleClose}
@@ -113,13 +125,13 @@ export default function ModalNovoUsuario({ isOpen, onClose, onSuccess, userToEdi
                         {!userToEdit && (
                             <div className="p-4 bg-blue-50 border border-blue-200 rounded-lg">
                                 <p className="text-blue-700 text-sm">
-                                    Será enviado um link para o email do utilizador para ele ativar a conta e definir a sua própria senha.
+                                    Será enviado um link para o email do utilizador para ele activar a conta e definir a sua própria senha.
                                 </p>
                             </div>
                         )}
 
                         {/* Row 1: Nome Completo e Email */}
-                        <div className="grid grid-cols-2 gap-4">
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                             <div>
                                 <label className="block text-sm font-medium text-gray-700 mb-2">
                                     Nome Completo *
@@ -129,11 +141,12 @@ export default function ModalNovoUsuario({ isOpen, onClose, onSuccess, userToEdi
                                     name="name"
                                     value={formData.name}
                                     onChange={handleChange}
-                                    placeholder="Digite o nome completo"
+                                    placeholder="Introduza o nome completo"
                                     required
                                     disabled={isLoading}
                                     className="w-full px-4 py-3 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#44B16F] focus:border-transparent transition-all disabled:bg-gray-100"
                                 />
+                                <FieldError message={fieldErrors.name} />
                             </div>
                             <div>
                                 <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -149,6 +162,7 @@ export default function ModalNovoUsuario({ isOpen, onClose, onSuccess, userToEdi
                                     disabled={isLoading}
                                     className="w-full px-4 py-3 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#44B16F] focus:border-transparent transition-all disabled:bg-gray-100"
                                 />
+                                <FieldError message={fieldErrors.email} />
                             </div>
                         </div>
 
@@ -168,7 +182,11 @@ export default function ModalNovoUsuario({ isOpen, onClose, onSuccess, userToEdi
                                 <option value="">Selecione a função</option>
                                 <option value="admin">Admin - Acesso total ao sistema</option>
                                 <option value="procurement_technician">Técnico de Procurement - Gestão de cotações e fornecedores</option>
+                                {formData.role && !['admin', 'procurement_technician'].includes(formData.role) && (
+                                    <option value={formData.role}>{formData.role}</option>
+                                )}
                             </select>
+                            <FieldError message={fieldErrors.role} />
                             {formData.role && (
                                 <p className="text-xs text-gray-500 mt-2">
                                     {formData.role === 'admin' && '✓ Acesso completo a todas as funcionalidades'}
@@ -188,10 +206,10 @@ export default function ModalNovoUsuario({ isOpen, onClose, onSuccess, userToEdi
                                     disabled={isLoading}
                                     className="w-5 h-5 rounded border-gray-300 text-[#44B16F] focus:ring-[#44B16F] disabled:opacity-50"
                                 />
-                                <span className="text-sm font-medium text-gray-700">Conta ativa</span>
+                                <span className="text-sm font-medium text-gray-700">Conta activa</span>
                             </label>
                             <p className="text-xs text-gray-500 mt-1 ml-8">
-                                Desmarque para criar a conta como inativa
+                                {userToEdit ? "Desmarque para desactivar a conta" : "Desmarque para criar a conta como inactiva"}
                             </p>
                         </div>
                     </div>
@@ -217,12 +235,12 @@ export default function ModalNovoUsuario({ isOpen, onClose, onSuccess, userToEdi
                                         <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
                                         <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
                                     </svg>
-                                    Salvando...
+                                    A guardar...
                                 </>
                             ) : (
                                 <>
                                     {userToEdit ? <Save className="w-4 h-4" /> : <UserPlus className="w-4 h-4" />}
-                                    {userToEdit ? "Salvar Alterações" : "Criar Usuário"}
+                                    {userToEdit ? "Guardar Alterações" : "Criar Utilizador"}
                                 </>
                             )}
                         </button>

@@ -13,6 +13,10 @@
   --color-blue:          #0A90CD;
   --color-blue-light:    #EFF8FF;
   --color-yellow:        #FECA02;
+  --color-error:         #DC2626;
+  --color-error-light:   #FEF2F2;
+  --color-warning:       #D97706;
+  --color-warning-light: #FFFBEB;
   --color-bg:            #F8FAFC;
   --color-surface:       #FFFFFF;
   --color-border:        #E2E8F0;
@@ -48,6 +52,10 @@
   --color-primary-50:     rgba(68, 177, 111, 0.07);
   --color-primary-10:     rgba(68, 177, 111, 0.08);
   --color-blue-light:     rgba(10, 144, 205, 0.12);
+  --color-error:          #F87171;
+  --color-error-light:    rgba(220, 38, 38, 0.12);
+  --color-warning:        #FBBF24;
+  --color-warning-light:  rgba(245, 158, 11, 0.12);
   --shadow-sm:  0 1px 3px 0 rgba(0,0,0,0.4);
   --shadow-md:  0 4px 6px -1px rgba(0,0,0,0.5), 0 2px 4px -1px rgba(0,0,0,0.3);
   --shadow-lg:  0 10px 15px -3px rgba(0,0,0,0.6), 0 4px 6px -2px rgba(0,0,0,0.3);

@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import { ArrowLeft, Mail } from "lucide-react";
 import { authAPI } from "../../../services/api";
+import { getErrorMessage } from "../../../utils/apiHelpers";
 
 export default function ForgotPasswordPage() {
     const [email, setEmail] = useState("");
@@ -11,19 +12,15 @@ export default function ForgotPasswordPage() {
 
     const handleSubmit = async (e) => {
         e.preventDefault();
+        if (isLoading) return;
         setError("");
         setIsLoading(true);
 
         try {
             await authAPI.forgotPassword(email.trim());
-            navigate("/verify-code", { state: { email: email.trim() } });
+            navigate("/verify-code", { state: { email: email.trim(), purpose: "password" } });
         } catch (err) {
-            console.error("Forgot password error:", err);
-            setError(
-                err.response?.data?.message ||
-                err.response?.data?.errors?.email?.[0] ||
-                "Erro ao enviar o código de recuperação. Verifique o e-mail."
-            );
+            setError(getErrorMessage(err, "Erro ao enviar o código de recuperação. Verifique o e-mail."));
         } finally {
             setIsLoading(false);
         }
@@ -70,7 +67,7 @@ export default function ForgotPasswordPage() {
                             Esqueceu a senha?
                         </h1>
                         <p className="text-base" style={{ color: 'var(--color-text-secondary)' }}>
-                            Adicione o seu e-mail para receber um código de recuperação
+                            Introduza o seu e-mail para receber um código de recuperação
                             de 6 dígitos.
                         </p>
                     </div>
@@ -94,7 +91,7 @@ export default function ForgotPasswordPage() {
                                 />
                                 <input
                                     type="email"
-                                    placeholder="seu.email@exemplo.com"
+                                    placeholder="o.seu.email@exemplo.com"
                                     value={email}
                                     onChange={(e) => setEmail(e.target.value)}
                                     className="w-full pl-12 pr-4 py-3 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#44B16F]/30 focus:border-[#44B16F] transition-all"
@@ -120,7 +117,7 @@ export default function ForgotPasswordPage() {
                                         <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
                                         <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
                                     </svg>
-                                    Enviando...
+                                    A enviar...
                                 </>
                             ) : (
                                 'Enviar Código'
@@ -129,7 +126,7 @@ export default function ForgotPasswordPage() {
                     </form>
 
                     <p className="text-sm mt-6" style={{ color: 'var(--color-text-muted)' }}>
-                        Lembrei-me da senha?{" "}
+                        Lembrou-se da senha?{" "}
                         <Link to="/login" className="text-[#44B16F] font-medium hover:underline">
                             Entrar
                         </Link>

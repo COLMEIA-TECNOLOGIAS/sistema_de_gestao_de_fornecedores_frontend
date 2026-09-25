@@ -1,7 +1,8 @@
 import { useState } from "react";
-import { useNavigate, useLocation, Link } from "react-router-dom";
-import { ArrowLeft, Eye, EyeOff, Lock, CheckCircle2 } from "lucide-react";
+import { useNavigate, useLocation, Link, Navigate } from "react-router-dom";
+import { ArrowLeft, Eye, EyeOff, Lock, XCircle } from "lucide-react";
 import { authAPI } from "../../../services/api";
+import { getErrorMessage } from "../../../utils/apiHelpers";
 import PasswordStrength from "../../Components/Auth/PasswordStrength";
 import PasswordCriteria from "../../Components/Auth/ResetPasswordCritia";
 
@@ -39,6 +40,7 @@ export default function ResetPasswordPage() {
 
     const handleSubmit = async (e) => {
         e.preventDefault();
+        if (isLoading) return;
         setError("");
 
         if (strength < 3) {
@@ -59,18 +61,18 @@ export default function ResetPasswordPage() {
                 password,
                 password_confirmation: passwordConfirmation,
             });
-            navigate("/success-reset");
+            navigate("/success-reset", { replace: true });
         } catch (err) {
-            console.error("Reset password error:", err);
-            setError(
-                err.response?.data?.message ||
-                err.response?.data?.errors?.password?.[0] ||
-                "Erro ao redefinir a senha. Tente novamente."
-            );
+            setError(getErrorMessage(err, "Erro ao redefinir a senha. Tente novamente."));
         } finally {
             setIsLoading(false);
         }
     };
+
+    // Sem os dados do passo anterior (acesso directo ou refresh) o pedido falharia sempre
+    if (!email || (!code && !token)) {
+        return <Navigate to="/forgot-password" replace />;
+    }
 
     return (
         <div className="min-h-screen grid grid-cols-1 lg:grid-cols-2">
@@ -138,6 +140,7 @@ export default function ResetPasswordPage() {
                                 <input
                                     type={showPassword ? "text" : "password"}
                                     placeholder="Nova senha"
+                                    autoComplete="new-password"
                                     value={password}
                                     onChange={(e) => setPassword(e.target.value)}
                                     className="w-full pl-12 pr-12 py-3 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#44B16F]/30 focus:border-[#44B16F] transition-all"
@@ -152,6 +155,7 @@ export default function ResetPasswordPage() {
                                 <button
                                     type="button"
                                     onClick={() => setShowPassword(!showPassword)}
+                                    aria-label={showPassword ? "Esconder senha" : "Mostrar senha"}
                                     className="absolute right-4 top-1/2 -translate-y-1/2 transition-colors"
                                     style={{ color: 'var(--color-text-muted)' }}
                                 >
@@ -182,6 +186,7 @@ export default function ResetPasswordPage() {
                                 <input
                                     type={showConfirmation ? "text" : "password"}
                                     placeholder="Confirme a nova senha"
+                                    autoComplete="new-password"
                                     value={passwordConfirmation}
                                     onChange={(e) => setPasswordConfirmation(e.target.value)}
                                     className="w-full pl-12 pr-12 py-3 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#44B16F]/30 focus:border-[#44B16F] transition-all"
@@ -196,6 +201,7 @@ export default function ResetPasswordPage() {
                                 <button
                                     type="button"
                                     onClick={() => setShowConfirmation(!showConfirmation)}
+                                    aria-label={showConfirmation ? "Esconder senha" : "Mostrar senha"}
                                     className="absolute right-4 top-1/2 -translate-y-1/2 transition-colors"
                                     style={{ color: 'var(--color-text-muted)' }}
                                 >
@@ -204,7 +210,7 @@ export default function ResetPasswordPage() {
                             </div>
                             {passwordConfirmation && !passwordsMatch && (
                                 <p className="text-red-600 text-sm mt-1 flex items-center gap-1">
-                                    <CheckCircle2 size={14} />
+                                    <XCircle size={14} />
                                     As senhas não coincidem.
                                 </p>
                             )}
@@ -221,7 +227,7 @@ export default function ResetPasswordPage() {
                                         <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
                                         <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
                                     </svg>
-                                    Redefinir Senha
+                                    A redefinir...
                                 </>
                             ) : (
                                 'Redefinir Senha'

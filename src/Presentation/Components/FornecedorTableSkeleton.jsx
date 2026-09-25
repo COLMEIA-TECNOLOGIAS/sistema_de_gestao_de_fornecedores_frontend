@@ -1,71 +1,70 @@
-// Skeleton component for Fornecedores table rows
+// Skeleton component for Fornecedores table rows.
+// As células seguem as 11 colunas da tabela de FornecedoresPage.
+const bar = { background: 'var(--color-border)' };
+
 export default function FornecedorTableSkeleton({ rows = 10 }) {
     return (
         <>
             {Array.from({ length: rows }).map((_, index) => (
-                <tr key={index} className="border-b border-gray-100 hover:bg-gray-50">
+                <tr key={index} style={{ borderBottom: '1px solid var(--color-border-light)' }}>
                     {/* Checkbox */}
-                    <td className="px-2 py-2">
-                        <div className="w-3 h-3 bg-gray-200 rounded animate-pulse"></div>
+                    <td className="px-3 py-3">
+                        <div className="w-3 h-3 rounded animate-pulse" style={bar}></div>
                     </td>
 
-                    {/* ID with Avatar */}
-                    <td className="px-2 py-2">
-                        <div className="flex items-center gap-1">
-                            <div className="w-6 h-6 bg-gray-200 rounded animate-pulse"></div>
-                            <div className="h-3 w-6 bg-gray-200 rounded animate-pulse"></div>
+                    {/* ID */}
+                    <td className="px-3 py-3">
+                        <div className="h-3 w-8 rounded animate-pulse" style={bar}></div>
+                    </td>
+
+                    {/* Fornecedor (avatar + nome) */}
+                    <td className="px-3 py-3">
+                        <div className="flex items-center gap-2">
+                            <div className="w-10 h-10 rounded-lg animate-pulse" style={bar}></div>
+                            <div className="h-3 w-28 rounded animate-pulse" style={bar}></div>
                         </div>
                     </td>
 
-                    {/* Nome da Empresa */}
-                    <td className="px-2 py-2">
-                        <div className="h-3 w-28 bg-gray-200 rounded animate-pulse"></div>
-                    </td>
-
                     {/* NIF */}
-                    <td className="px-2 py-2">
-                        <div className="h-3 w-20 bg-gray-200 rounded animate-pulse"></div>
+                    <td className="px-3 py-3">
+                        <div className="h-3 w-20 rounded animate-pulse" style={bar}></div>
                     </td>
 
-                    {/* Telefone */}
-                    <td className="px-2 py-2">
-                        <div className="h-3 w-24 bg-gray-200 rounded animate-pulse"></div>
+                    {/* Contactos */}
+                    <td className="px-3 py-3">
+                        <div className="h-3 w-24 rounded animate-pulse mb-1.5" style={bar}></div>
+                        <div className="h-2.5 w-32 rounded animate-pulse" style={bar}></div>
                     </td>
 
-                    {/* Email */}
-                    <td className="px-2 py-2">
-                        <div className="h-3 w-36 bg-gray-200 rounded animate-pulse"></div>
+                    {/* Avaliação */}
+                    <td className="px-3 py-3">
+                        <div className="h-3 w-16 rounded animate-pulse" style={bar}></div>
                     </td>
 
                     {/* Categoria */}
-                    <td className="px-2 py-2">
-                        <div className="h-5 w-16 bg-gray-200 rounded-full animate-pulse"></div>
+                    <td className="px-3 py-3">
+                        <div className="h-5 w-16 rounded-full animate-pulse" style={bar}></div>
                     </td>
 
-                    {/* Província */}
-                    <td className="px-2 py-2">
-                        <div className="h-3 w-18 bg-gray-200 rounded animate-pulse"></div>
-                    </td>
-
-                    {/* Município */}
-                    <td className="px-2 py-2">
-                        <div className="h-3 w-18 bg-gray-200 rounded animate-pulse"></div>
+                    {/* Localização */}
+                    <td className="px-3 py-3">
+                        <div className="h-3 w-20 rounded animate-pulse" style={bar}></div>
                     </td>
 
                     {/* Data de Registo */}
-                    <td className="px-2 py-2">
-                        <div className="h-3 w-20 bg-gray-200 rounded animate-pulse"></div>
+                    <td className="px-3 py-3">
+                        <div className="h-3 w-16 rounded animate-pulse" style={bar}></div>
                     </td>
 
                     {/* Status */}
-                    <td className="px-2 py-2">
-                        <div className="h-5 w-14 bg-gray-200 rounded-full animate-pulse"></div>
+                    <td className="px-3 py-3">
+                        <div className="h-5 w-14 rounded-full animate-pulse" style={bar}></div>
                     </td>
 
                     {/* Ações */}
-                    <td className="px-2 py-2">
+                    <td className="px-3 py-3">
                         <div className="flex justify-center">
-                            <div className="w-6 h-6 bg-gray-200 rounded animate-pulse"></div>
+                            <div className="w-6 h-6 rounded animate-pulse" style={bar}></div>
                         </div>
                     </td>
                 </tr>

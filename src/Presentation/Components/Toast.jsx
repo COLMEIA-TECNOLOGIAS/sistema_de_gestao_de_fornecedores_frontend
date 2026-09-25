@@ -1,13 +1,19 @@
 import { CheckCircle, XCircle, Info, AlertCircle, X } from "lucide-react";
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
 
 export default function Toast({ type = "success", message, onClose, duration = 3000 }) {
+    // Guardar o callback num ref: um onClose inline não reinicia o temporizador
+    const onCloseRef = useRef(onClose);
+    useEffect(() => {
+        onCloseRef.current = onClose;
+    }, [onClose]);
+
     useEffect(() => {
         if (duration > 0) {
-            const timer = setTimeout(onClose, duration);
+            const timer = setTimeout(() => onCloseRef.current?.(), duration);
             return () => clearTimeout(timer);
         }
-    }, [duration, onClose]);
+    }, [duration, message]);
 
     const config = {
         success: {
@@ -40,10 +46,10 @@ export default function Toast({ type = "success", message, onClose, duration = 3
         },
     };
 
-    const { icon: Icon, bgColor, borderColor, iconColor, textColor } = config[type];
+    const { icon: Icon, bgColor, borderColor, iconColor, textColor } = config[type] || config.info;
 
     return (
-        <div className="fixed top-4 right-4 z-[100] animate-slide-in-right">
+        <div className="fixed top-4 right-4 z-[10000] animate-slide-in-right">
             <div className={`${bgColor} ${borderColor} border rounded-xl shadow-lg p-4 flex items-center gap-3 min-w-[300px] max-w-md`}>
                 <Icon className={iconColor} size={20} />
                 <p className={`${textColor} flex-1 text-sm font-medium`}>{message}</p>

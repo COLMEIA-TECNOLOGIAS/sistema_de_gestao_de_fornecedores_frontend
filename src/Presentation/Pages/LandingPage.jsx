@@ -1,18 +1,37 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { ArrowRight, Menu, X } from 'lucide-react';
+
+// Não existe (ainda) uma rota pública de registo de fornecedores na aplicação:
+// o registo é feito por convite enviado pela equipa. Se existir um formulário
+// externo de manifestação de interesse, configure-o em VITE_SUPPLIER_INTEREST_URL.
+const SUPPLIER_INTEREST_URL = import.meta.env.VITE_SUPPLIER_INTEREST_URL;
+
+// Opacidades fixas para o padrão decorativo (evita Math.random() no render,
+// que fazia o padrão "piscar" a cada re-render, ex.: ao fazer scroll).
+const DECOR_OPACITIES = Array.from({ length: 20 }, (_, i) => 0.4 + ((i * 7) % 5) * 0.1);
 
 const LandingPage = () => {
     const [isScrolled, setIsScrolled] = useState(false);
     const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+    const [showInterestInfo, setShowInterestInfo] = useState(false);
 
     useEffect(() => {
         const handleScroll = () => {
             setIsScrolled(window.scrollY > 50);
         };
 
-        window.addEventListener('scroll', handleScroll);
+        handleScroll();
+        window.addEventListener('scroll', handleScroll, { passive: true });
         return () => window.removeEventListener('scroll', handleScroll);
     }, []);
+
+    const handleManifestInterest = () => {
+        if (SUPPLIER_INTEREST_URL) {
+            window.location.assign(SUPPLIER_INTEREST_URL);
+        } else {
+            setShowInterestInfo(true);
+        }
+    };
 
     const scrollToSection = (sectionId) => {
         const element = document.getElementById(sectionId);
@@ -72,6 +91,8 @@ const LandingPage = () => {
                         <button
                             className="md:hidden p-2"
                             onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
+                            aria-label={isMobileMenuOpen ? 'Fechar menu' : 'Abrir menu'}
+                            aria-expanded={isMobileMenuOpen}
                         >
                             {isMobileMenuOpen ? <X size={24} /> : <Menu size={24} />}
                         </button>
@@ -117,9 +138,9 @@ const LandingPage = () => {
                             Torne-se um Fornecedor<br />da Mosap3
                         </h1>
                         <p className="text-gray-600 text-lg mb-8 leading-relaxed font-light">
-                            Quer fornecer produtos ou serviços para a nossa empresa? Preencha o
-                            formulário abaixo e manifeste o seu interesse. A nossa equipa analisará o
-                            seu perfil e entrará em contacto caso exista necessidade.
+                            Quer fornecer produtos ou serviços para a nossa empresa? Manifeste o
+                            seu interesse. A nossa equipa analisará o seu perfil e entrará em
+                            contacto caso exista necessidade.
                         </p>
                         <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
                             <button
@@ -173,7 +194,7 @@ const LandingPage = () => {
                                         </div>
                                         <div className="flex items-center gap-3 px-3 py-2 text-gray-600 text-sm">
                                             <div className="w-5 h-5 bg-gray-300 rounded"></div>
-                                            Usuários
+                                            Utilizadores
                                         </div>
                                         <div className="flex items-center gap-3 px-3 py-2 text-gray-600 text-sm">
                                             <div className="w-5 h-5 bg-gray-300 rounded"></div>
@@ -195,7 +216,7 @@ const LandingPage = () => {
                                                 <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
                                                 </svg>
-                                                Search for anything...
+                                                Pesquisar...
                                             </div>
                                         </div>
                                         <div className="flex items-center gap-3">
@@ -210,7 +231,7 @@ const LandingPage = () => {
                                         <div className="flex items-start justify-between mb-6">
                                             <div>
                                                 <h3 className="text-xl font-semibold text-gray-900 mb-1">Fornecedores</h3>
-                                                <p className="text-gray-500 text-sm">Gerencie os fornecedores cadastrados</p>
+                                                <p className="text-gray-500 text-sm">Faça a gestão dos fornecedores registados</p>
                                             </div>
                                             <div className="w-40 h-16 bg-gradient-to-r from-green-600 to-green-400 rounded-lg overflow-hidden">
                                                 <img src="/planta.png" alt="" className="w-full h-full object-cover opacity-80" />
@@ -223,7 +244,7 @@ const LandingPage = () => {
                                                 <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
                                                 </svg>
-                                                Search for anything...
+                                                Pesquisar...
                                             </div>
                                             <button className="px-4 py-2 bg-[#44B16F] text-white text-sm rounded-lg font-medium flex items-center gap-2">
                                                 + Solicitar cotação
@@ -336,7 +357,7 @@ const LandingPage = () => {
             </section>
 
             {/* Sobre Nós Section */}
-            <section id="sobre-nos" className="py-20 bg-[#f0f5f3]">
+            <section id="sobre-nos" className="scroll-mt-24 py-20 bg-[#f0f5f3]">
                 <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
                     <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
                         {/* Text Content */}
@@ -407,7 +428,7 @@ const LandingPage = () => {
             </section>
 
             {/* O que Procuramos Section */}
-            <section id="areas-interesse" className="py-20 bg-white relative overflow-hidden">
+            <section id="areas-interesse" className="scroll-mt-24 py-20 bg-white relative overflow-hidden">
                 {/* Decorative geometric elements - left side */}
                 <div className="absolute left-0 top-20 w-24 opacity-30">
                     <div className="grid grid-cols-3 gap-2">
@@ -427,8 +448,8 @@ const LandingPage = () => {
                             O que Procuramos em Fornecedores
                         </h2>
                         <p className="text-gray-600 max-w-xl mx-auto font-light">
-                            Buscamos fornecedores que ofereçam soluções confiáveis e de
-                            qualidade para apoiar nossas operações
+                            Procuramos fornecedores que ofereçam soluções fiáveis e de
+                            qualidade para apoiar as nossas operações
                         </p>
                     </div>
 
@@ -436,7 +457,7 @@ const LandingPage = () => {
                         {/* Left Column - Produtos e serviços que buscamos */}
                         <div>
                             <h3 className="text-sm font-semibold text-gray-900 mb-6 text-center">
-                                Produtos e serviços que buscamos
+                                Produtos e serviços que procuramos
                             </h3>
                             <div className="space-y-4">
                                 {[
@@ -464,10 +485,10 @@ const LandingPage = () => {
                                 {[
                                     'Serviços Eletrónicos',
                                     'Tecnologia',
-                                    'Tecnologia',
-                                    'Tecnologia'
+                                    'Insumos agropecuários',
+                                    'Equipamentos e logística'
                                 ].map((item, index) => (
-                                    <div key={index} className="flex items-center gap-4">
+                                    <div key={item} className="flex items-center gap-4">
                                         <div className="w-10 h-10 rounded-full border-2 border-[#44B16F]/30 bg-[#44B16F]/5 flex items-center justify-center text-[#44B16F] font-semibold text-sm">
                                             {index + 1}
                                         </div>
@@ -481,15 +502,15 @@ const LandingPage = () => {
             </section>
 
             {/* Como se Tornar Fornecedor Section */}
-            <section id="seja-fornecedor" className="py-32 bg-[#f0f5f3] relative overflow-hidden min-h-[500px]">
+            <section id="seja-fornecedor" className="scroll-mt-24 py-32 bg-[#f0f5f3] relative overflow-hidden min-h-[500px]">
                 {/* Decorative geometric elements - right side */}
                 <div className="absolute right-0 top-1/2 -translate-y-1/2 w-32 opacity-40">
                     <div className="grid grid-cols-4 gap-1">
-                        {[...Array(20)].map((_, i) => (
+                        {DECOR_OPACITIES.map((opacity, i) => (
                             <div
                                 key={i}
                                 className="w-3 h-3 bg-[#00B4D8] rounded-sm"
-                                style={{ opacity: 0.4 + (Math.random() * 0.4) }}
+                                style={{ opacity }}
                             ></div>
                         ))}
                     </div>
@@ -516,12 +537,20 @@ const LandingPage = () => {
                         </p>
 
                         <button
-                            onClick={() => window.location.href = '/register'}
+                            onClick={handleManifestInterest}
                             className="px-10 py-4 bg-[#44B16F] text-white rounded-lg hover:bg-[#3a9d5f] transition-all duration-300 font-medium inline-flex items-center gap-2 shadow-lg shadow-[#44B16F]/25 hover:shadow-xl hover:shadow-[#44B16F]/30"
                         >
                             Manifestar Interesse
                             <ArrowRight size={18} />
                         </button>
+
+                        {showInterestInfo && (
+                            <p className="mt-6 mx-auto max-w-md rounded-lg border border-[#44B16F]/30 bg-white px-4 py-3 text-sm text-gray-700" role="status">
+                                O registo de fornecedores é feito mediante convite. A nossa equipa
+                                analisará as necessidades e enviará um convite por email às empresas
+                                selecionadas.
+                            </p>
+                        )}
 
                         <p className="text-gray-500 text-sm mt-8">
                             As informações enviadas serão analisadas pela

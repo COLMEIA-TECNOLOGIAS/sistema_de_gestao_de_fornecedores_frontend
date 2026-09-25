@@ -1,8 +1,11 @@
 import { useModalLock } from '../../hooks/useModalLock';
 import { useState, useEffect } from "react";
 import { X, Save, AlertCircle } from "lucide-react";
-import { categoriesAPI, productsAPI } from "../../services/api";
-import Toast from "./Toast";
+import { productsAPI } from "../../services/api";
+import { useCategories, useInvalidate } from "../../hooks/queries";
+import { queryKeys } from "../../lib/queryKeys";
+import { useToast } from "../../context/ToastContext";
+import { getErrorMessage, getFieldErrors } from "../../utils/apiHelpers";
 
 export default function ModalCriarProduto({ isOpen, onClose, onSuccess, productToEdit = null }) {
     const [formData, setFormData] = useState({
@@ -11,21 +14,28 @@ export default function ModalCriarProduto({ isOpen, onClose, onSuccess, productT
         unit: "Unidade",
         category_id: ""
     });
-    const [categories, setCategories] = useState([]);
-    const [isLoading, setIsLoading] = useState(false);
     const [isSaving, setIsSaving] = useState(false);
     const [error, setError] = useState(null);
-    const [toast, setToast] = useState(null);
+    const [fieldErrors, setFieldErrors] = useState({});
+
+    const toast = useToast();
+    const invalidate = useInvalidate();
+    const {
+        data: categories = [],
+        isLoading: isLoadingCategories,
+        isError: isCategoriesError,
+        refetch: refetchCategories,
+        isFetching: isFetchingCategories,
+    } = useCategories({ enabled: isOpen });
 
     useEffect(() => {
         if (isOpen) {
-            fetchCategories();
             if (productToEdit) {
                 setFormData({
                     name: productToEdit.name || "",
                     description: productToEdit.description || "",
                     unit: productToEdit.unit || "Unidade",
-                    category_id: productToEdit.category_id || ""
+                    category_id: productToEdit.category_id ?? productToEdit.category?.id ?? ""
                 });
             } else {
                 setFormData({
@@ -36,21 +46,9 @@ export default function ModalCriarProduto({ isOpen, onClose, onSuccess, productT
                 });
             }
             setError(null);
+            setFieldErrors({});
         }
     }, [isOpen, productToEdit]);
-
-    const fetchCategories = async () => {
-        try {
-            setIsLoading(true);
-            const data = await categoriesAPI.getAll();
-            setCategories(Array.isArray(data) ? data : []);
-        } catch (err) {
-            console.error("Erro ao carregar categorias:", err);
-            setCategories([]);
-        } finally {
-            setIsLoading(false);
-        }
-    };
 
     const handleChange = (e) => {
         const { name, value } = e.target;
@@ -58,31 +56,46 @@ export default function ModalCriarProduto({ isOpen, onClose, onSuccess, productT
             ...prev,
             [name]: value
         }));
+        if (fieldErrors[name]) setFieldErrors(prev => ({ ...prev, [name]: undefined }));
+    };
+
+    const handleClose = () => {
+        if (isSaving) return;
+        onClose();
     };
 
     const handleSubmit = async (e) => {
         e.preventDefault();
+        if (isSaving) return;
 
-        if (!formData.name || !formData.category_id) {
+        const payload = {
+            ...formData,
+            name: formData.name.trim(),
+            description: formData.description.trim(),
+            unit: formData.unit.trim() || "Unidade",
+        };
+
+        if (!payload.name || !payload.category_id) {
             setError("Nome e Categoria são obrigatórios");
             return;
         }
 
         setIsSaving(true);
         setError(null);
+        setFieldErrors({});
 
         try {
-            if (productToEdit) {
-                await productsAPI.update(productToEdit.id, formData);
-                onSuccess("Produto atualizado com sucesso!");
-            } else {
-                await productsAPI.create(formData);
-                onSuccess("Produto criado com sucesso!");
-            }
+            const message = productToEdit ? "Produto actualizado com sucesso!" : "Produto criado com sucesso!";
+            const result = productToEdit
+                ? await productsAPI.update(productToEdit.id, payload)
+                : await productsAPI.create(payload);
+            invalidate(queryKeys.products.all);
+            toast.success(message);
+            onSuccess?.(message, result);
             onClose();
         } catch (err) {
-            console.error("Erro ao salvar produto:", err);
-            setError(err.response?.data?.message || "Erro ao salvar produto. Verifique os dados.");
+            setFieldErrors(getFieldErrors(err));
+            setError(getErrorMessage(err, "Erro ao guardar produto. Verifique os dados."));
         } finally {
             setIsSaving(false);
         }
@@ -100,7 +113,9 @@ export default function ModalCriarProduto({ isOpen, onClose, onSuccess, productT
                         {productToEdit ? "Editar Produto" : "Novo Produto"}
                     </h2>
                     <button
-                        onClick={onClose}
+                        onClick={handleClose}
+                        disabled={isSaving}
+                        aria-label="Fechar"
                         className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg transition-colors"
                     >
                         <X size={20} />
@@ -130,6 +145,7 @@ export default function ModalCriarProduto({ isOpen, onClose, onSuccess, productT
                                 className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl focus:bg-white focus:ring-2 focus:ring-[#44B16F] focus:border-transparent outline-none transition-all"
                                 required
                             />
+                            {fieldErrors.name && <p className="text-xs text-red-600 mt-1">{fieldErrors.name}</p>}
                         </div>
 
                         <div>
@@ -157,15 +173,24 @@ export default function ModalCriarProduto({ isOpen, onClose, onSuccess, productT
                                     onChange={handleChange}
                                     className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl focus:bg-white focus:ring-2 focus:ring-[#44B16F] focus:border-transparent outline-none transition-all"
                                     required
-                                    disabled={isLoading}
+                                    disabled={isLoadingCategories}
                                 >
-                                    <option value="">Selecione...</option>
+                                    <option value="">{isLoadingCategories ? "A carregar..." : "Selecione..."}</option>
                                     {categories.map(cat => (
                                         <option key={cat.id} value={cat.id}>
                                             {cat.name}
                                         </option>
                                     ))}
                                 </select>
+                                {fieldErrors.category_id && <p className="text-xs text-red-600 mt-1">{fieldErrors.category_id}</p>}
+                                {isCategoriesError && categories.length === 0 && (
+                                    <p className="text-xs text-red-600 mt-1">
+                                        Erro ao carregar categorias.{" "}
+                                        <button type="button" onClick={() => refetchCategories()} disabled={isFetchingCategories} className="font-semibold underline disabled:opacity-50">
+                                            {isFetchingCategories ? "A tentar..." : "Tentar novamente"}
+                                        </button>
+                                    </p>
+                                )}
                             </div>
 
                             <div>
@@ -188,7 +213,7 @@ export default function ModalCriarProduto({ isOpen, onClose, onSuccess, productT
                     <div className="flex items-center justify-end gap-3 pt-4 border-t border-gray-100">
                         <button
                             type="button"
-                            onClick={onClose}
+                            onClick={handleClose}
                             className="px-5 py-2.5 text-gray-700 font-medium hover:bg-gray-50 rounded-xl transition-colors"
                             disabled={isSaving}
                         >
@@ -196,32 +221,24 @@ export default function ModalCriarProduto({ isOpen, onClose, onSuccess, productT
                         </button>
                         <button
                             type="submit"
-                            className="px-5 py-2.5 bg-[#44B16F] text-white font-medium hover:bg-[#3a965d] active:bg-[#2f7d4e] rounded-xl transition-colors shadow-sm shadow-emerald-100 flex items-center gap-2"
+                            className="px-5 py-2.5 bg-[#44B16F] text-white font-medium hover:bg-[#3a965d] active:bg-[#2f7d4e] rounded-xl transition-colors shadow-sm shadow-emerald-100 flex items-center gap-2 disabled:opacity-60 disabled:cursor-not-allowed"
                             disabled={isSaving}
                         >
                             {isSaving ? (
                                 <>
                                     <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
-                                    Salvando...
+                                    A guardar...
                                 </>
                             ) : (
                                 <>
                                     <Save size={18} />
-                                    Salvar Produto
+                                    Guardar Produto
                                 </>
                             )}
                         </button>
                     </div>
                 </form>
             </div>
-
-            {toast && (
-                <Toast
-                    type={toast.type}
-                    message={toast.message}
-                    onClose={() => setToast(null)}
-                />
-            )}
         </div>
     );
 }

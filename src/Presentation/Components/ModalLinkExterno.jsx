@@ -1,24 +1,36 @@
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import { X, Send, Loader2 } from "lucide-react";
 import { suppliersAPI } from "../../services/api";
+import { useInvalidate } from "../../hooks/queries";
+import { queryKeys } from "../../lib/queryKeys";
+import { getErrorMessage, getFieldErrors } from "../../utils/apiHelpers";
+import { useModalLock } from "../../hooks/useModalLock";
 
 export default function ModalLinkExterno({ isOpen, onClose, onSuccess }) {
     const [email, setEmail] = useState("");
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [error, setError] = useState(null);
     const [success, setSuccess] = useState(false);
+    const successTimerRef = useRef(null);
+    const invalidate = useInvalidate();
 
+    // Limpar o temporizador de fecho automático se o modal for desmontado
+    useEffect(() => () => clearTimeout(successTimerRef.current), []);
+
+    useModalLock(isOpen);
     if (!isOpen) return null;
 
     const handleSubmit = async () => {
-        if (!email.trim()) {
+        if (isSubmitting) return;
+        const trimmedEmail = email.trim();
+        if (!trimmedEmail) {
             setError("Por favor, insira o email do fornecedor.");
             return;
         }
 
         // Basic email validation
         const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-        if (!emailRegex.test(email)) {
+        if (!emailRegex.test(trimmedEmail)) {
             setError("Por favor, insira um email válido.");
             return;
         }
@@ -28,33 +40,35 @@ export default function ModalLinkExterno({ isOpen, onClose, onSuccess }) {
 
         try {
             await suppliersAPI.invite({
-                email: email.trim(),
+                email: trimmedEmail,
                 activity_type: null
             });
 
+            // O fornecedor convidado aparece logo em "Pendentes & Convidados"
+            invalidate(queryKeys.suppliers.all, queryKeys.dashboard.all);
             setSuccess(true);
-            setTimeout(() => {
-                handleClose();
-                if (onSuccess) onSuccess();
-            }, 2000);
+            successTimerRef.current = setTimeout(() => closeModal(true), 2000);
         } catch (err) {
-            console.error("Erro ao enviar convite:", err);
-            setError(
-                err.response?.data?.message || 
-                "Erro ao enviar convite. Tente novamente."
-            );
+            setError(getFieldErrors(err).email || getErrorMessage(err, "Erro ao enviar convite. Tente novamente."));
         } finally {
             setIsSubmitting(false);
         }
     };
 
-    const handleClose = () => {
+    // inviteSent: se o convite já foi enviado, notificar o pai mesmo que o
+    // utilizador feche o modal antes do fecho automático (a lista já foi invalidada).
+    const closeModal = (inviteSent) => {
+        clearTimeout(successTimerRef.current);
+        successTimerRef.current = null;
         setEmail("");
         setError(null);
         setSuccess(false);
         setIsSubmitting(false);
         onClose();
+        if (inviteSent && onSuccess) onSuccess();
     };
+
+    const handleClose = () => closeModal(success);
 
     return (
         <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50">
@@ -69,7 +83,9 @@ export default function ModalLinkExterno({ isOpen, onClose, onSuccess }) {
                     </div>
                     <button
                         onClick={handleClose}
-                        className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+                        disabled={isSubmitting}
+                        aria-label="Fechar"
+                        className="p-2 hover:bg-gray-100 rounded-lg transition-colors disabled:opacity-50"
                     >
                         <X className="w-5 h-5 text-gray-500" />
                     </button>
@@ -86,14 +102,14 @@ export default function ModalLinkExterno({ isOpen, onClose, onSuccess }) {
                             </div>
                             <h3 className="text-lg font-bold text-gray-900 mb-1">Convite Enviado!</h3>
                             <p className="text-sm text-gray-500 text-center">
-                                O convite de cadastro foi enviado com sucesso para <strong>{email}</strong>.
+                                O convite de registo foi enviado com sucesso para <strong>{email.trim()}</strong>.
                             </p>
                         </div>
                     ) : (
                         <>
                             <p className="text-sm text-gray-500">
-                                Envie um convite por email para o fornecedor se registrar no sistema. 
-                                O fornecedor receberá um link para completar o cadastro.
+                                Envie um convite por email para o fornecedor se registar no sistema.
+                                O fornecedor receberá um link para completar o registo.
                             </p>
 
                             {/* Email */}
@@ -108,6 +124,13 @@ export default function ModalLinkExterno({ isOpen, onClose, onSuccess }) {
                                         setEmail(e.target.value);
                                         setError(null);
                                     }}
+                                    onKeyDown={(e) => {
+                                        if (e.key === 'Enter') {
+                                            e.preventDefault();
+                                            handleSubmit();
+                                        }
+                                    }}
+                                    autoFocus
                                     placeholder="email@fornecedor.com"
                                     className="w-full px-4 py-3 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#44B16F] focus:border-transparent transition-all"
                                     disabled={isSubmitting}
@@ -147,7 +170,7 @@ export default function ModalLinkExterno({ isOpen, onClose, onSuccess }) {
                             {isSubmitting ? (
                                 <>
                                     <Loader2 className="w-4 h-4 animate-spin" />
-                                    Enviando...
+                                    A enviar...
                                 </>
                             ) : (
                                 <>

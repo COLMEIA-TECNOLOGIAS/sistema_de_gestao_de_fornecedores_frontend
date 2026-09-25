@@ -1,51 +1,65 @@
-import { useState, useEffect } from "react";
-import { User, Mail, Shield, Save, Loader2, AlertCircle, CheckCircle2 } from "lucide-react";
+import { useState } from "react";
+import { User, Mail, Shield, Save, Loader2 } from "lucide-react";
 import { useAuth } from "../../context/AuthContext";
 import { usersAPI } from "../../services/api";
+import { useInvalidate } from "../../hooks/queries";
+import { queryKeys } from "../../lib/queryKeys";
+import { useToast } from "../../context/ToastContext";
+import { getErrorMessage, getFieldErrors } from "../../utils/apiHelpers";
+
+function FieldError({ message }) {
+    if (!message) return null;
+    return <p className="text-xs text-red-600 px-1">{message}</p>;
+}
 
 export default function MeuPerfilPage() {
-    const { user, updateUser } = useAuth();
+    const { user, updateUser, userRoleName } = useAuth();
+    const toast = useToast();
+    const invalidate = useInvalidate();
     const [formData, setFormData] = useState({
         name: user?.name || "",
         email: user?.email || "",
         role: user?.role || "",
     });
     const [isLoading, setIsLoading] = useState(false);
-    const [status, setStatus] = useState({ type: "", message: "" });
+    const [fieldErrors, setFieldErrors] = useState({});
 
     const handleChange = (e) => {
         const { name, value } = e.target;
         setFormData((prev) => ({ ...prev, [name]: value }));
+        if (fieldErrors[name]) setFieldErrors((prev) => ({ ...prev, [name]: undefined }));
     };
 
     const handleSubmit = async (e) => {
         e.preventDefault();
+        if (!user?.id || isLoading) return;
         setIsLoading(true);
-        setStatus({ type: "", message: "" });
+        setFieldErrors({});
+
+        const payload = { name: formData.name.trim(), email: formData.email.trim() };
 
         try {
-            const response = await usersAPI.update(user.id, {
-                name: formData.name,
-                email: formData.email,
-                // Usually role shouldn't be editable by the user themselves in a profile page, 
-                // but I'll keep it if the API expects it or just send name/email.
-            });
+            const response = await usersAPI.update(user.id, payload);
 
-            // Update local storage and context
-            if (updateUser) {
-                updateUser(response.user || { ...user, ...formData });
-            }
+            // A API pode devolver { user }, { data } ou o próprio utilizador
+            const updated = response?.user || response?.data || (response?.id ? response : null) || {};
 
-            setStatus({
-                type: "success",
-                message: "Perfil atualizado com sucesso!",
+            // Actualiza apenas os campos editáveis, preservando role/permissões em sessão
+            updateUser?.({
+                name: updated.name ?? payload.name,
+                email: updated.email ?? payload.email,
             });
+            setFormData((prev) => ({
+                ...prev,
+                name: updated.name ?? payload.name,
+                email: updated.email ?? payload.email,
+            }));
+
+            invalidate(queryKeys.users.all);
+            toast.success("Perfil actualizado com sucesso!");
         } catch (error) {
-            console.error("Erro ao atualizar perfil:", error);
-            setStatus({
-                type: "error",
-                message: error.response?.data?.message || "Erro ao atualizar perfil. Tente novamente.",
-            });
+            setFieldErrors(getFieldErrors(error));
+            toast.error(getErrorMessage(error, "Erro ao actualizar o perfil. Tente novamente."));
         } finally {
             setIsLoading(false);
         }
@@ -56,7 +70,7 @@ export default function MeuPerfilPage() {
             <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
                 <div>
                     <h1 className="text-2xl font-bold text-gray-900">Meu Perfil</h1>
-                    <p className="text-gray-500">Gerencie suas informações pessoais e configurações de conta.</p>
+                    <p className="text-gray-500">Faça a gestão das suas informações pessoais e definições de conta.</p>
                 </div>
             </div>
 
@@ -72,18 +86,18 @@ export default function MeuPerfilPage() {
                                 </div>
                             </div>
                             <div className="text-center">
-                                <h3 className="text-xl font-bold text-gray-900">{formData.name}</h3>
-                                <p className="text-sm text-gray-500 capitalize">{user?.role || "Utilizador"}</p>
+                                <h3 className="text-xl font-bold text-gray-900">{user?.name || formData.name}</h3>
+                                <p className="text-sm text-gray-500">{userRoleName || "Utilizador"}</p>
                             </div>
 
                             <div className="mt-6 space-y-4">
                                 <div className="flex items-center gap-3 text-sm text-gray-600 bg-gray-50 p-3 rounded-xl">
                                     <Mail size={18} className="text-[#44B16F]" />
-                                    <span className="truncate">{formData.email}</span>
+                                    <span className="truncate">{user?.email || formData.email}</span>
                                 </div>
                                 <div className="flex items-center gap-3 text-sm text-gray-600 bg-gray-50 p-3 rounded-xl">
                                     <Shield size={18} className="text-[#44B16F]" />
-                                    <span className="capitalize">{user?.role || "Acesso Padrão"}</span>
+                                    <span>{userRoleName || "Acesso Padrão"}</span>
                                 </div>
                             </div>
                         </div>
@@ -97,14 +111,6 @@ export default function MeuPerfilPage() {
                             <User size={20} className="text-[#44B16F]" />
                             Informações Pessoais
                         </h3>
-
-                        {status.message && (
-                            <div className={`mb-6 p-4 rounded-xl flex items-center gap-3 ${status.type === "success" ? "bg-green-50 text-green-700 border border-green-100" : "bg-red-50 text-red-700 border border-red-100"
-                                }`}>
-                                {status.type === "success" ? <CheckCircle2 size={20} /> : <AlertCircle size={20} />}
-                                <p className="text-sm font-medium">{status.message}</p>
-                            </div>
-                        )}
 
                         <form onSubmit={handleSubmit} className="space-y-6">
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -120,11 +126,12 @@ export default function MeuPerfilPage() {
                                             type="text"
                                             value={formData.name}
                                             onChange={handleChange}
-                                            placeholder="Seu nome"
+                                            placeholder="O seu nome"
                                             className="w-full pl-10 pr-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#44B16F]/20 focus:border-[#44B16F] transition-all"
                                             required
                                         />
                                     </div>
+                                    <FieldError message={fieldErrors.name} />
                                 </div>
 
                                 <div className="space-y-2">
@@ -139,11 +146,12 @@ export default function MeuPerfilPage() {
                                             type="email"
                                             value={formData.email}
                                             onChange={handleChange}
-                                            placeholder="seu@email.com"
+                                            placeholder="o.seu@email.com"
                                             className="w-full pl-10 pr-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#44B16F]/20 focus:border-[#44B16F] transition-all"
                                             required
                                         />
                                     </div>
+                                    <FieldError message={fieldErrors.email} />
                                 </div>
                             </div>
 
@@ -158,7 +166,7 @@ export default function MeuPerfilPage() {
                                     ) : (
                                         <Save size={20} className="group-hover:scale-110 transition-transform" />
                                     )}
-                                    {isLoading ? "Salvando..." : "Salvar Alterações"}
+                                    {isLoading ? "A guardar..." : "Guardar Alterações"}
                                 </button>
                             </div>
                         </form>

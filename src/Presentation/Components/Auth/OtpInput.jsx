@@ -3,8 +3,24 @@ import { useRef } from "react";
 export default function OtpInput({ value = "", onChange, length = 6, disabled = false, autoFocus = true }) {
     const inputRefs = useRef([]);
 
+    const fillFrom = (index, digits) => {
+        const chars = value.padEnd(length, " ").split("");
+        digits.split("").forEach((d, i) => {
+            if (index + i < length) chars[index + i] = d;
+        });
+        onChange(chars.join("").replace(/ /g, ""));
+        inputRefs.current[Math.min(index + digits.length, length - 1)]?.focus();
+    };
+
     const handleChange = (index, e) => {
-        const digit = e.target.value.replace(/\D/g, "").slice(-1);
+        const digits = e.target.value.replace(/\D/g, "");
+        // Vários dígitos de uma vez (preenchimento automático do SMS/e-mail em telemóveis)
+        if (digits.length > 1 && !value[index]) {
+            fillFrom(index, digits.slice(0, length - index));
+            return;
+        }
+        // Mantém apenas o último dígito escrito, permitindo substituir o existente
+        const digit = digits.slice(-1);
         const chars = value.padEnd(length, " ").split("").map((c, i) => (i === index ? digit : c));
         onChange(chars.join("").replace(/ /g, ""));
         if (digit && index < length - 1) {
@@ -38,10 +54,12 @@ export default function OtpInput({ value = "", onChange, length = 6, disabled = 
             {Array.from({ length }).map((_, index) => (
                 <input
                     key={index}
-                    ref={(el) => (inputRefs.current[index] = el)}
+                    ref={(el) => { inputRefs.current[index] = el; }}
                     type="text"
                     inputMode="numeric"
-                    maxLength={1}
+                    autoComplete={index === 0 ? "one-time-code" : "off"}
+                    aria-label={`Dígito ${index + 1} de ${length}`}
+                    onFocus={(e) => e.target.select()}
                     autoFocus={autoFocus && index === 0}
                     value={value[index] || ""}
                     onChange={(e) => handleChange(index, e)}

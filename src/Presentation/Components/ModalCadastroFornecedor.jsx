@@ -117,12 +117,12 @@ export default function ModalCadastroFornecedor({ isOpen, onClose, fornecedor, o
 
                         {/* Title */}
                         <h2 className="text-3xl font-bold text-gray-900 mb-3">
-                            Cadastrar um novo fornecedor
+                            Registar um novo fornecedor
                         </h2>
 
                         {/* Subtitle */}
                         <p className="text-gray-600 mb-10">
-                            Seleciona a forma de cadastro que pretende prosseguir.
+                            Selecione a forma de registo que pretende utilizar.
                         </p>
 
                         {/* Buttons */}
@@ -131,7 +131,7 @@ export default function ModalCadastroFornecedor({ isOpen, onClose, fornecedor, o
                                 onClick={handleCadastroDireto}
                                 className="px-8 py-3 border-2 border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors font-medium"
                             >
-                                Cadastro Direto
+                                Registo Directo
                             </button>
                             <button
                                 onClick={() => setIsLinkExternoOpen(true)}

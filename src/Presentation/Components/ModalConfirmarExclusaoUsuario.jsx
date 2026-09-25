@@ -14,7 +14,7 @@ export default function ModalConfirmarExclusaoUsuario({ isOpen, onClose, onConfi
                         <div className="p-2 bg-red-100 rounded-lg">
                             <AlertTriangle className="w-5 h-5 text-red-600" />
                         </div>
-                        <h2 className="text-xl font-bold text-gray-900">Eliminar Usuário</h2>
+                        <h2 className="text-xl font-bold text-gray-900">Eliminar Utilizador</h2>
                     </div>
                     <button
                         onClick={onClose}
@@ -28,10 +28,10 @@ export default function ModalConfirmarExclusaoUsuario({ isOpen, onClose, onConfi
                 {/* Content */}
                 <div className="p-6">
                     <p className="text-gray-600 text-center text-lg">
-                        Tens certeza que quer eliminar <span className="font-bold text-gray-900">{user.name || user.nome}</span>?
+                        Tem a certeza de que pretende eliminar <span className="font-bold text-gray-900">{user.name || user.nome}</span>?
                     </p>
                     <p className="text-gray-500 text-sm text-center mt-2">
-                        Esta ação não pode ser desfeita.
+                        Esta acção não pode ser desfeita.
                     </p>
                 </div>
 
@@ -55,7 +55,7 @@ export default function ModalConfirmarExclusaoUsuario({ isOpen, onClose, onConfi
                                     <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
                                     <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
                                 </svg>
-                                Eliminando...
+                                A eliminar...
                             </>
                         ) : (
                             'Sim, eliminar'

@@ -1,39 +1,17 @@
-import { LayoutDashboard, Package, UserCircle, BarChart3, ShoppingCart, Settings, FileText, Tag, Activity, ChevronDown, ChevronRight, Users, UserPlus, Shield } from "lucide-react";
+import { LayoutDashboard, Package, UserCircle, BarChart3, ShoppingCart, Activity, ChevronDown, ChevronRight, Users, UserPlus, Shield } from "lucide-react";
 import { useAuth } from "../../context/AuthContext";
 import { PERMISSIONS } from "../../utils/permissions";
-import LogoutConfirmModal from "../Components/LogoutConfirmModal";
 import { useState } from "react";
-import { useNavigate } from "react-router-dom";
+
+const USUARIOS_SUB_IDS = ["usuarios", "criar-utilizador", "permissoes"];
 
 function Sidebar({ activeItem, onItemClick }) {
-  const { hasPermission, isAdmin, logout, user, permissionsLoaded } = useAuth();
-  const [isLogoutModalOpen, setIsLogoutModalOpen] = useState(false);
-  const [isLoggingOut, setIsLoggingOut] = useState(false);
+  const { isAdmin, canAccessMenu, permissionsLoaded } = useAuth();
   // Default expanded for "usuarios" if we are in one of its paths
-  const isUsuariosActive = ["usuarios", "criar-utilizador", "permissoes"].includes(activeItem);
-  const [expandedMenus, setExpandedMenus] = useState({ "usuarios_group": isUsuariosActive });
-  const navigate = useNavigate();
+  const [expandedMenus, setExpandedMenus] = useState({ "usuarios_group": USUARIOS_SUB_IDS.includes(activeItem) });
 
   const toggleMenu = (id) => {
     setExpandedMenus(prev => ({ ...prev, [id]: !prev[id] }));
-  };
-
-  // Verifica se o utilizador tem permissão para um menu.
-  // Para admins: sempre true.
-  // Para não-admins: usa estritamente as permissões da API.
-  const canSeeMenu = (permission) => {
-    if (isAdmin) return true;
-    if (!permission) return false;
-
-    // Usar estritamente as permissões carregadas da API
-    if (user?.apiPermissions && user.apiPermissions.permissionsMap !== undefined) {
-      const map = user.apiPermissions.permissionsMap;
-      const perm = map[permission];
-      return !!(perm && perm.access !== false);
-    }
-
-    // Se as permissões ainda não carregaram ou estão vazias, negar acesso por segurança
-    return false;
   };
 
   const mainMenuItems = [
@@ -58,22 +36,11 @@ function Sidebar({ activeItem, onItemClick }) {
 
   const menuItems = mainMenuItems.filter(item => {
     if (item.adminOnly && !isAdmin) return false;
-    return canSeeMenu(item.permission);
+    return canAccessMenu(item.permission);
   });
 
   // Enquanto as permissões ainda não carregaram, não mostrar menus
   const showMenu = isAdmin || permissionsLoaded;
-
-  const handleLogoutConfirm = async () => {
-    setIsLoggingOut(true);
-    try {
-      await logout();
-      navigate("/login");
-    } finally {
-      setIsLoggingOut(false);
-      setIsLogoutModalOpen(false);
-    }
-  };
 
   const handleItemClick = (id) => {
     onItemClick(id);
@@ -177,13 +144,6 @@ function Sidebar({ activeItem, onItemClick }) {
         </nav>
       </aside>
 
-      {/* Logout Modal */}
-      <LogoutConfirmModal
-        isOpen={isLogoutModalOpen}
-        onClose={() => setIsLogoutModalOpen(false)}
-        onConfirm={handleLogoutConfirm}
-        isLoading={isLoggingOut}
-      />
     </>
   );
 }

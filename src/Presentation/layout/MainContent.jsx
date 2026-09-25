@@ -1,32 +1,38 @@
-import DashboardPage from "./DashboardPage";
-import FornecedoresPage from "./FornecedoresPage";
-import UsuariosPage from "./UsuariosPage";
-import RelatoriosPage from "./RelatoriosPage";
-import AquisicoesPage from "./AquisicoesPage";
-import MeuPerfilPage from "./MeuPerfilPage";
-import ProdutosPage from "./ProdutosPage";
-import LogsEventosPage from "./LogsEventosPage";
-import CriarUtilizadorPage from "./CriarUtilizadorPage";
-import PermissoesPage from "./PermissoesPage";
-import ConfiguracoesPage from "./ConfiguracoesPage";
+import { lazy, Suspense } from "react";
+import ErrorBoundary from "../Components/ErrorBoundary";
+
+// Cada página é carregada sob demanda (code-splitting por página)
+const PAGES = {
+  "dashboard":        lazy(() => import("./DashboardPage")),
+  "fornecedores":     lazy(() => import("./FornecedoresPage")),
+  "usuarios":         lazy(() => import("./UsuariosPage")),
+  "criar-utilizador": lazy(() => import("./CriarUtilizadorPage")),
+  "permissoes":       lazy(() => import("./PermissoesPage")),
+  "relatorios":       lazy(() => import("./RelatoriosPage")),
+  "aquisicoes":       lazy(() => import("./AquisicoesPage")),
+  "meu-perfil":       lazy(() => import("./MeuPerfilPage")),
+  "produtos":         lazy(() => import("./ProdutosPage")),
+  "logs-eventos":     lazy(() => import("./LogsEventosPage")),
+  "config":           lazy(() => import("./ConfiguracoesPage")),
+};
+
+function PageFallback() {
+  return (
+    <div className="flex items-center justify-center h-64">
+      <div className="animate-spin rounded-full h-10 w-10 border-t-2 border-b-2" style={{ borderColor: 'var(--color-primary)' }} />
+    </div>
+  );
+}
 
 export default function MainContent({ activeItem }) {
-  const renderPage = () => {
-    switch (activeItem) {
-      case "dashboard":    return <DashboardPage />;
-      case "fornecedores": return <FornecedoresPage />;
-      case "usuarios":     return <UsuariosPage />;
-      case "criar-utilizador": return <CriarUtilizadorPage />;
-      case "permissoes":   return <PermissoesPage />;
-      case "relatorios":   return <RelatoriosPage />;
-      case "aquisicoes":   return <AquisicoesPage />;
-      case "meu-perfil":   return <MeuPerfilPage />;
-      case "produtos":     return <ProdutosPage />;
-      case "logs-eventos": return <LogsEventosPage />;
-      case "config":       return <ConfiguracoesPage />;
-      default:             return <DashboardPage />;
-    }
-  };
+  const Page = PAGES[activeItem] || PAGES.dashboard;
 
-  return renderPage();
+  // key: ao mudar de página, o ErrorBoundary volta ao estado inicial
+  return (
+    <ErrorBoundary key={activeItem}>
+      <Suspense fallback={<PageFallback />}>
+        <Page />
+      </Suspense>
+    </ErrorBoundary>
+  );
 }

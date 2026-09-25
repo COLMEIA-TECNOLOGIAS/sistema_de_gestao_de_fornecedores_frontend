@@ -1,23 +1,58 @@
-import { ArrowLeft, AlertCircle, FileText, CheckCircle, Upload, X, Eye, Plus } from "lucide-react";
-import { useState, useEffect, useRef, useCallback, useMemo } from "react";
+import { ArrowLeft, AlertCircle, FileText, CheckCircle, Upload, X, Eye, RefreshCw } from "lucide-react";
+import { useState, useEffect, useRef, useMemo } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
-import api, { suppliersAPI, categoriesAPI } from "../../services/api";
-import Toast from "../Components/Toast";
+import api, { suppliersAPI } from "../../services/api";
 import { PROVINCE_NAMES, getMunicipalities } from "../../utils/angolaLocations";
+import { useCategories, useInvalidate } from "../../hooks/queries";
+import { queryKeys } from "../../lib/queryKeys";
+import { useToast } from "../../context/ToastContext";
+import { getErrorMessage } from "../../utils/apiHelpers";
 
-// Categories are now fetched from the API
+// As categorias vêm da API (cache partilhada com a página de fornecedores)
 // As províncias e municípios vêm do dataset local (angolaLocations.js)
+
+// Converte erros de validação do Laravel ({ campo: [msg, ...] }) em strings
+// e devolve o passo do formulário onde está o primeiro campo com erro.
+const STEP_BY_FIELD = {
+  company_name: 1, email: 1, phone: 1, alt_phone: 1, nif: 1, categories: 1,
+  province: 2, municipality: 2, address: 2,
+};
+const normalizeServerErrors = (serverErrors) => {
+  const normalized = {};
+  let firstStep = null;
+  Object.entries(serverErrors || {}).forEach(([key, value]) => {
+    const field = key.split('.')[0]; // ex: "categories.0" -> "categories"
+    const message = Array.isArray(value) ? value[0] : String(value);
+    if (!normalized[field]) normalized[field] = message;
+    const step = STEP_BY_FIELD[field];
+    if (step && (firstStep === null || step < firstStep)) firstStep = step;
+  });
+  return { normalized, firstStep };
+};
+
+// Mapeia o tipo de documento existente para o campo de upload correspondente
+const UPLOAD_FIELD_BY_DOC_TYPE = {
+  commercial_certificate: "commercial_certificate",
+  pacto_social: "pacto_social",
+  agt_certificate: "non_debtor_certificate_agt",
+  inss_certificate: "non_debtor_certificate_inss",
+  nif_proof: "nif_proof",
+  product_list: "product_list",
+};
 
 export default function FornecedorFormWrapper() {
   const [currentStep, setCurrentStep] = useState(1);
   const [isLoading, setIsLoading] = useState(false);
-  const [categories, setCategories] = useState([]);
-  const [isLoadingCategories, setIsLoadingCategories] = useState(false);
-  const [toast, setToast] = useState(null);
+  const toast = useToast();
+  const invalidate = useInvalidate();
+  const {
+    data: categories = [],
+    isLoading: isLoadingCategories,
+    isError: isCategoriesError,
+    isFetching: isFetchingCategories,
+    refetch: refetchCategories,
+  } = useCategories();
   const [previewFile, setPreviewFile] = useState(null);
-  const [isCreatingCategory, setIsCreatingCategory] = useState(false);
-  const [newCategoryName, setNewCategoryName] = useState('');
-  const [isSubmittingCategory, setIsSubmittingCategory] = useState(false);
   const navigate = useNavigate();
   const location = useLocation();
   const editingFornecedor = location.state?.fornecedor || null;
@@ -80,31 +115,18 @@ export default function FornecedorFormWrapper() {
         const response = await suppliersAPI.getDocument(editingFornecedor.id, candidate, params);
         const blob = new Blob([response.data], { type: response.headers['content-type'] });
         const objectUrl = window.URL.createObjectURL(blob);
-        window.open(objectUrl, '_blank');
+        const win = window.open(objectUrl, '_blank');
         setTimeout(() => window.URL.revokeObjectURL(objectUrl), 10000);
+        if (!win) {
+          toast.warning("O navegador bloqueou a janela. Permita pop-ups para visualizar o documento.");
+        }
         return;
       } catch (error) {
         console.warn(`Documento não disponível como "${candidate}":`, error);
       }
     }
-    alert("Erro ao carregar o documento.");
+    toast.error("Erro ao carregar o documento.");
   };
-
-  useEffect(() => {
-    const fetchCategories = async () => {
-      try {
-        setIsLoadingCategories(true);
-        const response = await categoriesAPI.getAll();
-        setCategories(Array.isArray(response) ? response : (Array.isArray(response?.data) ? response.data : []));
-      } catch (err) {
-        console.error("Error fetching categories:", err);
-        setToast({ type: "error", message: "Erro ao carregar categorias" });
-      } finally {
-        setIsLoadingCategories(false);
-      }
-    };
-    fetchCategories();
-  }, []);
 
   const [formData, setFormData] = useState({
     company_name: editingFornecedor?.company_name || editingFornecedor?.commercial_name || "",
@@ -183,39 +205,22 @@ export default function FornecedorFormWrapper() {
     });
   };
 
-  const handleCreateCategory = async () => {
-    if (!newCategoryName.trim()) return;
-    try {
-      setIsSubmittingCategory(true);
-      const res = await categoriesAPI.create({ name: newCategoryName });
-      const created = res.data || res;
-      setCategories(prev => [...prev, created]);
-      handleCategoryToggle(created.id);
-      setNewCategoryName('');
-      setIsCreatingCategory(false);
-      setToast({ type: 'success', message: 'Categoria criada com sucesso' });
-    } catch (err) {
-      console.error(err);
-      setToast({ type: 'error', message: 'Erro ao criar categoria' });
-    } finally {
-      setIsSubmittingCategory(false);
-    }
-  };
-
-    // handleCategoriaFixaToggle removed
-
   const handlePreviewFile = (file) => {
     if (!file) return;
     const url = URL.createObjectURL(file);
-    setPreviewFile({ name: file.name, url, type: file.type });
+    setPreviewFile({ name: file.name, url, type: file.type || "" });
   };
 
   const closePreview = () => {
-    if (previewFile?.url) {
-      URL.revokeObjectURL(previewFile.url);
-    }
     setPreviewFile(null);
   };
+
+  // Revoga o object URL da pré-visualização ao fechar/substituir ou ao desmontar
+  const previewUrl = previewFile?.url;
+  useEffect(() => {
+    if (!previewUrl) return;
+    return () => URL.revokeObjectURL(previewUrl);
+  }, [previewUrl]);
 
   const validateStep = (step) => {
     const newErrors = {};
@@ -256,8 +261,7 @@ export default function FornecedorFormWrapper() {
     setCurrentStep((prev) => prev - 1);
   };
 
-  // Debounced submit to prevent double-clicks and improve performance
-  const handleSubmit = useCallback(async () => {
+  const handleSubmit = async () => {
     if (submitRef.current) return; // Prevent double-submit
     if (!validateStep(3)) return;
 
@@ -314,17 +318,20 @@ export default function FornecedorFormWrapper() {
         data.append("_method", "PUT");
         await suppliersAPI.updateMultipart(editingFornecedor.id, data);
 
-        // Eliminar no servidor os documentos marcados com X (best-effort)
-        for (const type of removedDocuments) {
+        // Eliminar no servidor os documentos marcados com X (best-effort).
+        // Se o utilizador carregou um ficheiro novo para o mesmo tipo, o upload
+        // acima já o substituiu — eliminar agora apagaria o ficheiro novo.
+        for (const docType of removedDocuments) {
+          if (formData[UPLOAD_FIELD_BY_DOC_TYPE[docType]]) continue;
           try {
-            const [docType, query] = type.split('&');
-            const params = query && query.startsWith('index=') ? { index: query.split('=')[1] } : {};
-            await api.delete(`/suppliers/${editingFornecedor.id}/documents/${docType}`, { params });
+            await api.delete(`/suppliers/${editingFornecedor.id}/documents/${docType}`);
           } catch (delErr) {
             console.warn("Falha ao eliminar documento no servidor:", delErr);
           }
         }
-        for (const index of removedLicenses) {
+        // Eliminar por ordem decrescente para que os índices restantes não mudem
+        const licensesToRemove = [...removedLicenses].sort((a, b) => b - a);
+        for (const index of licensesToRemove) {
           try {
             await api.delete(`/suppliers/${editingFornecedor.id}/documents/commercial_license`, { params: { index } });
           } catch (delErr) {
@@ -335,41 +342,26 @@ export default function FornecedorFormWrapper() {
         await suppliersAPI.create(data);
       }
 
+      // Actualizar listas, contadores e o painel em todas as páginas
+      invalidate(queryKeys.suppliers.all, queryKeys.dashboard.all);
       setCurrentStep(4);
     } catch (err) {
-      console.error("Error submitting form:", err);
-      console.error("Response status:", err.response?.status);
-      console.error("Response data:", JSON.stringify(err.response?.data, null, 2));
-
-      const status = err.response?.status;
       const responseData = err.response?.data;
 
       if (responseData?.errors) {
-        // Validation errors (Laravel 422)
-        setErrors(responseData.errors);
-        setToast({
-          type: "error",
-          message: responseData.message || "Erro de validação nos campos."
-        });
-      } else if (responseData?.message) {
-        // API returned a message but no field errors
-        setToast({
-          type: "error",
-          message: `Erro ${status || ''}: ${responseData.message}`
-        });
-      } else if (!err.response) {
-        // Network error (no response at all)
-        setToast({ type: "error", message: "Sem resposta do servidor. Verifique a sua ligação à internet." });
-      } else {
-        setToast({ type: "error", message: `Erro ${status || 'desconhecido'} do servidor. Contacte o suporte.` });
+        // Erros de validação (Laravel 422): marcar os campos e voltar ao passo do primeiro erro
+        const { normalized, firstStep } = normalizeServerErrors(responseData.errors);
+        setErrors(normalized);
+        if (firstStep) setCurrentStep(firstStep);
       }
+      toast.error(getErrorMessage(err, editingFornecedor ? "Erro ao actualizar o fornecedor." : "Erro ao registar o fornecedor."));
     } finally {
       setIsLoading(false);
       submitRef.current = false;
     }
-  }, [formData, editingFornecedor, removedDocuments, removedLicenses]);
+  };
 
-const provinces = PROVINCE_NAMES;
+  const provinces = PROVINCE_NAMES;
 
   const municipalities = useMemo(
     () => getMunicipalities(formData.province),
@@ -385,10 +377,10 @@ const provinces = PROVINCE_NAMES;
               <CheckCircle size={48} className="text-white" />
             </div>
             <h2 className="text-4xl font-bold text-gray-900 mb-4 tracking-tight">
-              {editingFornecedor ? "Fornecedor atualizado!" : "Fornecedor cadastrado!"}
+              {editingFornecedor ? "Fornecedor actualizado!" : "Fornecedor registado!"}
             </h2>
             <p className="text-gray-600 text-lg mb-10 leading-relaxed">
-              O fornecedor <strong>{formData.company_name}</strong> foi {editingFornecedor ? "atualizado" : "adicionado"} com sucesso à sua base de dados.
+              O fornecedor <strong>{formData.company_name}</strong> foi {editingFornecedor ? "actualizado" : "adicionado"} com sucesso à sua base de dados.
             </p>
             <button
               onClick={() => navigate("/fornecedores")}
@@ -404,15 +396,6 @@ const provinces = PROVINCE_NAMES;
 
   return (
     <div className="min-h-screen flex flex-col" style={{ background: 'var(--color-bg)' }}>
-      {/* Toast Notification */}
-      {toast && (
-        <Toast
-          type={toast.type}
-          message={toast.message}
-          onClose={() => setToast(null)}
-        />
-      )}
-
       {/* File Preview Modal */}
       {previewFile && (
         <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50">
@@ -487,7 +470,7 @@ const provinces = PROVINCE_NAMES;
               <div className="space-y-8">
                 <div className="border-b border-gray-100 pb-6 mb-8">
                   <h2 className="text-3xl font-bold text-gray-900 mb-2">Dados da Empresa</h2>
-                  <p className="text-gray-500">Informa os dados básicos de identificação do fornecedor.</p>
+                  <p className="text-gray-500">Informe os dados básicos de identificação do fornecedor.</p>
                 </div>
                 <div className="grid grid-cols-2 gap-8">
                   <div className="space-y-6">
@@ -517,7 +500,22 @@ const provinces = PROVINCE_NAMES;
                       <p className="text-xs text-gray-500 mb-3">Selecione uma ou mais categorias</p>
                       <div className="flex flex-wrap gap-3">
                         {isLoadingCategories ? (
-                          <p className="text-sm text-gray-400">Carregando categorias...</p>
+                          <p className="text-sm text-gray-400">A carregar categorias...</p>
+                        ) : isCategoriesError && categories.length === 0 ? (
+                          <div className="flex items-center gap-3 text-sm text-red-500">
+                            <span>Não foi possível carregar as categorias.</span>
+                            <button
+                              type="button"
+                              onClick={() => refetchCategories()}
+                              disabled={isFetchingCategories}
+                              className="inline-flex items-center gap-1 font-bold text-[#44B16F] hover:underline disabled:opacity-50"
+                            >
+                              <RefreshCw size={14} className={isFetchingCategories ? "animate-spin" : ""} />
+                              Tentar novamente
+                            </button>
+                          </div>
+                        ) : categories.length === 0 ? (
+                          <p className="text-sm text-gray-400">Nenhuma categoria registada. Crie uma no separador "Categorias" dos Fornecedores.</p>
                         ) : (
                           <>
                             {categories.map((cat) => (
@@ -635,6 +633,7 @@ const provinces = PROVINCE_NAMES;
                           </option>
                         ))}
                       </select>
+                      {errors.province && <p className="text-red-500 text-xs mt-2 font-bold">{errors.province}</p>}
                     </div>
                     <div>
                       <label className="block text-sm font-bold text-gray-700 mb-2 uppercase tracking-wider">
@@ -654,6 +653,7 @@ const provinces = PROVINCE_NAMES;
                           </option>
                         ))}
                       </select>
+                      {errors.municipality && <p className="text-red-500 text-xs mt-2 font-bold">{errors.municipality}</p>}
                     </div>
                   </div>
                   <div className="space-y-6">
@@ -680,7 +680,7 @@ const provinces = PROVINCE_NAMES;
               <div className="space-y-8">
                 <div className="border-b border-gray-100 pb-6 mb-8">
                   <h2 className="text-3xl font-bold text-gray-900 mb-2">Documentos</h2>
-                  <p className="text-gray-500">Complete as informações finais para o cadastro.</p>
+                  <p className="text-gray-500">Complete as informações finais para o registo.</p>
                 </div>
 
                 <div className="space-y-6">
@@ -748,7 +748,7 @@ const provinces = PROVINCE_NAMES;
                         onViewExisting={handleViewExistingDocument}
                         onRemoveExisting={handleRemoveExistingDocument}
                         existingRemoved={removedDocuments.includes('inss_certificate')}
-                        helperText="PDF, JPG ou PNG (máx 5MB) — OPCIONAL"
+                        helperText="PDF, JPG ou PNG (máx 5MB) — Opcional"
                         accept=".pdf,.jpg,.jpeg,.png"
                       />
                       <FileUploadField
@@ -862,7 +862,8 @@ const provinces = PROVINCE_NAMES;
           <div className="px-10 py-8 bg-gray-50 flex items-center justify-between">
             <button
               onClick={currentStep === 1 ? () => navigate("/fornecedores") : prevStep}
-              className="px-8 py-3 text-gray-500 font-bold hover:text-gray-900 transition-colors uppercase tracking-widest text-xs"
+              disabled={isLoading}
+              className="px-8 py-3 text-gray-500 font-bold hover:text-gray-900 transition-colors uppercase tracking-widest text-xs disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {currentStep === 1 ? "Cancelar" : "Anterior"}
             </button>
@@ -875,7 +876,7 @@ const provinces = PROVINCE_NAMES;
               {isLoading ? (
                 <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
               ) : null}
-              {currentStep === 3 ? "Finalizar Cadastro" : "Próximo Passo"}
+              {currentStep === 3 ? "Finalizar Registo" : "Próximo Passo"}
             </button>
           </div>
         </div>

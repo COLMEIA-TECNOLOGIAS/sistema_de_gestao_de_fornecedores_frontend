@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { Eye, EyeOff, CheckCircle } from 'lucide-react';
 import Input from '../../Components/Input';
 import Button from '../../Components/Button';
+import { useToast } from '../../../context/ToastContext';
 
 export default function RegisterPage() {
   const [password, setPassword] = useState('');
@@ -10,12 +11,13 @@ export default function RegisterPage() {
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const navigate = useNavigate();
+  const toast = useToast();
 
   const handleSubmit = (e) => {
     e.preventDefault();
     // Validação básica das senhas
     if (password !== confirmPassword) {
-      alert('As senhas não coincidem!');
+      toast.warning('As senhas não coincidem!');
       return;
     }
     

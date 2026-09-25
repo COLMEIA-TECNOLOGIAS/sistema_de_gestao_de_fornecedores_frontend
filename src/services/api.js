@@ -4,12 +4,14 @@ const API_BASE_URL = import.meta.env.VITE_API_URL || 'https://api.mosap3.yetuwar
 
 const api = axios.create({
     baseURL: API_BASE_URL,
+    // Evita pedidos pendurados indefinidamente em redes instáveis
+    timeout: 30000,
     headers: {
         'Content-Type': 'application/json',
     },
 });
 
-// Intercecptor to add auth token to requests
+// Interceptor to add auth token to requests
 api.interceptors.request.use(
     (config) => {
         const token = localStorage.getItem('token');
@@ -21,19 +23,55 @@ api.interceptors.request.use(
     (error) => Promise.reject(error)
 );
 
+// Endpoints públicos: um 401 aqui significa credenciais/código inválidos,
+// não sessão expirada — o erro deve chegar ao formulário.
+const PUBLIC_ENDPOINTS = ['/login', '/password/', '/email/'];
+
 // Interceptor to handle auth errors
 api.interceptors.response.use(
     (response) => response,
     (error) => {
-        if (error.response?.status === 401) {
+        const url = error.config?.url || '';
+        const isPublicEndpoint = PUBLIC_ENDPOINTS.some((endpoint) => url.startsWith(endpoint));
+
+        if (error.response?.status === 401 && !isPublicEndpoint && localStorage.getItem('token')) {
             // Token expired or invalid
             localStorage.removeItem('token');
             localStorage.removeItem('user');
-            window.location.href = '/login';
+            localStorage.removeItem('apiPermissions');
+            if (window.location.pathname !== '/login') {
+                window.location.replace('/login');
+            }
         }
         return Promise.reject(error);
     }
 );
+
+// Limite de segurança para não entrar em ciclo se o backend devolver metadados inválidos
+const MAX_PAGES = 200;
+
+/**
+ * Percorre todas as páginas de um endpoint paginado (Laravel) e devolve um array único.
+ * Aceita respostas em array simples ou { data, last_page } / { data, meta: { last_page } }.
+ */
+async function fetchAllPages(url, { perPage = 100, params = {} } = {}) {
+    const all = [];
+    let currentPage = 1;
+    let lastPage = 1;
+    do {
+        const response = await api.get(url, { params: { ...params, page: currentPage, per_page: perPage } });
+        const payload = response.data;
+        const items = Array.isArray(payload)
+            ? payload
+            : (Array.isArray(payload?.data) ? payload.data : []);
+        all.push(...items);
+        // Resposta não paginada: já temos tudo
+        if (Array.isArray(payload)) break;
+        lastPage = Number(payload?.last_page ?? payload?.meta?.last_page ?? currentPage) || currentPage;
+        currentPage += 1;
+    } while (currentPage <= lastPage && currentPage <= MAX_PAGES);
+    return all;
+}
 
 // Auth API
 export const authAPI = {
@@ -51,8 +89,9 @@ export const authAPI = {
         return response.data;
     },
     // Reenviar o código de confirmação de email
-    resendEmailVerification: async () => {
-        const response = await api.post('/email/resend-verification');
+    // O utilizador pode não ter sessão iniciada, por isso o email é enviado no corpo
+    resendEmailVerification: async (email) => {
+        const response = await api.post('/email/resend-verification', email ? { email } : undefined);
         return response.data;
     },
     // Recuperação de senha
@@ -80,20 +119,7 @@ export const authAPI = {
 
 // Users API
 export const usersAPI = {
-    getAll: async (perPage = 100) => {
-        const all = [];
-        let currentPage = 1;
-        let lastPage = 1;
-        do {
-            const response = await api.get(`/users?page=${currentPage}&per_page=${perPage}`);
-            const payload = response.data;
-            const items = Array.isArray(payload) ? payload : (Array.isArray(payload?.data) ? payload.data : []);
-            all.push(...items);
-            lastPage = payload?.last_page ?? payload?.meta?.last_page ?? currentPage;
-            currentPage += 1;
-        } while (currentPage <= lastPage);
-        return all;
-    },
+    getAll: (perPage = 100) => fetchAllPages('/users', { perPage }),
     create: async (userData) => {
         const response = await api.post('/users', userData);
         return response.data;
@@ -131,24 +157,8 @@ export const permissionsAPI = {
 
 // Suppliers API
 export const suppliersAPI = {
-    // Busca TODOS os fornecedores, percorrendo todas as páginas da paginação
-    // do backend (default 10 por página), sem limite de registos.
-    getAll: async (perPage = 100) => {
-        const all = [];
-        let currentPage = 1;
-        let lastPage = 1;
-        do {
-            const response = await api.get(`/suppliers?page=${currentPage}&per_page=${perPage}`);
-            const payload = response.data;
-            const items = Array.isArray(payload)
-                ? payload
-                : (Array.isArray(payload?.data) ? payload.data : []);
-            all.push(...items);
-            lastPage = payload?.last_page ?? payload?.meta?.last_page ?? currentPage;
-            currentPage += 1;
-        } while (currentPage <= lastPage);
-        return all;
-    },
+    // Busca TODOS os fornecedores, percorrendo todas as páginas da paginação do backend
+    getAll: (perPage = 100) => fetchAllPages('/suppliers', { perPage }),
     create: async (supplierData) => {
         // When sending FormData, do NOT set Content-Type manually.
         // Axios will auto-detect FormData and set the correct multipart/form-data boundary.
@@ -209,6 +219,8 @@ export const quotationRequestsAPI = {
         const response = await api.get('/quotation-requests');
         return response.data;
     },
+    // Todas as páginas, como array
+    listAll: () => fetchAllPages('/quotation-requests'),
     getById: async (id) => {
         const response = await api.get(`/quotation-requests/${id}`);
         return response.data;
@@ -218,9 +230,10 @@ export const quotationRequestsAPI = {
         return response.data;
     },
     createWithDocuments: async (formData) => {
+        // Axios define multipart/form-data com o boundary correcto para FormData
         const response = await api.post('/quotation-requests', formData, {
             headers: {
-                'Content-Type': 'multipart/form-data',
+                'Content-Type': undefined,
             },
         });
         return response.data;
@@ -345,7 +358,7 @@ export const notificationsAPI = {
 // Products API
 export const productsAPI = {
     getAll: async (page = 1) => {
-        const response = await api.get(`/products?page=${page}`);
+        const response = await api.get('/products', { params: { page } });
         return response.data;
     },
     create: async (productData) => {
@@ -361,7 +374,7 @@ export const productsAPI = {
         return response.data;
     },
     search: async (query, page = 1) => {
-        const response = await api.get(`/products?search=${query}&page=${page}`);
+        const response = await api.get('/products', { params: { search: query, page } });
         return response.data;
     },
     getAnalytics: async (id) => {
@@ -373,9 +386,11 @@ export const productsAPI = {
 // Acquisitions API
 export const acquisitionsAPI = {
     getAll: async (page = 1) => {
-        const response = await api.get(`/acquisitions?page=${page}`);
+        const response = await api.get('/acquisitions', { params: { page } });
         return response.data;
     },
+    // Todas as páginas, como array
+    listAll: () => fetchAllPages('/acquisitions'),
     getById: async (id) => {
         const response = await api.get(`/acquisitions/${id}`);
         return response.data;
@@ -410,9 +425,11 @@ export const auditLogsAPI = {
 // Pending Deletions API
 export const pendingDeletionsAPI = {
     getAll: async (page = 1) => {
-        const response = await api.get(`/deletion-requests?page=${page}`);
+        const response = await api.get('/deletion-requests', { params: { page } });
         return response.data;
     },
+    // Todas as páginas, como array
+    listAll: () => fetchAllPages('/deletion-requests'),
     getById: async (id) => {
         const response = await api.get(`/deletion-requests/${id}`);
         return response.data;
