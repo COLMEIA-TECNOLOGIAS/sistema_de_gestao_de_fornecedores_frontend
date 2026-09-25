@@ -128,7 +128,7 @@ export default function ModalDetalhesLog({ isOpen, onClose, log }) {
                         <div className="p-4 rounded-xl" style={{ background: 'var(--color-bg)', border: '1px solid var(--color-border-light)' }}>
                             <p className="text-xs font-bold uppercase tracking-wider mb-1" style={{ color: 'var(--color-text-muted)' }}>Utilizador</p>
                             <p className="font-semibold text-sm" style={{ color: 'var(--color-text-primary)' }}>
-                                {log.user?.name ? String(log.user.name) : 'Desconhecido'}
+                                {log.user?.name || log.user?.nome || log.user?.username ? String(log.user.name || log.user.nome || log.user.username) : 'Desconhecido'}
                             </p>
                             {log.user?.email && (
                                 <p className="text-xs mt-0.5" style={{ color: 'var(--color-text-secondary)' }}>

@@ -80,9 +80,19 @@ export const authAPI = {
 
 // Users API
 export const usersAPI = {
-    getAll: async () => {
-        const response = await api.get('/users');
-        return response.data;
+    getAll: async (perPage = 100) => {
+        const all = [];
+        let currentPage = 1;
+        let lastPage = 1;
+        do {
+            const response = await api.get(`/users?page=${currentPage}&per_page=${perPage}`);
+            const payload = response.data;
+            const items = Array.isArray(payload) ? payload : (Array.isArray(payload?.data) ? payload.data : []);
+            all.push(...items);
+            lastPage = payload?.last_page ?? payload?.meta?.last_page ?? currentPage;
+            currentPage += 1;
+        } while (currentPage <= lastPage);
+        return all;
     },
     create: async (userData) => {
         const response = await api.post('/users', userData);

@@ -283,7 +283,7 @@ export default function LogsEventosPage() {
                             ) : (
                                 paginatedLogs.map((log) => {
                                     const badge = getEventBadge(log.event);
-                                    const userName = log.user?.name || "Desconhecido";
+                                     const userName = log.user?.name || log.user?.nome || log.user?.username || "Desconhecido";
                                     return (
                                         <tr key={log.id} className="transition-colors group" onMouseEnter={e => e.currentTarget.style.background = 'var(--color-bg)'} onMouseLeave={e => e.currentTarget.style.background = 'transparent'} style={{ borderBottom: '1px solid var(--color-border-light)' }}>
                                             <td className="px-4 py-3 whitespace-nowrap">

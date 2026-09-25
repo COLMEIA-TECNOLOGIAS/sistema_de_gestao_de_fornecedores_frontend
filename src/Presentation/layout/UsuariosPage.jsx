@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Eye, Edit, Trash2, RefreshCw, MailCheck, MailX } from "lucide-react";
+import { Eye, Edit, Trash2, RefreshCw, MailCheck, MailX, ChevronLeft, ChevronRight } from "lucide-react";
 import ModalNovoUsuario from "../Components/ModalNovoUsuario";
 import UsuarioTableSkeleton from "../Components/UsuarioTableSkeleton";
 import ModalDetalhesUsuario from "../Components/ModalDetalhesUsuario";
@@ -20,6 +20,8 @@ export default function UsuariosPage() {
   const [toast, setToast] = useState(null);
 
   const [searchTerm, setSearchTerm] = useState("");
+  const [pageSize, setPageSize] = useState(50);
+  const [currentPage, setCurrentPage] = useState(1);
 
   const fetchUsuarios = async () => {
     setIsLoading(true);
@@ -118,6 +120,27 @@ export default function UsuariosPage() {
     return name.includes(search) || email.includes(search) || role.includes(search);
   });
 
+  // Pagination logic
+  const totalPages = Math.max(1, Math.ceil(filteredUsuarios.length / pageSize));
+  const safePage = Math.min(currentPage, totalPages);
+  const pageStart = filteredUsuarios.length === 0 ? 0 : (safePage - 1) * pageSize + 1;
+  const pageEnd = Math.min(safePage * pageSize, filteredUsuarios.length);
+  const paginatedUsuarios = filteredUsuarios.slice((safePage - 1) * pageSize, safePage * pageSize);
+
+  const getPageNumbers = () => {
+    const pages = [];
+    const maxVisible = 5;
+    let start = Math.max(1, safePage - Math.floor(maxVisible / 2));
+    let end = Math.min(totalPages, start + maxVisible - 1);
+    start = Math.max(1, end - maxVisible + 1);
+    for (let i = start; i <= end; i++) pages.push(i);
+    return pages;
+  };
+
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchTerm, pageSize]);
+
   return (
     <div className="space-y-8">
       {/* Welcome Section */}
@@ -137,7 +160,6 @@ export default function UsuariosPage() {
       {/* Actions Bar */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-3">
-         
           <button
             onClick={fetchUsuarios}
             disabled={isLoading}
@@ -217,7 +239,7 @@ export default function UsuariosPage() {
                   </td>
                 </tr>
               ) : (
-                filteredUsuarios.map((u, index) => (
+                paginatedUsuarios.map((u, index) => (
                   <tr key={u.id || index} className="transition-colors" style={{ borderBottom: '1px solid var(--color-border-light)' }} onMouseEnter={e => e.currentTarget.style.background = 'var(--color-bg)'} onMouseLeave={e => e.currentTarget.style.background = 'transparent'}>
                     <td className="px-6 py-4" style={{ color: 'var(--color-text-secondary)' }}>{u.id}</td>
                     <td className="px-6 py-4">
@@ -293,10 +315,57 @@ export default function UsuariosPage() {
           </table>
         </div>
 
-        {/* Pagination logic is kept as is but hidden in this view replacement for brevity if unchanged logic is fine, but I better keep it or simplified */}
-        {!isLoading && usuarios.length > 0 && (
-          <div className="flex items-center justify-between px-6 py-4" style={{ borderTop: '1px solid var(--color-border-light)' }}>
-            {/* Pagination content remains standard */}
+        {/* Pagination Footer */}
+        {!isLoading && filteredUsuarios.length > 0 && (
+          <div className="flex flex-col md:flex-row items-center justify-between gap-4 px-6 py-4" style={{ borderTop: '1px solid var(--color-border-light)' }}>
+            <div className="flex flex-wrap items-center gap-3 text-sm" style={{ color: 'var(--color-text-secondary)' }}>
+              <span>
+                Mostrando {pageStart}–{pageEnd} de {filteredUsuarios.length}
+              </span>
+              <div className="flex items-center gap-2">
+                <span className="text-xs font-semibold whitespace-nowrap" style={{ color: 'var(--color-text-muted)' }}>Exibir por página</span>
+                <select
+                  value={pageSize}
+                  onChange={(e) => setPageSize(Number(e.target.value))}
+                  className="rounded-lg border bg-transparent outline-none text-sm px-2 py-1.5"
+                  style={{ borderColor: 'var(--color-border-light)', color: 'var(--color-text-primary)' }}
+                >
+                  <option value={50}>50</option>
+                  <option value={100}>100</option>
+                  <option value={1000}>1000</option>
+                </select>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-1.5">
+              <button
+                onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+                disabled={currentPage <= 1}
+                className="px-3 py-2 rounded-lg border text-sm font-medium disabled:opacity-40 disabled:cursor-not-allowed transition-all hover:bg-gray-50"
+                style={{ borderColor: 'var(--color-border)', color: 'var(--color-text-secondary)' }}
+              >
+                <ChevronLeft size={18} />
+              </button>
+
+              {getPageNumbers().map(pageNum => (
+                <button
+                  key={pageNum}
+                  onClick={() => setCurrentPage(pageNum)}
+                  className={`w-9 h-9 rounded-lg text-sm font-semibold transition-all border ${pageNum === currentPage ? 'bg-[#44B16F] text-white border-[#44B16F]' : 'border-gray-200 text-gray-700 hover:bg-gray-100'}`}
+                >
+                  {pageNum}
+                </button>
+              ))}
+
+              <button
+                onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+                disabled={currentPage >= totalPages}
+                className="px-3 py-2 rounded-lg border text-sm font-medium disabled:opacity-40 disabled:cursor-not-allowed transition-all hover:bg-gray-50"
+                style={{ borderColor: 'var(--color-border)', color: 'var(--color-text-secondary)' }}
+              >
+                <ChevronRight size={18} />
+              </button>
+            </div>
           </div>
         )}
       </div>
