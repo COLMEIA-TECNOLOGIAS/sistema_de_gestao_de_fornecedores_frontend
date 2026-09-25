@@ -271,9 +271,11 @@ export const quotationResponsesAPI = {
         const response = await api.get(`/quotation-responses/${id}`);
         return response.data;
     },
-    // Aprovar proposta
-    approve: async (id, notes) => {
-        const response = await api.post(`/quotation-responses/${id}/approve`, { notes });
+    // Todas as páginas (cada revisão do fornecedor é uma resposta nova), da mais recente para a mais antiga
+    listAll: (params = {}) => fetchAllPages('/quotation-responses', { params }),
+    // Aprovar proposta = gerar aquisição, concluir o pedido e rejeitar as restantes propostas em aberto
+    approve: async (id, { expected_delivery_date, justification, notes } = {}) => {
+        const response = await api.post(`/quotation-responses/${id}/approve`, { expected_delivery_date, justification, notes });
         return response.data;
     },
     // Rejeitar proposta

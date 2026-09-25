@@ -1,9 +1,12 @@
 import { useEffect, useState } from 'react';
 import { useModalLock } from '../../hooks/useModalLock';
-import { X, Bell, Calendar, Trash2, User, FileText, AlertTriangle, Activity, Loader2 } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
+import { X, Bell, Calendar, Trash2, User, FileText, AlertTriangle, Activity, Loader2, MessagesSquare, ExternalLink } from 'lucide-react';
+import { isNegotiationNotification, getNegotiationLabel, getNotificationLink } from '../../utils/notifications';
 
 export default function ModalDetalhesNotificacao({ isOpen, onClose, notification, onDelete, isDeleting: isDeletingProp = false }) {
     useModalLock(isOpen);
+    const navigate = useNavigate();
     const [isDeletingLocal, setIsDeletingLocal] = useState(false);
     const isDeleting = isDeletingProp || isDeletingLocal;
 
@@ -18,6 +21,8 @@ export default function ModalDetalhesNotificacao({ isOpen, onClose, notification
     }, [isOpen, onClose, isDeleting]);
 
     if (!isOpen || !notification) return null;
+
+    const link = getNotificationLink(notification);
 
     const handleDelete = async () => {
         if (isDeleting) return;
@@ -82,6 +87,36 @@ export default function ModalDetalhesNotificacao({ isOpen, onClose, notification
     const { sv, techName, type, isDeletionRequest, isQuotationRequest, isActivity, timeDisplay } = getContent();
 
     const renderContent = () => {
+        if (isNegotiationNotification(notification)) {
+            return (
+                <>
+                    <div className="flex items-center gap-3 mb-6">
+                        <div className="p-2.5 rounded-xl text-green-700 bg-green-50">
+                            <MessagesSquare size={22} />
+                        </div>
+                        <div>
+                            <h4 className="text-xl font-bold text-gray-900">{notification.title || sv.title || getNegotiationLabel(notification)}</h4>
+                            <span className="inline-flex items-center text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded mt-1 text-green-700 bg-green-50 border border-green-200">
+                                {getNegotiationLabel(notification)}
+                            </span>
+                        </div>
+                    </div>
+                    <div className="text-gray-700 bg-gray-50 p-4 rounded-xl border border-gray-100">
+                        <p className="whitespace-pre-wrap text-sm">{notification.message || sv.message || 'Sem conteúdo'}</p>
+                        {sv.supplier_name && (
+                            <p className="text-sm mt-3"><span className="font-semibold">Fornecedor:</span> {sv.supplier_name}</p>
+                        )}
+                        {sv.revision_number > 1 && (
+                            <p className="text-sm mt-1"><span className="font-semibold">Revisão:</span> n.º {sv.revision_number}</p>
+                        )}
+                        {sv.reason && (
+                            <p className="text-sm mt-1"><span className="font-semibold">Motivo:</span> {sv.reason}</p>
+                        )}
+                    </div>
+                </>
+            );
+        }
+
         if (isDeletionRequest) {
             const itemName = sv.item_name || sv.itemName || sv.deletable?.company_name || sv.deletable?.commercial_name || sv.deletable?.title || sv.deletable?.name || 'Item';
             const isSupplier =
@@ -268,13 +303,25 @@ export default function ModalDetalhesNotificacao({ isOpen, onClose, notification
                         {isDeleting ? 'A eliminar...' : 'Excluir notificação'}
                     </button>
 
-                    <button
-                        onClick={onClose}
-                        disabled={isDeleting}
-                        className="px-6 py-2 bg-gray-900 text-white rounded-lg hover:bg-gray-800 transition-colors font-medium shadow-sm"
-                    >
-                        Fechar
-                    </button>
+                    <div className="flex items-center gap-2">
+                        {link && (
+                            <button
+                                onClick={() => { onClose(); navigate(link); }}
+                                disabled={isDeleting}
+                                className="px-4 py-2 bg-[#44B16F] text-white rounded-lg hover:bg-[#3a9d5f] transition-colors font-medium shadow-sm flex items-center gap-2"
+                            >
+                                <ExternalLink size={16} />
+                                Abrir pedido
+                            </button>
+                        )}
+                        <button
+                            onClick={onClose}
+                            disabled={isDeleting}
+                            className="px-6 py-2 bg-gray-900 text-white rounded-lg hover:bg-gray-800 transition-colors font-medium shadow-sm"
+                        >
+                            Fechar
+                        </button>
+                    </div>
                 </div>
             </div>
         </div>

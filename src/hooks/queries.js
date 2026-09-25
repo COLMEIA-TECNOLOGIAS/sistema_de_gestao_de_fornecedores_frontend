@@ -96,7 +96,7 @@ export function useQuotationRequests(options) {
 }
 
 export function useQuotationResponses(params = {}, options) {
-    return useQuery(listQuery(queryKeys.quotationResponses.list(params), () => quotationResponsesAPI.getAll(params), options));
+    return useQuery(listQuery(queryKeys.quotationResponses.list(params), () => quotationResponsesAPI.listAll(params), options));
 }
 
 export function useAcquisitions(options) {

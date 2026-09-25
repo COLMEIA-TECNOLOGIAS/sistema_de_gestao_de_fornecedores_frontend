@@ -1,4 +1,5 @@
 import { Bell, Trash2, Check, Loader2, User, LogOut, ChevronDown, Sun, Moon, AlertTriangle, RefreshCw } from "lucide-react";
+import { isNegotiationNotification, getNegotiationLabel } from "../../utils/notifications";
 import { useState, useRef, useEffect, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
@@ -197,6 +198,16 @@ function Navbar({ userName: propUserName, userRole: propUserRole, onItemClick })
     const type = (rawType || '').toLowerCase();
 
     const techName = sv.technician_name || sv.technicianName || sv.user?.name || sv.user_name || sv.requested_by || sv.requested_by_name || sv.nome || sv.name || 'Técnico';
+
+    // Negociação (propostas, revisões, aprovações): o backend já envia título e mensagem completos
+    if (isNegotiationNotification(notification)) {
+      return {
+        title: notification.title || sv.title || getNegotiationLabel(notification),
+        message: notification.message || sv.message || '',
+        timeDisplay,
+        isDeletionRequest: false,
+      };
+    }
 
     // Detect deletion request notifications
     const isDeletionRequest =

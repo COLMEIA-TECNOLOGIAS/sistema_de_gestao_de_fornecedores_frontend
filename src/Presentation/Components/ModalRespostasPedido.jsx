@@ -1,5 +1,6 @@
 import { useModalLock } from '../../hooks/useModalLock';
 import { useState, useEffect, useMemo } from "react";
+import { createPortal } from "react-dom";
 import { useQuery } from "@tanstack/react-query";
 import { X, MoreVertical, FileText, Trash2, CheckCircle, MessageSquare, RefreshCw } from "lucide-react";
 import { quotationResponsesAPI, quotationRequestsAPI } from "../../services/api";
@@ -67,12 +68,12 @@ const STATUS_LABELS = {
     'draft': 'Rascunho',
     'pending': 'Pendente',
     'submitted': 'Submetida',
-    'pending_review': 'Pendente',
+    'pending_review': 'Em Análise',
     'in_review': 'Em Revisão',
     'approved': 'Aprovada',
     'rejected': 'Rejeitada',
     'revision_requested': 'Revisão Solicitada',
-    'needs_revision': 'Revisão Necessária',
+    'needs_revision': 'A Aguardar Revisão',
     'published': 'Publicada',
     'sent': 'Enviada',
     'open': 'Em Curso',
@@ -88,6 +89,14 @@ const getStatusColor = (status) => STATUS_COLORS[status] || "bg-gray-100 text-gr
 const getStatusLabel = (status) => STATUS_LABELS[status] || 'Desconhecido';
 
 const getRequestIdOf = (r) => r.quotation_request_id ?? r.quotation_supplier?.quotation_request_id ?? r.quotation_request?.id;
+
+// Estados em que a proposta ainda pode ser decidida (aprovar / pedir revisão)
+const OPEN_STATUSES = ['pending_review', 'submitted', 'negotiating'];
+const isOpenStatus = (status) => OPEN_STATUSES.includes(status);
+
+// Ordem das versões de uma proposta: a revisão mais recente primeiro
+const byLatest = (a, b) =>
+    (Number(b.revision_number) || 0) - (Number(a.revision_number) || 0) || (Number(b.id) || 0) - (Number(a.id) || 0);
 
 const isAcquisitionGenerated = (resposta) =>
     resposta?.has_acquisition || resposta?.acquisition || resposta?.acquisition_id ||
@@ -115,13 +124,14 @@ function buildRespostas(requestData, responses, allSuppliers, quotationRequestId
     });
 
     const respostas = invitedSuppliers.map(supplier => {
-        const existingResponse = responsesData.find(r =>
-            (r.quotation_supplier?.supplier_id === supplier.id) ||
-            (r.supplier_id === supplier.id)
-        );
+        // Cada revisão do fornecedor é uma resposta nova: mostrar sempre a mais recente
+        const supplierResponses = responsesData
+            .filter(r => (r.quotation_supplier?.supplier_id ?? r.supplier_id) === supplier.id)
+            .sort(byLatest);
+        const [latestResponse, ...previousVersions] = supplierResponses;
 
-        if (existingResponse) {
-            return { ...existingResponse, supplier, is_placeholder: false };
+        if (latestResponse) {
+            return { ...latestResponse, supplier, is_placeholder: false, previous_versions: previousVersions };
         }
 
         // Ainda sem resposta: linha "pendente" a partir do fornecedor convidado
@@ -170,8 +180,26 @@ export default function ModalRespostasPedido({
     const invalidate = useInvalidate();
 
     const [openMenuId, setOpenMenuId] = useState(null);
-    const [gerarAquisicaoTarget, setGerarAquisicaoTarget] = useState(null);
-    const [isGerarAquisicao, setIsGerarAquisicao] = useState(false);
+    // Posição do menu de acções (portal, para não ser cortado pelo overflow da tabela)
+    const [menuPosition, setMenuPosition] = useState(null);
+
+    const toggleMenu = (id, button) => {
+        if (openMenuId === id) {
+            setOpenMenuId(null);
+            return;
+        }
+        const rect = button.getBoundingClientRect();
+        const MENU_HEIGHT = 230;
+        const openUp = rect.bottom + MENU_HEIGHT > window.innerHeight && rect.top > MENU_HEIGHT;
+        setMenuPosition({
+            right: Math.max(8, window.innerWidth - rect.right),
+            ...(openUp ? { bottom: window.innerHeight - rect.top + 8 } : { top: rect.bottom + 8 }),
+        });
+        setOpenMenuId(id);
+    };
+    // { resposta, mode: 'approve' | 'acquisition' }
+    const [decisionTarget, setDecisionTarget] = useState(null);
+    const [isSubmittingDecision, setIsSubmittingDecision] = useState(false);
     const [revisaoTarget, setRevisaoTarget] = useState(null);
     const [isSubmittingRevisao, setIsSubmittingRevisao] = useState(false);
 
@@ -203,6 +231,18 @@ export default function ModalRespostasPedido({
         setOpenMenuId(null);
     }, [isOpen, quotationRequestId]);
 
+    // Menu fixo: fechar ao fazer scroll ou redimensionar (a posição deixaria de estar certa)
+    useEffect(() => {
+        if (!openMenuId) return;
+        const close = () => setOpenMenuId(null);
+        window.addEventListener('resize', close);
+        window.addEventListener('scroll', close, true);
+        return () => {
+            window.removeEventListener('resize', close);
+            window.removeEventListener('scroll', close, true);
+        };
+    }, [openMenuId]);
+
     // Close dropdown menu when clicking outside
     useEffect(() => {
         if (!openMenuId) return;
@@ -226,32 +266,52 @@ export default function ModalRespostasPedido({
     const refreshAfterResponseChange = () =>
         invalidate(queryKeys.quotationResponses.all, queryKeys.quotationRequests.all, queryKeys.dashboard.all);
 
-    const handleOpenAprovacaoModal = async (resposta) => {
+    // Aprovar = gerar aquisição (formulário com data de entrega e justificação)
+    const handleOpenAprovacaoModal = (resposta) => {
         setOpenMenuId(null);
-        const supplierName = getSupplierName(resposta.supplier) || 'Fornecedor';
-        const confirmed = await confirm({
-            title: "Confirmar Aprovação",
-            message: (
-                <div>
-                    <p className="text-sm text-gray-600 mb-1">
-                        Pretende aprovar a proposta de <strong>{supplierName}</strong>?
-                    </p>
-                    <p className="text-xs text-gray-500 mb-4">ID da resposta: {resposta.id}</p>
-                    <div className="rounded-lg p-4" style={{ background: 'rgba(245,158,11,0.08)', border: '1px solid rgba(245,158,11,0.2)' }}>
-                        <p className="text-sm font-semibold text-amber-700">Atenção</p>
-                        <p className="text-sm text-amber-700 mt-1">Depois de aprovar, esta decisão é definitiva e não tem volta.</p>
-                    </div>
-                </div>
-            ),
-            confirmLabel: "Sim, Aprovar",
-            runningLabel: "A aprovar...",
-            onConfirm: () => quotationResponsesAPI.approve(resposta.id),
-            getErrorMessage: (err) => getErrorMessage(err, "Erro ao aprovar proposta."),
-        });
-        if (!confirmed) return;
-        toast.success("Proposta aprovada com sucesso!");
-        await refreshAfterResponseChange();
-        onAprovar?.(resposta);
+        setDecisionTarget({ resposta, mode: 'approve' });
+    };
+
+    // Compatibilidade: propostas aprovadas antes do fluxo unificado ainda sem aquisição
+    const handleGerarAquisicao = (resposta) => {
+        if (isAcquisitionGenerated(resposta)) return;
+        setOpenMenuId(null);
+        setDecisionTarget({ resposta, mode: 'acquisition' });
+    };
+
+    const confirmDecision = async ({ expected_delivery_date, justification, notes }) => {
+        if (!decisionTarget || isSubmittingDecision) return;
+        const { resposta: target, mode } = decisionTarget;
+        setIsSubmittingDecision(true);
+        try {
+            if (mode === 'approve') {
+                const result = await quotationResponsesAPI.approve(target.id, { expected_delivery_date, justification, notes });
+                const rejectedCount = result?.rejected_response_ids?.length || 0;
+                toast.success(rejectedCount > 0
+                    ? `Proposta aprovada e aquisição gerada. ${rejectedCount === 1 ? 'A outra proposta foi rejeitada' : `As outras ${rejectedCount} propostas foram rejeitadas`}.`
+                    : 'Proposta aprovada e aquisição gerada com sucesso!');
+                onAprovar?.(target);
+            } else {
+                await quotationResponsesAPI.createAcquisition(target.id, expected_delivery_date, justification);
+                toast.success('Aquisição gerada com sucesso!');
+            }
+            setDecisionTarget(null);
+            invalidate(
+                queryKeys.acquisitions.all,
+                queryKeys.quotationResponses.all,
+                queryKeys.quotationRequests.all,
+                queryKeys.dashboard.all,
+                queryKeys.reports.all,
+                queryKeys.notifications.all
+            );
+            onGerarAquisicao?.(target, expected_delivery_date, justification);
+        } catch (err) {
+            toast.error(getErrorMessage(err, mode === 'approve' ? 'Erro ao aprovar a proposta.' : 'Erro ao gerar a aquisição.'));
+            // Estado pode ter mudado entretanto (ex.: outra pessoa aprovou): recarregar
+            if (err?.response?.status === 422) refetchAll();
+        } finally {
+            setIsSubmittingDecision(false);
+        }
     };
 
     const handleOpenRejeicaoModal = async (resposta) => {
@@ -273,35 +333,6 @@ export default function ModalRespostasPedido({
         toast.success("Proposta rejeitada.");
         await refreshAfterResponseChange();
         onRejeitar?.(resposta);
-    };
-
-    const handleGerarAquisicao = (resposta) => {
-        if (isAcquisitionGenerated(resposta)) return;
-        setOpenMenuId(null);
-        setGerarAquisicaoTarget(resposta);
-    };
-
-    const confirmGerarAquisicao = async ({ expected_delivery_date, justification }) => {
-        if (!gerarAquisicaoTarget || isGerarAquisicao) return;
-        const target = gerarAquisicaoTarget;
-        setIsGerarAquisicao(true);
-        try {
-            await quotationResponsesAPI.createAcquisition(target.id, expected_delivery_date, justification);
-            toast.success("Aquisição gerada com sucesso!");
-            setGerarAquisicaoTarget(null);
-            invalidate(
-                queryKeys.acquisitions.all,
-                queryKeys.quotationResponses.all,
-                queryKeys.quotationRequests.all,
-                queryKeys.dashboard.all,
-                queryKeys.reports.all
-            );
-            onGerarAquisicao?.(target, expected_delivery_date, justification);
-        } catch (err) {
-            toast.error(getErrorMessage(err, "Erro ao gerar aquisição."));
-        } finally {
-            setIsGerarAquisicao(false);
-        }
     };
 
     const handleSolicitarRevisao = (resposta) => {
@@ -500,6 +531,15 @@ export default function ModalRespostasPedido({
                                                             <span className="text-xs text-gray-500">
                                                                 {resposta.supplier?.email || 'Sem email'}
                                                             </span>
+                                                            {resposta.revision_number > 1 && (
+                                                                <span
+                                                                    className="mt-1 inline-flex w-fit items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-semibold bg-blue-50 text-blue-700"
+                                                                    title={`${resposta.previous_versions?.length || 0} versão(ões) anterior(es)`}
+                                                                >
+                                                                    Revisão n.º {resposta.revision_number}
+                                                                    {isOpenStatus(resposta.status) && ' · nova'}
+                                                                </span>
+                                                            )}
                                                         </div>
                                                     </div>
                                                 </td>
@@ -551,14 +591,21 @@ export default function ModalRespostasPedido({
                                                         {!isDimmed(resposta) && (
                                                             <>
                                                                 <button
-                                                                    onClick={() => setOpenMenuId(openMenuId === `resp-${resposta.id}` ? null : `resp-${resposta.id}`)}
+                                                                    onClick={(e) => toggleMenu(`resp-${resposta.id}`, e.currentTarget)}
                                                                     className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+                                                                    aria-haspopup="menu"
+                                                                    aria-expanded={openMenuId === `resp-${resposta.id}`}
+                                                                    aria-label="Acções da proposta"
                                                                 >
                                                                     <MoreVertical size={20} className="text-gray-600" />
                                                                 </button>
 
-                                                                {openMenuId === `resp-${resposta.id}` && (
-                                                                    <div className="absolute right-0 top-full mt-2 w-56 bg-white rounded-xl shadow-xl border border-gray-100 py-2 z-50">
+                                                                {openMenuId === `resp-${resposta.id}` && menuPosition && createPortal(
+                                                                    <div
+                                                                        role="menu"
+                                                                        className="dropdown-menu fixed w-56 bg-white rounded-xl shadow-xl border border-gray-100 py-2"
+                                                                        style={{ ...menuPosition, zIndex: 10001 }}
+                                                                    >
                                                                         {/* Revisar */}
                                                                         <button
                                                                             onClick={() => {
@@ -574,9 +621,16 @@ export default function ModalRespostasPedido({
 
                                                                         {!isConcluded && !isAcquisitionGenerated(resposta) && resposta.status !== 'rejected' && (
                                                                             <>
+                                                                                {resposta.status === 'needs_revision' && (
+                                                                                    <p className="px-4 py-2 text-xs text-gray-500">
+                                                                                        A aguardar a revisão do fornecedor.
+                                                                                    </p>
+                                                                                )}
+
                                                                                 {resposta.status !== 'approved' && (
                                                                                     <>
-                                                                                        {/* Aprovar proposta */}
+                                                                                        {/* Aprovar proposta (= gerar aquisição) */}
+                                                                                        {isOpenStatus(resposta.status) && (
                                                                                         <button
                                                                                             onClick={() => handleOpenAprovacaoModal(resposta)}
                                                                                             className="w-full px-4 py-2.5 text-left hover:bg-gray-50 text-sm flex items-center gap-3 transition-colors text-emerald-600 font-medium"
@@ -584,6 +638,7 @@ export default function ModalRespostasPedido({
                                                                                             <CheckCircle size={16} className="text-emerald-500" />
                                                                                             <span>Aprovar Proposta</span>
                                                                                         </button>
+                                                                                        )}
 
                                                                                         {/* Rejeitar proposta */}
                                                                                         <button
@@ -596,8 +651,8 @@ export default function ModalRespostasPedido({
                                                                                     </>
                                                                                 )}
 
-                                                                                {/* Solicitar Revisão — disponível exceto quando aprovada */}
-                                                                                {resposta.status !== 'approved' && (
+                                                                                {/* Solicitar Revisão — só para propostas em análise */}
+                                                                                {isOpenStatus(resposta.status) && (
                                                                                     <button
                                                                                         onClick={() => handleSolicitarRevisao(resposta)}
                                                                                         className="w-full px-4 py-2.5 text-left hover:bg-gray-50 text-sm flex items-center gap-3 transition-colors"
@@ -607,7 +662,7 @@ export default function ModalRespostasPedido({
                                                                                     </button>
                                                                                 )}
 
-                                                                                {/* Gerar aquisição — só disponível após aprovação */}
+                                                                                {/* Gerar aquisição — propostas aprovadas antes do fluxo unificado */}
                                                                                 {resposta.status === 'approved' && (
                                                                                     <button
                                                                                         onClick={() => handleGerarAquisicao(resposta)}
@@ -619,7 +674,8 @@ export default function ModalRespostasPedido({
                                                                                 )}
                                                                             </>
                                                                         )}
-                                                                    </div>
+                                                                    </div>,
+                                                                    document.body
                                                                 )}
                                                             </>
                                                         )}
@@ -648,11 +704,16 @@ export default function ModalRespostasPedido({
             </div>
 
             <ModalGerarAquisicao
-                isOpen={!!gerarAquisicaoTarget}
-                onClose={() => !isGerarAquisicao && setGerarAquisicaoTarget(null)}
-                onSubmit={confirmGerarAquisicao}
-                isLoading={isGerarAquisicao}
-                response={gerarAquisicaoTarget}
+                isOpen={!!decisionTarget}
+                onClose={() => !isSubmittingDecision && setDecisionTarget(null)}
+                onSubmit={confirmDecision}
+                isLoading={isSubmittingDecision}
+                response={decisionTarget?.resposta}
+                mode={decisionTarget?.mode}
+                openCompetitors={decisionTarget
+                    ? respostas.filter(r => !r.is_placeholder && r.id !== decisionTarget.resposta.id
+                        && (isOpenStatus(r.status) || r.status === 'needs_revision')).length
+                    : 0}
             />
 
             <ModalSolicitarRevisao
