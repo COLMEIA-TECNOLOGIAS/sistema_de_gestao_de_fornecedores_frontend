@@ -253,6 +253,14 @@ export const quotationRequestsAPI = {
         return response.data;
     },
     // Cancelar pedido de cotação
+    // Classifica um processo nas categorias do relatório de gestão.
+    // Ao contrário do update normal, funciona em qualquer estado — é o caminho
+    // para classificar processos criados antes da introdução da categoria.
+    classify: async (id, payload) => {
+        const response = await api.put(`/quotation-requests/${id}/classification`, payload);
+        return response.data;
+    },
+
     cancel: async (id) => {
         const response = await api.post(`/quotation-requests/${id}/cancel`);
         return response.data;
@@ -413,6 +421,25 @@ export const reportsAPI = {
     getSummary: async (params) => {
         // params: { period: 'weekly'|'monthly'|'yearly', start_date, end_date }
         const response = await api.get('/reports/summary', { params });
+        return response.data;
+    },
+
+    // Relatório de Gestão de Pequenas Aquisições (documento oficial).
+    // params: { period, year, month, week, start_date, end_date, status: [] }
+    // O backend devolve só os dados; a exportação (PDF/Word/Excel) é feita aqui.
+    getManagement: async (params = {}) => {
+        const { status, ...rest } = params;
+        const response = await api.get('/reports/management', {
+            params: { ...rest, ...(status?.length ? { status } : {}) },
+            // status[]=a&status[]=b — a forma que o Laravel espera para arrays
+            paramsSerializer: { indexes: false },
+        });
+        return response.data;
+    },
+
+    // Categorias de aquisição (Bens, Consultoria, Não Consultoria, Obras)
+    getProcurementCategories: async () => {
+        const response = await api.get('/reports/categories');
         return response.data;
     },
 };

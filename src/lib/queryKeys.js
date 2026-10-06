@@ -60,5 +60,7 @@ export const queryKeys = {
     reports: {
         all: ['reports'],
         summary: (params = {}) => ['reports', 'summary', params],
+        management: (params = {}) => ['reports', 'management', params],
+        procurementCategories: () => ['reports', 'procurement-categories'],
     },
 };

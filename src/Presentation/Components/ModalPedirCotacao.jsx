@@ -3,7 +3,7 @@ import { useState, useEffect, useMemo, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { X, Search, Upload, FileText, Eye, Paperclip } from 'lucide-react';
 import { quotationRequestsAPI } from '../../services/api';
-import { useSuppliers, useCategories, useInvalidate } from '../../hooks/queries';
+import { useSuppliers, useCategories, useInvalidate, useProcurementCategories } from '../../hooks/queries';
 import { queryKeys } from '../../lib/queryKeys';
 import { useToast } from '../../context/ToastContext';
 import { getErrorMessage, matchesSearch } from '../../utils/apiHelpers';
@@ -38,6 +38,14 @@ export default function ModalPedirCotacao({ isOpen, onClose, onSuccess, forneced
     const [pedidoReferencia, setPedidoReferencia] = useState('');
     const [pedidoBuyerEmail, setPedidoBuyerEmail] = useState('');
 
+    // Categoria de aquisição: obrigatória, organiza o Relatório de Gestão de
+    // Pequenas Aquisições. Os dois campos seguintes só se aplicam a algumas
+    // categorias (período de execução à consultoria, local à obra).
+    const [procurementCategory, setProcurementCategory] = useState('');
+    const [executionStart, setExecutionStart] = useState('');
+    const [executionEnd, setExecutionEnd] = useState('');
+    const [workLocation, setWorkLocation] = useState('');
+
     // Fornecedores (lista partilhada em cache com a página de Fornecedores)
     const [selectedFornecedores, setSelectedFornecedores] = useState([]);
     const [fornecedorSearchQuery, setFornecedorSearchQuery] = useState('');
@@ -54,6 +62,7 @@ export default function ModalPedirCotacao({ isOpen, onClose, onSuccess, forneced
         isFetching: isFetchingFornecedores,
     } = useSuppliers({ enabled: isOpen });
     const { data: categories = [] } = useCategories({ enabled: isOpen });
+    const { data: procurementCategories = [] } = useProcurementCategories({ enabled: isOpen });
 
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [submitError, setSubmitError] = useState(null);
@@ -108,6 +117,11 @@ export default function ModalPedirCotacao({ isOpen, onClose, onSuccess, forneced
         return result;
     }, [fornecedoresList, categoriaFiltro, fornecedorSearchQuery]);
 
+    const selectedProcurementCategory = useMemo(
+        () => procurementCategories.find((c) => c.value === procurementCategory) || null,
+        [procurementCategories, procurementCategory],
+    );
+
     if (!isOpen) return null;
 
     // Quando o modal não vem do registo de atividade (ex.: página de fornecedores),
@@ -128,6 +142,10 @@ export default function ModalPedirCotacao({ isOpen, onClose, onSuccess, forneced
         setCategoriaFiltro('');
         setFornecedorSearchQuery('');
         setPedidoReferencia('');
+        setProcurementCategory('');
+        setExecutionStart('');
+        setExecutionEnd('');
+        setWorkLocation('');
         setPedidoBuyerEmail('');
     };
 
@@ -160,11 +178,20 @@ export default function ModalPedirCotacao({ isOpen, onClose, onSuccess, forneced
 
     const minDeadline = getMinDeadline();
 
+
     const handleSendExternalLink = async () => {
         if (isSubmitting || submitSuccess) return;
 
         if (!pedidoAssunto.trim()) {
             setSubmitError('Indique o título da atividade.');
+            return;
+        }
+        if (!procurementCategory) {
+            setSubmitError('Seleccione a categoria da aquisição.');
+            return;
+        }
+        if (executionStart && executionEnd && executionEnd < executionStart) {
+            setSubmitError('O fim do período de execução não pode ser anterior ao início.');
             return;
         }
         if (selectedFornecedores.length < 3) {
@@ -213,6 +240,10 @@ export default function ModalPedirCotacao({ isOpen, onClose, onSuccess, forneced
                 formData.append('description', description);
                 formData.append('activity_description', reference);
                 formData.append('deadline', formattedDeadline);
+                formData.append('procurement_category', procurementCategory);
+                if (executionStart) formData.append('execution_start_date', executionStart);
+                if (executionEnd) formData.append('execution_end_date', executionEnd);
+                if (workLocation.trim()) formData.append('work_location', workLocation.trim());
 
                 items.forEach((product, index) => {
                     formData.append(`items[${index}][name]`, product.name);
@@ -239,6 +270,10 @@ export default function ModalPedirCotacao({ isOpen, onClose, onSuccess, forneced
                     description,
                     activity_description: reference,
                     deadline: formattedDeadline,
+                    procurement_category: procurementCategory,
+                    ...(executionStart ? { execution_start_date: executionStart } : {}),
+                    ...(executionEnd ? { execution_end_date: executionEnd } : {}),
+                    ...(workLocation.trim() ? { work_location: workLocation.trim() } : {}),
                     items,
                     suppliers: selectedFornecedores
                 });
@@ -401,6 +436,79 @@ export default function ModalPedirCotacao({ isOpen, onClose, onSuccess, forneced
                                     style={{ border: '1px solid var(--color-border)', background: 'var(--color-bg)', color: 'var(--color-text-primary)' }}
                                 />
                             </div>
+
+                            {/* Categoria da aquisição (Relatório de Gestão) */}
+                            <div>
+                                <label className="block text-sm font-medium mb-2" style={{ color: 'var(--color-text-primary)' }}>
+                                    Categoria da aquisição <span className="text-red-500">*</span>
+                                </label>
+                                <select
+                                    value={procurementCategory}
+                                    onChange={(e) => setProcurementCategory(e.target.value)}
+                                    required
+                                    className="w-full px-4 py-3 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#44B16F] transition-all text-sm"
+                                    style={{ border: '1px solid var(--color-border)', background: 'var(--color-bg)', color: 'var(--color-text-primary)' }}
+                                >
+                                    <option value="">Seleccione a categoria...</option>
+                                    {procurementCategories.map((cat) => (
+                                        <option key={cat.value} value={cat.value}>{cat.label}</option>
+                                    ))}
+                                </select>
+                                {selectedProcurementCategory && (
+                                    <p className="text-xs mt-1" style={{ color: 'var(--color-text-muted)' }}>
+                                        {selectedProcurementCategory.description}
+                                    </p>
+                                )}
+                            </div>
+
+                            {/* Período de execução — só para consultoria */}
+                            {procurementCategory === 'consultoria' && (
+                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                    <div>
+                                        <label className="block text-sm font-medium mb-2" style={{ color: 'var(--color-text-primary)' }}>
+                                            Início da execução
+                                        </label>
+                                        <input
+                                            type="date"
+                                            value={executionStart}
+                                            max={executionEnd || undefined}
+                                            onChange={(e) => setExecutionStart(e.target.value)}
+                                            className="w-full px-4 py-3 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#44B16F] transition-all text-sm"
+                                            style={{ border: '1px solid var(--color-border)', background: 'var(--color-bg)', color: 'var(--color-text-primary)' }}
+                                        />
+                                    </div>
+                                    <div>
+                                        <label className="block text-sm font-medium mb-2" style={{ color: 'var(--color-text-primary)' }}>
+                                            Fim da execução
+                                        </label>
+                                        <input
+                                            type="date"
+                                            value={executionEnd}
+                                            min={executionStart || undefined}
+                                            onChange={(e) => setExecutionEnd(e.target.value)}
+                                            className="w-full px-4 py-3 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#44B16F] transition-all text-sm"
+                                            style={{ border: '1px solid var(--color-border)', background: 'var(--color-bg)', color: 'var(--color-text-primary)' }}
+                                        />
+                                    </div>
+                                </div>
+                            )}
+
+                            {/* Local da obra — só para obras */}
+                            {procurementCategory === 'obras' && (
+                                <div>
+                                    <label className="block text-sm font-medium mb-2" style={{ color: 'var(--color-text-primary)' }}>
+                                        Local da obra
+                                    </label>
+                                    <input
+                                        type="text"
+                                        value={workLocation}
+                                        onChange={(e) => setWorkLocation(e.target.value)}
+                                        placeholder="Ex.: Armazém central, Viana"
+                                        className="w-full px-4 py-3 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#44B16F] transition-all text-sm"
+                                        style={{ border: '1px solid var(--color-border)', background: 'var(--color-bg)', color: 'var(--color-text-primary)' }}
+                                    />
+                                </div>
+                            )}
 
                             {/* Prazo de Resposta */}
                             <div>
@@ -626,7 +734,7 @@ export default function ModalPedirCotacao({ isOpen, onClose, onSuccess, forneced
                         <div className="flex justify-end pt-6 mt-6" style={{ borderTop: '1px solid var(--color-border-light)' }}>
                             <button
                                 onClick={handleSendExternalLink}
-                                disabled={!pedidoAssunto.trim() || selectedFornecedores.length < 3 || isSubmitting || submitSuccess}
+                                disabled={!pedidoAssunto.trim() || !procurementCategory || selectedFornecedores.length < 3 || isSubmitting || submitSuccess}
                                 className="px-8 py-3 bg-[#44B16F] text-white rounded-lg hover:bg-[#3a9d5f] transition-colors font-medium shadow-sm disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
                             >
                                 {isSubmitting ? (

@@ -104,7 +104,7 @@ function AppRoutes() {
         <Route path="/usuarios" element={dashboard} />
         <Route path="/criar-utilizador" element={dashboard} />
         <Route path="/permissoes" element={dashboard} />
-        <Route path="/relatorios" element={dashboard} />
+        <Route path="/relatorio-gestao" element={dashboard} />
         <Route path="/aquisicoes" element={dashboard} />
         <Route path="/produtos" element={dashboard} />
         <Route path="/logs-eventos" element={adminDashboard} />

@@ -1,4 +1,4 @@
-import { LayoutDashboard, Package, UserCircle, BarChart3, ShoppingCart, Activity, ChevronDown, ChevronRight, Users, UserPlus, Shield } from "lucide-react";
+import { LayoutDashboard, Package, UserCircle, FileBarChart, ShoppingCart, Activity, ChevronDown, ChevronRight, Users, UserPlus, Shield } from "lucide-react";
 import { useAuth } from "../../context/AuthContext";
 import { PERMISSIONS } from "../../utils/permissions";
 import { useState } from "react";
@@ -18,7 +18,7 @@ function Sidebar({ activeItem, onItemClick }) {
     { id: "dashboard",   label: "Painel de Controlo",   icon: LayoutDashboard, permission: PERMISSIONS.DASHBOARD },
     { id: "fornecedores",label: "Fornecedores", icon: Package,         permission: PERMISSIONS.FORNECEDORES },
     { id: "aquisicoes",  label: "Aquisições",   icon: ShoppingCart,    permission: PERMISSIONS.AQUISICOES },
-    { id: "relatorios",  label: "Relatórios e Análises", icon: BarChart3,     permission: PERMISSIONS.RELATORIOS },
+    { id: "relatorio-gestao", label: "Relatório de Gestão", icon: FileBarChart, permission: PERMISSIONS.RELATORIOS },
     { 
       id: "usuarios_group",
       label: "Gestão de utilizadores", 

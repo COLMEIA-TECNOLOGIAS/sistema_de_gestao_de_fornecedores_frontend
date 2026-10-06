@@ -22,7 +22,7 @@ const PAGES = {
         },
     },
     produtos: { label: "Produtos" },
-    relatorios: { label: "Relatórios e Análises" },
+    "relatorio-gestao": { label: "Relatório de Gestão" },
     usuarios: { group: "Gestão de Utilizadores", label: "Lista de Utilizadores" },
     "criar-utilizador": { group: "Gestão de Utilizadores", label: "Criar Utilizador" },
     permissoes: { group: "Gestão de Utilizadores", label: "Gestão de Permissões" },

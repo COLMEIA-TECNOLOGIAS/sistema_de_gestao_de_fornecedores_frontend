@@ -14,7 +14,7 @@ const PAGES = [
   { id: "fornecedores",     permission: PERMISSIONS.FORNECEDORES },
   { id: "aquisicoes",       permission: PERMISSIONS.AQUISICOES },
   { id: "produtos",         permission: PERMISSIONS.PRODUTOS },
-  { id: "relatorios",       permission: PERMISSIONS.RELATORIOS },
+  { id: "relatorio-gestao", permission: PERMISSIONS.RELATORIOS },
   { id: "usuarios",         permission: PERMISSIONS.USUARIOS, adminOnly: true },
   { id: "criar-utilizador", permission: PERMISSIONS.USUARIOS, adminOnly: true },
   { id: "permissoes",       permission: PERMISSIONS.USUARIOS, adminOnly: true },

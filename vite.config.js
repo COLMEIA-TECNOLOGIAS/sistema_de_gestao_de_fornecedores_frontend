@@ -14,7 +14,7 @@ export default defineConfig({
       manifest: {
         name: 'Gestão de Fornecedores',
         short_name: 'Fornecedores',
-        description: 'Plataforma de gestão de fornecedores MOSAP3',
+        description: 'Sistema de gestão de fornecedores MOSAP3',
         lang: 'pt',
         theme_color: '#44B16F',
         background_color: '#ffffff',

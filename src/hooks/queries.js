@@ -181,6 +181,32 @@ export function useReportSummary(params = {}, options) {
     });
 }
 
+/**
+ * Relatório de Gestão de Pequenas Aquisições.
+ *
+ * params: { period: 'weekly'|'monthly'|'yearly', year, month, week,
+ *           start_date, end_date, status: string[] }
+ */
+export function useManagementReport(params = {}, options) {
+    return useQuery({
+        queryKey: queryKeys.reports.management(params),
+        queryFn: async () => unwrap(await reportsAPI.getManagement(params)) || {},
+        placeholderData: keepPreviousData,
+        ...options,
+    });
+}
+
+/** Categorias de aquisição (Bens, Consultoria, Não Consultoria, Obras). */
+export function useProcurementCategories(options) {
+    return useQuery(
+        listQuery(
+            queryKeys.reports.procurementCategories(),
+            () => reportsAPI.getProcurementCategories(),
+            { staleTime: 60 * 60 * 1000, ...options },   // taxonomia fixa: não vale repetir
+        ),
+    );
+}
+
 // ── Invalidação ──────────────────────────────────────────────
 /**
  * Devolve uma função que marca uma ou mais áreas como desactualizadas,
