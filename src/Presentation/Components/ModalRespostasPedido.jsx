@@ -5,6 +5,8 @@ import { useQuery } from "@tanstack/react-query";
 import { X, MoreVertical, FileText, Trash2, CheckCircle, MessageSquare, RefreshCw, Truck, PackageCheck } from "lucide-react";
 import { quotationResponsesAPI, quotationRequestsAPI } from "../../services/api";
 import EquipaProcesso from "./EquipaProcesso";
+import { useAuth } from "../../context/AuthContext";
+import { PERMISSIONS } from "../../utils/permissions";
 import { useQuotationResponses, useSuppliers, useInvalidate } from "../../hooks/queries";
 import { queryKeys } from "../../lib/queryKeys";
 import { useToast } from "../../context/ToastContext";
@@ -181,6 +183,7 @@ export default function ModalRespostasPedido({
     const toast = useToast();
     const confirm = useConfirm();
     const invalidate = useInvalidate();
+    const { hasWritePermission } = useAuth();
 
     const [openMenuId, setOpenMenuId] = useState(null);
     // Posição do menu de acções (portal, para não ser cortado pelo overflow da tabela)
@@ -263,6 +266,11 @@ export default function ModalRespostasPedido({
     const hasApproved = respostas.some(r => r.status === 'approved');
     // Pedido encerrado (aquisição gerada/concluído/cancelado): já não há decisões a tomar
     const isConcluded = isConcludedProp || ['completed', 'cancelled'].includes(requestDetails?.status);
+
+    // Decidir sobre propostas exige 'write' no menu de avaliações. Sem isso o
+    // utilizador acompanha o processo mas não age — e o backend devolveria 403,
+    // por isso mais vale não mostrar acções que não pode usar.
+    const podeDecidir = hasWritePermission(PERMISSIONS.AVALIACOES);
     // Proposta vencedora e a respectiva aquisição (vem na resposta da API)
     const winner = respostas.find(r => r.status === 'approved' && r.acquisition);
     const requestPpRef = requestDetails?.reference || requestDetails?.activity_description || '';
@@ -669,7 +677,7 @@ export default function ModalRespostasPedido({
                                                                             <span className="text-gray-700">Revisar Detalhes</span>
                                                                         </button>
 
-                                                                        {!isConcluded && !isAcquisitionGenerated(resposta) && resposta.status !== 'rejected' && (
+                                                                        {podeDecidir && !isConcluded && !isAcquisitionGenerated(resposta) && resposta.status !== 'rejected' && (
                                                                             <>
                                                                                 {resposta.status === 'needs_revision' && (
                                                                                     <p className="px-4 py-2 text-xs text-gray-500">
