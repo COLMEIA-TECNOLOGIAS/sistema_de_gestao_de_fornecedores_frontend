@@ -413,6 +413,9 @@ export default function ModalRespostasPedido({
 
                 {/* Body */}
                 <div className="flex-1 overflow-auto p-6">
+                    {/* Quem tem acesso a este processo — no topo, para se ver de imediato */}
+                    <EquipaProcesso quotationRequest={{ id: quotationRequestId }} />
+
                     {loadError && hasData && (
                         <div className="mb-4">
                             <StaleDataBanner onRetry={refetchAll} isRetrying={isFetching} />
@@ -748,11 +751,6 @@ export default function ModalRespostasPedido({
                     </div>
                     </>
                     )}
-
-                    {/* Quem tem acesso a este processo, e pedidos para juntar mais alguém */}
-                    <div className="px-6 pb-6">
-                        <EquipaProcesso quotationRequest={{ id: quotationRequestId }} />
-                    </div>
                 </div>
 
                 {/* Footer */}

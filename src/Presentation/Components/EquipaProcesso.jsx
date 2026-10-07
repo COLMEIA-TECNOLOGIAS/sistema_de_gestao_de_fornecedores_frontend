@@ -90,7 +90,7 @@ export default function EquipaProcesso({ quotationRequest }) {
     if (!id) return null;
 
     return (
-        <div className="border-t pt-5 mt-5" style={{ borderColor: 'var(--color-border)' }}>
+        <div className="border-b pb-5 mb-5" style={{ borderColor: 'var(--color-border)' }}>
             <div className="flex items-center justify-between mb-3">
                 <h4 className="text-sm font-semibold" style={{ color: 'var(--color-text-primary)' }}>
                     Equipa do processo
