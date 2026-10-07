@@ -9,7 +9,7 @@ import { useTheme } from "../../context/ThemeContext";
 import { useToast } from "../../context/ToastContext";
 import { useConfirm } from "../../context/ConfirmContext";
 import { notificationsAPI } from "../../services/api";
-import { useNotifications, useUnreadNotificationsCount, useDeletionRequests, useInvalidate } from "../../hooks/queries";
+import { useNotifications, useUnreadNotificationsCount, useDeletionRequests, useAssignmentRequests, useInvalidate } from "../../hooks/queries";
 import { queryKeys } from "../../lib/queryKeys";
 import { getErrorMessage } from "../../utils/apiHelpers";
 import ModalDetalhesNotificacao from "../Components/ModalDetalhesNotificacao";
@@ -79,9 +79,15 @@ function Navbar({ userName: propUserName, userRole: propUserRole, onItemClick })
 
   // Contador de aprovações pendentes (apenas administradores)
   const deletionRequestsQuery = useDeletionRequests({ enabled: !!isAdmin, refetchInterval: PENDING_APPROVALS_POLL_MS });
+  const assignmentRequestsQuery = useAssignmentRequests({ enabled: !!isAdmin, refetchInterval: PENDING_APPROVALS_POLL_MS });
+
+  // O sino conta os dois tipos de pedido: exclusões e atribuições de processos.
   const pendingApprovalsCount = useMemo(
-    () => (isAdmin ? (deletionRequestsQuery.data ?? []).filter(isPendingDeletion).length : 0),
-    [isAdmin, deletionRequestsQuery.data]
+    () => (isAdmin
+      ? (deletionRequestsQuery.data ?? []).filter(isPendingDeletion).length
+        + (assignmentRequestsQuery.data ?? []).length
+      : 0),
+    [isAdmin, deletionRequestsQuery.data, assignmentRequestsQuery.data]
   );
 
   // Detalhes completos da notificação seleccionada (a lista pode trazer só um resumo)

@@ -17,6 +17,9 @@ import {
     dashboardAPI,
     reportsAPI,
     permissionsAPI,
+    processAssignmentsAPI,
+    assignmentRequestsAPI,
+    techniciansAPI,
 } from '../services/api';
 
 /**
@@ -204,6 +207,35 @@ export function useProcurementCategories(options) {
             () => reportsAPI.getProcurementCategories(),
             { staleTime: 60 * 60 * 1000, ...options },   // taxonomia fixa: não vale repetir
         ),
+    );
+}
+
+// ── Atribuição de processos ──────────────────────────────────
+
+/** Equipa de um processo: atribuições activas, pendentes e histórico. */
+export function useProcessAssignments(quotationRequestId, options) {
+    return useQuery({
+        queryKey: queryKeys.assignments.forRequest(quotationRequestId),
+        queryFn: async () => (await processAssignmentsAPI.list(quotationRequestId)) || {},
+        enabled: !!quotationRequestId,
+        ...options,
+    });
+}
+
+/** Fila de pedidos de atribuição à espera de decisão (admin). */
+export function useAssignmentRequests(options) {
+    return useQuery(
+        listQuery(queryKeys.assignments.requests(), () => assignmentRequestsAPI.listAll(), options),
+    );
+}
+
+/** Técnicos elegíveis para serem atribuídos. */
+export function useTechnicians(options) {
+    return useQuery(
+        listQuery(queryKeys.assignments.technicians(), () => techniciansAPI.getAll(), {
+            staleTime: 5 * 60 * 1000,
+            ...options,
+        }),
     );
 }
 

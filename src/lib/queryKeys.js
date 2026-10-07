@@ -49,6 +49,12 @@ export const queryKeys = {
         all: ['deletion-requests'],
         list: () => ['deletion-requests', 'list'],
     },
+    assignments: {
+        all: ['assignments'],
+        forRequest: (id) => ['assignments', 'request', id],
+        requests: () => ['assignments', 'pending-requests'],
+        technicians: () => ['assignments', 'technicians'],
+    },
     notifications: {
         all: ['notifications'],
         list: () => ['notifications', 'list'],

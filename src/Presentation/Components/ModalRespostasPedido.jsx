@@ -4,6 +4,7 @@ import { createPortal } from "react-dom";
 import { useQuery } from "@tanstack/react-query";
 import { X, MoreVertical, FileText, Trash2, CheckCircle, MessageSquare, RefreshCw, Truck, PackageCheck } from "lucide-react";
 import { quotationResponsesAPI, quotationRequestsAPI } from "../../services/api";
+import EquipaProcesso from "./EquipaProcesso";
 import { useQuotationResponses, useSuppliers, useInvalidate } from "../../hooks/queries";
 import { queryKeys } from "../../lib/queryKeys";
 import { useToast } from "../../context/ToastContext";
@@ -739,6 +740,11 @@ export default function ModalRespostasPedido({
                     </div>
                     </>
                     )}
+
+                    {/* Quem tem acesso a este processo, e pedidos para juntar mais alguém */}
+                    <div className="px-6 pb-6">
+                        <EquipaProcesso quotationRequest={{ id: quotationRequestId }} />
+                    </div>
                 </div>
 
                 {/* Footer */}

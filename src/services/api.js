@@ -140,6 +140,14 @@ export const usersAPI = {
 };
 
 // Permissions API
+export const techniciansAPI = {
+    // Técnicos activos, excluindo o próprio — para o selector de atribuição.
+    getAll: async () => {
+        const response = await api.get('/users/technicians');
+        return response.data;
+    },
+};
+
 export const permissionsAPI = {
     getMyPermissions: async () => {
         const response = await api.get('/user/permissions');
@@ -412,6 +420,49 @@ export const acquisitionsAPI = {
     // actual_delivery_date (YYYY-MM-DD, opcional): data real da entrega; por omissão, hoje
     confirmDelivery: async (id, actual_delivery_date) => {
         const response = await api.post(`/acquisitions/${id}/confirm-delivery`, actual_delivery_date ? { actual_delivery_date } : {});
+        return response.data;
+    },
+};
+
+// Atribuição de processos a técnicos
+// O criador do processo pede, o administrador aprova; o administrador também
+// atribui directamente. Uma atribuição só dá acesso quando está 'active'.
+export const processAssignmentsAPI = {
+    list: async (quotationRequestId) => {
+        const response = await api.get(`/quotation-requests/${quotationRequestId}/assignments`);
+        return response.data;
+    },
+
+    // Admin -> cria já activa. Técnico criador -> cria pendente (reason obrigatório).
+    create: async (quotationRequestId, { user_id, reason }) => {
+        const response = await api.post(`/quotation-requests/${quotationRequestId}/assignments`,
+            reason ? { user_id, reason } : { user_id });
+        return response.data;
+    },
+
+    // Serve para retirar uma atribuição activa e para cancelar um pedido pendente.
+    revoke: async (quotationRequestId, assignmentId) => {
+        const response = await api.delete(`/quotation-requests/${quotationRequestId}/assignments/${assignmentId}`);
+        return response.data;
+    },
+};
+
+// Fila de pedidos de atribuição à espera de decisão do administrador
+export const assignmentRequestsAPI = {
+    getAll: async (params = {}) => {
+        const response = await api.get('/assignment-requests', { params });
+        return response.data;
+    },
+
+    listAll: (params = {}) => fetchAllPages('/assignment-requests', { params }),
+
+    approve: async (assignmentId) => {
+        const response = await api.post(`/assignment-requests/${assignmentId}/approve`);
+        return response.data;
+    },
+
+    reject: async (assignmentId, rejection_reason) => {
+        const response = await api.post(`/assignment-requests/${assignmentId}/reject`, { rejection_reason });
         return response.data;
     },
 };

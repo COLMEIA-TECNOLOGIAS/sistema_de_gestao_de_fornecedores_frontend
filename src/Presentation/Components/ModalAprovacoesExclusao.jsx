@@ -6,6 +6,8 @@ import RefreshButton from './ui/RefreshButton';
 import { ErrorState, StaleDataBanner } from './ui/StateViews';
 import { useDeletionRequests, useInvalidate } from '../../hooks/queries';
 import { queryKeys } from '../../lib/queryKeys';
+import AprovacoesAtribuicao from './AprovacoesAtribuicao';
+import { useAssignmentRequests } from '../../hooks/queries';
 import { useToast } from '../../context/ToastContext';
 import { useConfirm } from '../../context/ConfirmContext';
 import { getErrorMessage } from '../../utils/apiHelpers';
@@ -150,6 +152,10 @@ export default function ModalAprovacoesExclusao({ isOpen, onClose }) {
     const [rejectTarget, setRejectTarget] = useState(null);
     const [rejectReason, setRejectReason] = useState('');
     const [isRejecting, setIsRejecting] = useState(false);
+    const [aba, setAba] = useState('exclusoes');
+
+    // Só para a contagem do separador — a lista é carregada pelo componente.
+    const { data: pedidosAtribuicao = [] } = useAssignmentRequests({ enabled: isOpen });
 
     const {
         data,
@@ -280,8 +286,8 @@ export default function ModalAprovacoesExclusao({ isOpen, onClose }) {
                             <AlertTriangle size={20} />
                         </div>
                         <div>
-                            <h3 className="font-bold text-lg" style={{ color: 'var(--color-text-primary)' }}>Aprovações de Exclusão</h3>
-                            <p className="text-sm" style={{ color: 'var(--color-text-secondary)' }}>Autorize ou recuse pedidos de exclusão dos técnicos.</p>
+                            <h3 className="font-bold text-lg" style={{ color: 'var(--color-text-primary)' }}>Aprovações Pendentes</h3>
+                            <p className="text-sm" style={{ color: 'var(--color-text-secondary)' }}>Autorize ou recuse os pedidos dos técnicos.</p>
                         </div>
                     </div>
                     <div className="flex items-center gap-2">
@@ -292,8 +298,33 @@ export default function ModalAprovacoesExclusao({ isOpen, onClose }) {
                     </div>
                 </div>
 
+                {/* Separadores: exclusões e atribuições partilham este painel */}
+                <div className="px-6 pt-3 flex items-center gap-1" style={{ borderBottom: '1px solid var(--color-border)', background: 'var(--color-surface)' }}>
+                    {[
+                        { id: 'exclusoes', rotulo: 'Exclusões', n: pendingRequests.length },
+                        { id: 'atribuicoes', rotulo: 'Atribuições', n: pedidosAtribuicao.length },
+                    ].map((t) => (
+                        <button
+                            key={t.id}
+                            onClick={() => setAba(t.id)}
+                            className={`px-4 py-2 text-sm font-medium border-b-2 -mb-px transition-colors ${aba === t.id
+                                ? 'border-[#44B16F] text-[#148742]'
+                                : 'border-transparent text-gray-500 hover:text-gray-700'}`}
+                        >
+                            {t.rotulo}
+                            {t.n > 0 && (
+                                <span className="ml-2 px-1.5 py-0.5 rounded-full text-[10px] font-bold bg-orange-100 text-orange-700">
+                                    {t.n}
+                                </span>
+                            )}
+                        </button>
+                    ))}
+                </div>
+
                 {/* Content */}
                 <div className="flex-1 overflow-y-auto p-6" style={{ background: 'var(--color-bg)' }}>
+                    {aba === 'atribuicoes' && <AprovacoesAtribuicao />}
+                    {aba === 'exclusoes' && (<>
                     {isError && hasData && (
                         <div className="mb-4">
                             <StaleDataBanner onRetry={refetch} isRetrying={isFetching} />
@@ -390,6 +421,7 @@ export default function ModalAprovacoesExclusao({ isOpen, onClose }) {
                                 })}
                             </div>
                         )}
+                    </>)}
                 </div>
             </div>
         </div>
