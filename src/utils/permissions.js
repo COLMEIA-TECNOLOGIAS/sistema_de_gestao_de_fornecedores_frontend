@@ -20,7 +20,11 @@ export const PERMISSIONS = {
     FORNECEDORES: 'suppliers',
     COTACOES: 'quotation-requests',
     USUARIOS: 'users',
-    RELATORIOS: 'relatorios',
+    // O menu 'relatorios' nunca existiu no backend, por isso canAccessMenu()
+    // devolvia sempre falso e a entrada do relatório ficava invisível a todos os
+    // técnicos. O relatório é gerado a partir das aquisições e a API protege-o
+    // com menu:acquisitions — alinhado aqui com o que o backend exige.
+    RELATORIOS: 'acquisitions',
     AQUISICOES: 'acquisitions',
     CONFIGURACOES: 'configuracoes',
     CATEGORIAS: 'categories',
